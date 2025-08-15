@@ -415,11 +415,17 @@ export default class TemplateManager {
     try {
       console.log('Updating template with color filter, disabled colors:', template.getDisabledColors());
       
+      // Clear existing chunked data to force complete recreation
+      template.chunked = null;
+      
       // Recreate template tiles with current filter settings
+      console.log('Creating new template tiles with color filter...');
       const { templateTiles, templateTilesBuffers } = await template.createTemplateTiles();
+      
+      // Assign the new chunked data
       template.chunked = templateTiles;
       
-      console.log('Template tiles recreated with filter applied');
+      console.log('Template tiles recreated with filter applied, total tiles:', Object.keys(templateTiles).length);
       
       // Update JSON if it exists
       if (this.templatesJSON && this.templatesJSON.templates) {
@@ -439,6 +445,7 @@ export default class TemplateManager {
     } catch (error) {
       console.error('Error updating template with color filter:', error);
       this.overlay.handleDisplayError('Failed to update template with color filter');
+      throw error; // Re-throw for better error handling
     }
   }
 

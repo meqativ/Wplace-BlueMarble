@@ -780,30 +780,46 @@ function buildColorFilterOverlay() {
           colorItem.appendChild(overlay);
         }
         
-        // Refresh template display
-        refreshTemplateDisplay();
+        // Refresh template display in real-time
+        refreshTemplateDisplay().catch(error => {
+          console.error('Error refreshing template:', error);
+        });
       };
 
       colorGrid.appendChild(colorItem);
     });
 
     // Enable/Disable all functionality
-    enableAllButton.onclick = () => {
+    enableAllButton.onclick = async () => {
       colorPalette.forEach((colorInfo) => {
         currentTemplate.enableColor(colorInfo.rgb);
       });
       colorFilterOverlay.remove();
-      buildColorFilterOverlay(); // Rebuild to reflect changes
-      refreshTemplateDisplay();
+      overlayMain.handleDisplayStatus('Enabling all colors...');
+      
+      try {
+        await refreshTemplateDisplay();
+        buildColorFilterOverlay(); // Rebuild to reflect changes
+      } catch (error) {
+        console.error('Error enabling all colors:', error);
+        overlayMain.handleDisplayError('Failed to enable all colors');
+      }
     };
 
-    disableAllButton.onclick = () => {
+    disableAllButton.onclick = async () => {
       colorPalette.forEach((colorInfo) => {
         currentTemplate.disableColor(colorInfo.rgb);
       });
       colorFilterOverlay.remove();
-      buildColorFilterOverlay(); // Rebuild to reflect changes
-      refreshTemplateDisplay();
+      overlayMain.handleDisplayStatus('Disabling all colors...');
+      
+      try {
+        await refreshTemplateDisplay();
+        buildColorFilterOverlay(); // Rebuild to reflect changes
+      } catch (error) {
+        console.error('Error disabling all colors:', error);
+        overlayMain.handleDisplayError('Failed to disable all colors');
+      }
     };
 
     // Apply button
@@ -820,10 +836,17 @@ function buildColorFilterOverlay() {
       width: 100%;
       margin-top: 10px;
     `;
-    applyButton.onclick = () => {
+    applyButton.onclick = async () => {
       colorFilterOverlay.remove();
-      refreshTemplateDisplay();
-      overlayMain.handleDisplayStatus('Color filter applied successfully!');
+      overlayMain.handleDisplayStatus('Applying color filter...');
+      
+      try {
+        await refreshTemplateDisplay();
+        overlayMain.handleDisplayStatus('Color filter applied successfully!');
+      } catch (error) {
+        console.error('Error applying color filter:', error);
+        overlayMain.handleDisplayError('Failed to apply color filter');
+      }
     };
 
     // Assemble overlay
@@ -848,24 +871,33 @@ async function refreshTemplateDisplay() {
   if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
     // Force a complete recreation of the template with current color filter
     try {
-      overlayMain.handleDisplayStatus('Updating template with color filter...');
+      console.log('Starting template refresh with color filter...');
       
-      // Recreate the template tiles with the new color settings
-      await templateManager.updateTemplateWithColorFilter(0);
+      // Get the current template
+      const currentTemplate = templateManager.templatesArray[0];
+      console.log('Current disabled colors:', currentTemplate.getDisabledColors());
       
-      // Force the template to be redrawn by toggling the display
-      const wasEnabled = templateManager.templatesShouldBeDrawn;
+      // Disable templates first to clear the display
       templateManager.setTemplatesShouldBeDrawn(false);
       
-      // Small delay to ensure the change takes effect
-      setTimeout(() => {
-        templateManager.setTemplatesShouldBeDrawn(wasEnabled);
-        overlayMain.handleDisplayStatus('Color filter applied successfully!');
-      }, 100);
+      // Wait a moment for the change to take effect
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+      // Force recreation of template tiles with current color filter
+      console.log('Recreating template tiles with color filter...');
+      await templateManager.updateTemplateWithColorFilter(0);
+      
+      // Re-enable templates to show the updated version
+      templateManager.setTemplatesShouldBeDrawn(true);
+      
+      console.log('Template refresh completed successfully');
       
     } catch (error) {
       console.error('Error refreshing template display:', error);
       overlayMain.handleDisplayError('Failed to apply color filter');
+      throw error; // Re-throw to handle in calling function
     }
+  } else {
+    console.warn('No templates available to refresh');
   }
 }
