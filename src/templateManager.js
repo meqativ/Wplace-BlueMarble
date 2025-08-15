@@ -413,11 +413,13 @@ export default class TemplateManager {
     const template = this.templatesArray[templateIndex];
     
     try {
-      this.overlay.handleDisplayStatus('Updating template with color filter...');
+      console.log('Updating template with color filter, disabled colors:', template.getDisabledColors());
       
       // Recreate template tiles with current filter settings
       const { templateTiles, templateTilesBuffers } = await template.createTemplateTiles();
       template.chunked = templateTiles;
+      
+      console.log('Template tiles recreated with filter applied');
       
       // Update JSON if it exists
       if (this.templatesJSON && this.templatesJSON.templates) {
@@ -425,13 +427,14 @@ export default class TemplateManager {
         if (this.templatesJSON.templates[templateKey]) {
           this.templatesJSON.templates[templateKey].tiles = templateTilesBuffers;
           this.templatesJSON.templates[templateKey].disabledColors = template.getDisabledColors();
+          console.log('JSON updated with new filter settings');
         }
       }
       
       // Store updated templates
       await this.#storeTemplates();
       
-      this.overlay.handleDisplayStatus('Template updated with color filter!');
+      console.log('Template updated with color filter successfully');
       
     } catch (error) {
       console.error('Error updating template with color filter:', error);

@@ -140,6 +140,11 @@ export default class Template {
             // Check if this color is disabled
             const isDisabled = this.isColorDisabled([r, g, b]);
             
+            // Debug: log disabled colors being processed
+            if (isDisabled && x % 10 === 0 && y % 10 === 0) {
+              console.log(`Filtering disabled color [${r}, ${g}, ${b}] at pixel [${x}, ${y}]`);
+            }
+            
             // If the pixel is the color #deface, draw a translucent gray checkerboard pattern
             if (r === 222 && g === 250 && b === 206) {
               if ((x + y) % 2 === 0) { // Formula for checkerboard pattern

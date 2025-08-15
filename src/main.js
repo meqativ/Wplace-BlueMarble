@@ -471,10 +471,10 @@ function buildOverlayMain() {
                 instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
                 return;
               }
-              instance.updateInnerHTML('bm-input-tx', coords?.[0] || '');
-              instance.updateInnerHTML('bm-input-ty', coords?.[1] || '');
-              instance.updateInnerHTML('bm-input-px', coords?.[2] || '');
-              instance.updateInnerHTML('bm-input-py', coords?.[3] || '');
+              document.querySelector('#bm-input-tx').value = coords?.[0] || '';
+              document.querySelector('#bm-input-ty').value = coords?.[1] || '';
+              document.querySelector('#bm-input-px').value = coords?.[2] || '';
+              document.querySelector('#bm-input-py').value = coords?.[3] || '';
             }
           }
         ).buildElement()
@@ -843,10 +843,29 @@ function buildColorFilterOverlay() {
 /** Refreshes the template display to show color filter changes
  * @since 1.0.0
  */
-function refreshTemplateDisplay() {
+async function refreshTemplateDisplay() {
   // This will trigger a re-render of the template
   if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
-    // Use the new color filter update method
-    templateManager.updateTemplateWithColorFilter(0);
+    // Force a complete recreation of the template with current color filter
+    try {
+      overlayMain.handleDisplayStatus('Updating template with color filter...');
+      
+      // Recreate the template tiles with the new color settings
+      await templateManager.updateTemplateWithColorFilter(0);
+      
+      // Force the template to be redrawn by toggling the display
+      const wasEnabled = templateManager.templatesShouldBeDrawn;
+      templateManager.setTemplatesShouldBeDrawn(false);
+      
+      // Small delay to ensure the change takes effect
+      setTimeout(() => {
+        templateManager.setTemplatesShouldBeDrawn(wasEnabled);
+        overlayMain.handleDisplayStatus('Color filter applied successfully!');
+      }, 100);
+      
+    } catch (error) {
+      console.error('Error refreshing template display:', error);
+      overlayMain.handleDisplayError('Failed to apply color filter');
+    }
   }
 }
