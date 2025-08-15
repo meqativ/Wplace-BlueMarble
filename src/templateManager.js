@@ -371,6 +371,15 @@ export default class TemplateManager {
         // Fast path: Enhanced mode only, use pre-processed tiles
         const tileKey = template.tileKey || 'unknown';
         
+        console.log('🔍 Enhanced mode debug:');
+        console.log('  - isEnhanced:', isEnhanced);
+        console.log('  - hasDisabledColors:', hasDisabledColors);
+        console.log('  - tileKey:', tileKey);
+        console.log('  - enhancedCacheValid:', currentTemplate.enhancedCacheValid);
+        console.log('  - cache has tileKey:', currentTemplate.enhancedTilesCache.has(tileKey));
+        console.log('  - cache size:', currentTemplate.enhancedTilesCache.size);
+        console.log('  - chunked keys:', Object.keys(currentTemplate.chunked || {}));
+        
         // Check if we have cached enhanced tiles for this template
         if (!currentTemplate.enhancedCacheValid || !currentTemplate.enhancedTilesCache.has(tileKey)) {
           // Generate enhanced tiles cache if needed
@@ -380,6 +389,7 @@ export default class TemplateManager {
               currentTemplate.enhancedTilesCache = await currentTemplate.createEnhancedTiles(currentTemplate.chunked);
               currentTemplate.enhancedCacheValid = true;
               console.log('✅ Enhanced tiles cache created successfully');
+              console.log('✅ Cache keys:', Array.from(currentTemplate.enhancedTilesCache.keys()));
             } catch (error) {
               console.warn('⚠️ Failed to create enhanced cache, falling back to real-time processing:', error);
             }
@@ -388,11 +398,15 @@ export default class TemplateManager {
         
         // Use cached enhanced tile if available
         const enhancedTile = currentTemplate.enhancedTilesCache.get(tileKey);
+        console.log('🎯 Enhanced tile found:', !!enhancedTile);
+        
         if (enhancedTile) {
           context.drawImage(enhancedTile, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+          console.log('✅ Drew enhanced tile');
         } else {
           // Fallback to original tile if enhanced cache failed
           context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+          console.log('⚠️ Used original tile as fallback');
         }
       } else {
         // Slow path: Color filtering (with or without enhanced mode) - needs real-time processing
