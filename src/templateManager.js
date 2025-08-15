@@ -328,7 +328,8 @@ export default class TemplateManager {
         // Create a copy for border detection
         const originalData = new Uint8ClampedArray(data);
         
-        // Process each pixel to add red borders
+        // First pass: identify border pixels but don't modify them yet
+        const borderPixels = new Set();
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
@@ -346,12 +347,28 @@ export default class TemplateManager {
               );
               
               if (isOnBorder) {
-                // Add red border
-                data[i] = 255;     // Red
-                data[i + 1] = 0;   // Green  
-                data[i + 2] = 0;   // Blue
-                data[i + 3] = 255; // Alpha (fully opaque)
+                borderPixels.add(`${x},${y}`);
               }
+            }
+          }
+        }
+        
+        // Second pass: add subtle red borders around border pixels
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            
+            if (borderPixels.has(`${x},${y}`)) {
+              // This is a border pixel - add a subtle red tint while preserving original color
+              const originalR = originalData[i];
+              const originalG = originalData[i + 1];
+              const originalB = originalData[i + 2];
+              
+              // Blend with red (30% red, 70% original color)
+              data[i] = Math.min(255, Math.round(originalR * 0.7 + 255 * 0.3));     // Red blend
+              data[i + 1] = Math.round(originalG * 0.7);   // Reduce green
+              data[i + 2] = Math.round(originalB * 0.7);   // Reduce blue
+              data[i + 3] = Math.max(200, originalData[i + 3]); // Ensure visibility
             }
           }
         }
