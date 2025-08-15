@@ -343,7 +343,7 @@ export default class TemplateManager {
         
         // Second pass: find pixels that should become red border (around template pixels)
         const borderPixels = new Set();
-        const borderThickness = 2; // Thickness of the border in pixels
+        const borderThickness = 1; // Thickness of the border in pixels
         
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
