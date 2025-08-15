@@ -48,7 +48,7 @@ export default class Template {
    * @since 0.65.4
    */
   async createTemplateTiles() {
-    console.log('Template coordinates:', this.coords);
+    // // console.log('Template coordinates:', this.coords);
 
     const shreadSize = 3; // Scale image factor for pixel art enhancement (must be odd)
     
@@ -57,7 +57,7 @@ export default class Template {
     try {
       bitmap = await createImageBitmap(this.file);
     } catch (error) {
-      console.log('createImageBitmap failed, using fallback method');
+      // // console.log('createImageBitmap failed, using fallback method');
       // Fallback: create image element and canvas
       const img = new Image();
       const canvas = document.createElement('canvas');
@@ -82,7 +82,7 @@ export default class Template {
     // Calculate total pixel count using standard width × height formula
     // TODO: Use non-transparent pixels instead of basic width times height
     const totalPixels = imageWidth * imageHeight;
-    console.log(`Template pixel analysis - Dimensions: ${imageWidth}×${imageHeight} = ${totalPixels.toLocaleString()} pixels`);
+    // console.log(`Template pixel analysis - Dimensions: ${imageWidth}×${imageHeight} = ${totalPixels.toLocaleString()} pixels`);
     
     // Store pixel count in instance property for access by template manager and UI components
     this.pixelCount = totalPixels;
@@ -104,11 +104,11 @@ export default class Template {
       // B. The top left corner of the current tile to the bottom right corner of the image
       const drawSizeY = Math.min(this.tileSize - (pixelY % this.tileSize), imageHeight - (pixelY - this.coords[3]));
 
-      console.log(`Math.min(${this.tileSize} - (${pixelY} % ${this.tileSize}), ${imageHeight} - (${pixelY - this.coords[3]}))`);
+      // console.log(`Math.min(${this.tileSize} - (${pixelY} % ${this.tileSize}), ${imageHeight} - (${pixelY - this.coords[3]}))`);
 
       for (let pixelX = this.coords[2]; pixelX < imageWidth + this.coords[2];) {
 
-        console.log(`Pixel X: ${pixelX}\nPixel Y: ${pixelY}`);
+        // console.log(`Pixel X: ${pixelX}\nPixel Y: ${pixelY}`);
 
         // Draws the partial tile first, if any
         // This calculates the size based on which is smaller:
@@ -116,9 +116,9 @@ export default class Template {
         // B. The top left corner of the current tile to the bottom right corner of the image
         const drawSizeX = Math.min(this.tileSize - (pixelX % this.tileSize), imageWidth - (pixelX - this.coords[2]));
 
-        console.log(`Math.min(${this.tileSize} - (${pixelX} % ${this.tileSize}), ${imageWidth} - (${pixelX - this.coords[2]}))`);
+        // console.log(`Math.min(${this.tileSize} - (${pixelX} % ${this.tileSize}), ${imageWidth} - (${pixelX - this.coords[2]}))`);
 
-        console.log(`Draw Size X: ${drawSizeX}\nDraw Size Y: ${drawSizeY}`);
+        // console.log(`Draw Size X: ${drawSizeX}\nDraw Size Y: ${drawSizeY}`);
 
         // Change the canvas size and wipe the canvas
         const canvasWidth = drawSizeX * shreadSize;// + (pixelX % this.tileSize) * shreadSize;
@@ -126,11 +126,11 @@ export default class Template {
         canvas.width = canvasWidth;
         canvas.height = canvasHeight;
 
-        console.log(`Draw X: ${drawSizeX}\nDraw Y: ${drawSizeY}\nCanvas Width: ${canvasWidth}\nCanvas Height: ${canvasHeight}`);
+        // console.log(`Draw X: ${drawSizeX}\nDraw Y: ${drawSizeY}\nCanvas Width: ${canvasWidth}\nCanvas Height: ${canvasHeight}`);
 
         context.imageSmoothingEnabled = false; // Nearest neighbor
 
-        console.log(`Getting X ${pixelX}-${pixelX + drawSizeX}\nGetting Y ${pixelY}-${pixelY + drawSizeY}`);
+        // console.log(`Getting X ${pixelX}-${pixelX + drawSizeX}\nGetting Y ${pixelY}-${pixelY + drawSizeY}`);
 
         // Draws the template segment on this tile segment
         context.clearRect(0, 0, canvasWidth, canvasHeight); // Clear any previous drawing (only runs when canvas size does not change)
@@ -186,7 +186,7 @@ export default class Template {
             
             // Debug: log disabled colors being processed
             if (isDisabled && x % 10 === 0 && y % 10 === 0) {
-              console.log(`Filtering disabled color [${r}, ${g}, ${b}] at pixel [${x}, ${y}]`);
+              // console.log(`Filtering disabled color [${r}, ${g}, ${b}] at pixel [${x}, ${y}]`);
             }
             
             // If the pixel is the color #deface, draw a translucent gray checkerboard pattern
@@ -208,7 +208,7 @@ export default class Template {
           }
         }
 
-        console.log(`Shreaded pixels for ${pixelX}, ${pixelY}`, imageData);
+        // console.log(`Shreaded pixels for ${pixelX}, ${pixelY}`, imageData);
 
         context.putImageData(imageData, 0, 0);
 
@@ -225,7 +225,7 @@ export default class Template {
         try {
           templateTiles[templateTileName] = await createImageBitmap(canvas);
         } catch (error) {
-          console.log('createImageBitmap failed for tile, using canvas directly');
+          // console.log('createImageBitmap failed for tile, using canvas directly');
           templateTiles[templateTileName] = canvas.cloneNode(true);
         }
         
@@ -243,13 +243,13 @@ export default class Template {
           const canvasBufferBytes = Array.from(new Uint8Array(canvasBuffer));
           templateTilesBuffers[templateTileName] = uint8ToBase64(canvasBufferBytes);
         } catch (error) {
-          console.log('Canvas blob conversion failed, using data URL fallback');
+          // console.log('Canvas blob conversion failed, using data URL fallback');
           const dataURL = canvas.toDataURL('image/png');
           const base64 = dataURL.split(',')[1];
           templateTilesBuffers[templateTileName] = base64;
         }
 
-        console.log(templateTiles);
+        // console.log(templateTiles);
 
         pixelX += drawSizeX;
       }
@@ -257,8 +257,8 @@ export default class Template {
       pixelY += drawSizeY;
     }
 
-    console.log('Template Tiles: ', templateTiles);
-    console.log('Template Tiles Buffers: ', templateTilesBuffers);
+    // console.log('Template Tiles: ', templateTiles);
+    // console.log('Template Tiles Buffers: ', templateTilesBuffers);
     return { templateTiles, templateTilesBuffers };
   }
 

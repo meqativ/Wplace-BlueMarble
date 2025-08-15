@@ -44,8 +44,8 @@ inject(() => {
 
     // Since this code does not run in the userscript, we can't use consoleLog().
     console.groupCollapsed(`%c${name}%c: ${fetchedBlobQueue.size} Recieved IMAGE message about blob "${blobID}"`, consoleStyle, '');
-    console.log(`Blob fetch took %c${String(Math.floor(elapsed/60000)).padStart(2,'0')}:${String(Math.floor(elapsed/1000) % 60).padStart(2,'0')}.${String(elapsed % 1000).padStart(3,'0')}%c MM:SS.mmm`, consoleStyle, '');
-    console.log(fetchedBlobQueue);
+    // console.log(`Blob fetch took %c${String(Math.floor(elapsed/60000)).padStart(2,'0')}:${String(Math.floor(elapsed/1000) % 60).padStart(2,'0')}.${String(elapsed % 1000).padStart(3,'0')}%c MM:SS.mmm`, consoleStyle, '');
+    // console.log(fetchedBlobQueue);
     console.groupEnd();
 
     // The modified blob won't have an endpoint, so we ignore any message without one.
@@ -85,7 +85,7 @@ inject(() => {
 
 
       // Since this code does not run in the userscript, we can't use consoleLog().
-      console.log(`%c${name}%c: Sending JSON message about endpoint "${endpointName}"`, consoleStyle, '');
+      // console.log(`%c${name}%c: Sending JSON message about endpoint "${endpointName}"`, consoleStyle, '');
 
       // Sends a message about the endpoint it spied on
       cloned.json()
@@ -107,7 +107,7 @@ inject(() => {
       const blob = await cloned.blob(); // The original blob
 
       // Since this code does not run in the userscript, we can't use consoleLog().
-      console.log(`%c${name}%c: ${fetchedBlobQueue.size} Sending IMAGE message about endpoint "${endpointName}"`, consoleStyle, '');
+      // console.log(`%c${name}%c: ${fetchedBlobQueue.size} Sending IMAGE message about endpoint "${endpointName}"`, consoleStyle, '');
 
       // Returns the manipulated blob
       return new Promise((resolve) => {
