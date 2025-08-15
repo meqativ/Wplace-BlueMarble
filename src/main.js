@@ -215,6 +215,16 @@ async function loadTemplates() {
   console.log(`📂 Templates loaded from: ${storageSource}`);
   console.log('📦 Storage data:', storageTemplates);
   
+  // Detailed debug logging
+  console.log('🔍 Debug - Storage analysis:');
+  console.log('  - Type:', typeof storageTemplates);
+  console.log('  - Is object:', typeof storageTemplates === 'object' && storageTemplates !== null);
+  console.log('  - Has whoami:', storageTemplates?.whoami);
+  console.log('  - whoami value:', JSON.stringify(storageTemplates?.whoami));
+  console.log('  - Has templates:', !!storageTemplates?.templates);
+  console.log('  - Templates type:', typeof storageTemplates?.templates);
+  console.log('  - Templates keys:', storageTemplates?.templates ? Object.keys(storageTemplates.templates) : 'N/A');
+  
   // Validate loaded data
   const templateCount = Object.keys(storageTemplates?.templates || {}).length;
   

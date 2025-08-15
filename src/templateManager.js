@@ -500,9 +500,26 @@ export default class TemplateManager {
     console.log(`Importing JSON...`);
     console.log(json);
 
+    // Debug logging
+    console.log('🔍 Debug - importJSON analysis:');
+    console.log('  - Input type:', typeof json);
+    console.log('  - Input is null/undefined:', json == null);
+    console.log('  - Has whoami property:', json?.hasOwnProperty?.('whoami'));
+    console.log('  - whoami value:', JSON.stringify(json?.whoami));
+    console.log('  - whoami comparison:', json?.whoami, '==', 'BlueMarble', '→', json?.whoami == 'BlueMarble');
+    console.log('  - Has templates:', !!json?.templates);
+    console.log('  - Templates count:', json?.templates ? Object.keys(json.templates).length : 'N/A');
+
     // If the passed in JSON is a Blue Marble template object...
     if (json?.whoami == 'BlueMarble') {
+      console.log('✅ Calling #parseBlueMarble...');
       this.#parseBlueMarble(json); // ...parse the template object as Blue Marble
+    } else {
+      console.warn('❌ Not a valid BlueMarble JSON:', {
+        whoami: json?.whoami,
+        expected: 'BlueMarble',
+        hasTemplates: !!json?.templates
+      });
     }
   }
 
