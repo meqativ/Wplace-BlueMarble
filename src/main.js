@@ -6,7 +6,7 @@ import Overlay from './Overlay.js';
 import Observers from './observers.js';
 import ApiManager from './apiManager.js';
 import TemplateManager from './templateManager.js';
-import { consoleLog, consoleWarn } from './utils.js';
+import { consoleLog, consoleWarn, consoleError } from './utils.js';
 
 const name = GM_info.script.name.toString(); // Name of userscript
 const version = GM_info.script.version.toString(); // Version of userscript
@@ -782,7 +782,7 @@ function buildColorFilterOverlay() {
         
         // Refresh template display in real-time
         refreshTemplateDisplay().catch(error => {
-          console.error('Error refreshing template:', error);
+          consoleError('Error refreshing template:', error);
         });
       };
 
@@ -801,7 +801,7 @@ function buildColorFilterOverlay() {
         await refreshTemplateDisplay();
         buildColorFilterOverlay(); // Rebuild to reflect changes
       } catch (error) {
-        console.error('Error enabling all colors:', error);
+        consoleError('Error enabling all colors:', error);
         overlayMain.handleDisplayError('Failed to enable all colors');
       }
     };
@@ -817,7 +817,7 @@ function buildColorFilterOverlay() {
         await refreshTemplateDisplay();
         buildColorFilterOverlay(); // Rebuild to reflect changes
       } catch (error) {
-        console.error('Error disabling all colors:', error);
+        consoleError('Error disabling all colors:', error);
         overlayMain.handleDisplayError('Failed to disable all colors');
       }
     };
@@ -844,7 +844,7 @@ function buildColorFilterOverlay() {
         await refreshTemplateDisplay();
         overlayMain.handleDisplayStatus('Color filter applied successfully!');
       } catch (error) {
-        console.error('Error applying color filter:', error);
+        consoleError('Error applying color filter:', error);
         overlayMain.handleDisplayError('Failed to apply color filter');
       }
     };
@@ -858,7 +858,7 @@ function buildColorFilterOverlay() {
 
     document.body.appendChild(colorFilterOverlay);
   }).catch(err => {
-    console.error('Failed to load color palette:', err);
+    consoleError('Failed to load color palette:', err);
     overlayMain.handleDisplayError('Failed to load color palette!');
   });
 }
@@ -871,11 +871,11 @@ async function refreshTemplateDisplay() {
   if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
     // Force a complete recreation of the template with current color filter
     try {
-      console.log('Starting template refresh with color filter...');
+      consoleLog('Starting template refresh with color filter...');
       
       // Get the current template
       const currentTemplate = templateManager.templatesArray[0];
-      console.log('Current disabled colors:', currentTemplate.getDisabledColors());
+      consoleLog('Current disabled colors:', currentTemplate.getDisabledColors());
       
       // Disable templates first to clear the display
       templateManager.setTemplatesShouldBeDrawn(false);
@@ -884,20 +884,20 @@ async function refreshTemplateDisplay() {
       await new Promise(resolve => setTimeout(resolve, 50));
       
       // Force recreation of template tiles with current color filter
-      console.log('Recreating template tiles with color filter...');
+      consoleLog('Recreating template tiles with color filter...');
       await templateManager.updateTemplateWithColorFilter(0);
       
       // Re-enable templates to show the updated version
       templateManager.setTemplatesShouldBeDrawn(true);
       
-      console.log('Template refresh completed successfully');
+      consoleLog('Template refresh completed successfully');
       
     } catch (error) {
-      console.error('Error refreshing template display:', error);
+      consoleError('Error refreshing template display:', error);
       overlayMain.handleDisplayError('Failed to apply color filter');
       throw error; // Re-throw to handle in calling function
     }
   } else {
-    console.warn('No templates available to refresh');
+    consoleWarn('No templates available to refresh');
   }
 }

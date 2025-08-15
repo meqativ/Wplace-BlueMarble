@@ -51,7 +51,31 @@ export default class Template {
     console.log('Template coordinates:', this.coords);
 
     const shreadSize = 3; // Scale image factor for pixel art enhancement (must be odd)
-    const bitmap = await createImageBitmap(this.file); // Create efficient bitmap from uploaded file
+    
+    // Create bitmap using a more compatible approach
+    let bitmap;
+    try {
+      bitmap = await createImageBitmap(this.file);
+    } catch (error) {
+      console.log('createImageBitmap failed, using fallback method');
+      // Fallback: create image element and canvas
+      const img = new Image();
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      
+      await new Promise((resolve, reject) => {
+        img.onload = () => {
+          canvas.width = img.width;
+          canvas.height = img.height;
+          ctx.drawImage(img, 0, 0);
+          resolve();
+        };
+        img.onerror = reject;
+        img.src = URL.createObjectURL(this.file);
+      });
+      
+      bitmap = { width: canvas.width, height: canvas.height, canvas, ctx };
+    }
     const imageWidth = bitmap.width;
     const imageHeight = bitmap.height;
     
@@ -66,7 +90,9 @@ export default class Template {
     const templateTiles = {}; // Holds the template tiles
     const templateTilesBuffers = {}; // Holds the buffers of the template tiles
 
-    const canvas = new OffscreenCanvas(this.tileSize, this.tileSize);
+    const canvas = document.createElement('canvas');
+    canvas.width = this.tileSize;
+    canvas.height = this.tileSize;
     const context = canvas.getContext('2d', { willReadFrequently: true });
 
     // For every tile...
@@ -108,17 +134,35 @@ export default class Template {
 
         // Draws the template segment on this tile segment
         context.clearRect(0, 0, canvasWidth, canvasHeight); // Clear any previous drawing (only runs when canvas size does not change)
-        context.drawImage(
-          bitmap, // Bitmap image to draw
-          pixelX - this.coords[2], // Coordinate X to draw from
-          pixelY - this.coords[3], // Coordinate Y to draw from
-          drawSizeX, // X width to draw from
-          drawSizeY, // Y height to draw from
-          0, // Coordinate X to draw at
-          0, // Coordinate Y to draw at
-          drawSizeX * shreadSize, // X width to draw at
-          drawSizeY * shreadSize // Y height to draw at
-        ); // Coordinates and size of draw area of source image, then canvas
+        
+        // Use different drawing method based on bitmap type
+        if (bitmap.canvas) {
+          // Fallback method using canvas
+          context.drawImage(
+            bitmap.canvas, // Canvas to draw from
+            pixelX - this.coords[2], // Coordinate X to draw from
+            pixelY - this.coords[3], // Coordinate Y to draw from
+            drawSizeX, // X width to draw from
+            drawSizeY, // Y height to draw from
+            0, // Coordinate X to draw at
+            0, // Coordinate Y to draw at
+            drawSizeX * shreadSize, // X width to draw at
+            drawSizeY * shreadSize // Y height to draw at
+          );
+        } else {
+          // Standard method using ImageBitmap
+          context.drawImage(
+            bitmap, // Bitmap image to draw
+            pixelX - this.coords[2], // Coordinate X to draw from
+            pixelY - this.coords[3], // Coordinate Y to draw from
+            drawSizeX, // X width to draw from
+            drawSizeY, // Y height to draw from
+            0, // Coordinate X to draw at
+            0, // Coordinate Y to draw at
+            drawSizeX * shreadSize, // X width to draw at
+            drawSizeY * shreadSize // Y height to draw at
+          );
+        }
 
         // const final = await canvas.convertToBlob({ type: 'image/png' });
         // const url = URL.createObjectURL(final); // Creates a blob URL
@@ -177,12 +221,33 @@ export default class Template {
           .toString()
           .padStart(3, '0')},${(pixelY % 1000).toString().padStart(3, '0')}`;
 
-        templateTiles[templateTileName] = await createImageBitmap(canvas); // Creates the bitmap
+        // Create bitmap using compatible method
+        try {
+          templateTiles[templateTileName] = await createImageBitmap(canvas);
+        } catch (error) {
+          console.log('createImageBitmap failed for tile, using canvas directly');
+          templateTiles[templateTileName] = canvas.cloneNode(true);
+        }
         
-        const canvasBlob = await canvas.convertToBlob();
-        const canvasBuffer = await canvasBlob.arrayBuffer();
-        const canvasBufferBytes = Array.from(new Uint8Array(canvasBuffer));
-        templateTilesBuffers[templateTileName] = uint8ToBase64(canvasBufferBytes); // Stores the buffer
+        // Convert canvas to buffer using compatible method
+        try {
+          const canvasBlob = await new Promise((resolve, reject) => {
+            if (canvas.convertToBlob) {
+              canvas.convertToBlob().then(resolve).catch(reject);
+            } else {
+              // Fallback for browsers that don't support convertToBlob
+              canvas.toBlob(resolve, 'image/png');
+            }
+          });
+          const canvasBuffer = await canvasBlob.arrayBuffer();
+          const canvasBufferBytes = Array.from(new Uint8Array(canvasBuffer));
+          templateTilesBuffers[templateTileName] = uint8ToBase64(canvasBufferBytes);
+        } catch (error) {
+          console.log('Canvas blob conversion failed, using data URL fallback');
+          const dataURL = canvas.toDataURL('image/png');
+          const base64 = dataURL.split(',')[1];
+          templateTilesBuffers[templateTileName] = base64;
+        }
 
         console.log(templateTiles);
 

@@ -1,5 +1,5 @@
 import Template from "./Template";
-import { base64ToUint8, numberToEncoded } from "./utils";
+import { base64ToUint8, numberToEncoded, consoleLog, consoleError, consoleWarn } from "./utils";
 
 /** Manages the template system.
  * This class handles all external requests for template modification, creation, and analysis.
@@ -282,7 +282,9 @@ export default class TemplateManager {
     
     const tileBitmap = await createImageBitmap(tileBlob);
 
-    const canvas = new OffscreenCanvas(drawSize, drawSize);
+    const canvas = document.createElement('canvas');
+    canvas.width = drawSize;
+    canvas.height = drawSize;
     const context = canvas.getContext('2d');
 
     context.imageSmoothingEnabled = false; // Nearest neighbor
@@ -304,7 +306,14 @@ export default class TemplateManager {
       context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
     }
 
-    return await canvas.convertToBlob({ type: 'image/png' });
+    // Use compatible blob conversion
+    return await new Promise((resolve, reject) => {
+      if (canvas.convertToBlob) {
+        canvas.convertToBlob({ type: 'image/png' }).then(resolve).catch(reject);
+      } else {
+        canvas.toBlob(resolve, 'image/png');
+      }
+    });
   }
 
   /** Imports the JSON object, and appends it to any JSON object already loaded
@@ -406,26 +415,26 @@ export default class TemplateManager {
    */
   async updateTemplateWithColorFilter(templateIndex = 0) {
     if (!this.templatesArray || !this.templatesArray[templateIndex]) {
-      console.warn('No template available for color filter update');
+      consoleWarn('No template available for color filter update');
       return;
     }
 
     const template = this.templatesArray[templateIndex];
     
     try {
-      console.log('Updating template with color filter, disabled colors:', template.getDisabledColors());
+      consoleLog('Updating template with color filter, disabled colors:', template.getDisabledColors());
       
       // Clear existing chunked data to force complete recreation
       template.chunked = null;
       
       // Recreate template tiles with current filter settings
-      console.log('Creating new template tiles with color filter...');
+      consoleLog('Creating new template tiles with color filter...');
       const { templateTiles, templateTilesBuffers } = await template.createTemplateTiles();
       
       // Assign the new chunked data
       template.chunked = templateTiles;
       
-      console.log('Template tiles recreated with filter applied, total tiles:', Object.keys(templateTiles).length);
+      consoleLog('Template tiles recreated with filter applied, total tiles:', Object.keys(templateTiles).length);
       
       // Update JSON if it exists
       if (this.templatesJSON && this.templatesJSON.templates) {
@@ -433,17 +442,17 @@ export default class TemplateManager {
         if (this.templatesJSON.templates[templateKey]) {
           this.templatesJSON.templates[templateKey].tiles = templateTilesBuffers;
           this.templatesJSON.templates[templateKey].disabledColors = template.getDisabledColors();
-          console.log('JSON updated with new filter settings');
+          consoleLog('JSON updated with new filter settings');
         }
       }
       
       // Store updated templates
       await this.#storeTemplates();
       
-      console.log('Template updated with color filter successfully');
+      consoleLog('Template updated with color filter successfully');
       
     } catch (error) {
-      console.error('Error updating template with color filter:', error);
+      consoleError('Error updating template with color filter:', error);
       this.overlay.handleDisplayError('Failed to update template with color filter');
       throw error; // Re-throw for better error handling
     }
@@ -456,7 +465,7 @@ export default class TemplateManager {
    */
   async setTemplateDisabledColors(disabledColors, templateIndex = 0) {
     if (!this.templatesArray || !this.templatesArray[templateIndex]) {
-      console.warn('No template available for color filter update');
+      consoleWarn('No template available for color filter update');
       return;
     }
 
