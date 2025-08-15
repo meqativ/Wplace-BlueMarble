@@ -405,6 +405,13 @@ export default class TemplateManager {
         const originalData = hasEnhancedColors ? new Uint8ClampedArray(data) : null;
         const enhancedPixels = hasEnhancedColors ? new Set() : null;
         
+        // Get the current canvas state (including painted pixels) for crosshair collision detection
+        let canvasData = null;
+        if (hasEnhancedColors) {
+          const canvasImageData = context.getImageData(0, 0, canvas.width, canvas.height);
+          canvasData = canvasImageData.data;
+        }
+        
         // First pass: Apply color filtering to center pixels
         if (hasDisabledColors) {
           for (let y = 0; y < height; y++) {
@@ -470,16 +477,32 @@ export default class TemplateManager {
         // Second pass: Apply enhanced mode crosshair effect if enabled
         if (hasEnhancedColors && enhancedPixels) {
           console.log(`✨ [Enhanced Debug] Applying crosshair effects to ${enhancedPixels.size} enhanced pixels...`);
+          console.log(`✨ [Enhanced Debug] Canvas size: ${canvas.width}x${canvas.height}, Template offset: ${Number(template.pixelCoords[0]) * this.drawMult}, ${Number(template.pixelCoords[1]) * this.drawMult}`);
           let crosshairCenterCount = 0;
           let crosshairCornerCount = 0;
+          let skippedPaintedCount = 0;
           
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
               const i = (y * width + x) * 4;
               const alpha = originalData[i + 3];
               
-              // Only modify transparent pixels (leave template pixels with original colors)
+              // Only modify pixels that are transparent in BOTH template AND canvas (not painted yet)
               if (alpha === 0) {
+                // Check if this pixel is already painted in the current canvas
+                const canvasX = x + Number(template.pixelCoords[0]) * this.drawMult;
+                const canvasY = y + Number(template.pixelCoords[1]) * this.drawMult;
+                
+                if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                  const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                  const canvasAlpha = canvasData[canvasIndex + 3];
+                  
+                  // Skip if pixel is already painted in the canvas
+                  if (canvasAlpha > 0) {
+                    skippedPaintedCount++;
+                    continue;
+                  }
+                }
                 
                 // Check for red center positions (orthogonal neighbors)
                 const centerPositions = [
@@ -543,6 +566,7 @@ export default class TemplateManager {
           }
           
           console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} red centers and ${crosshairCornerCount} blue corners`);
+          console.log(`✨ [Enhanced Debug] Skipped ${skippedPaintedCount} positions that were already painted`);
         }
         
         // Put the processed image data back
