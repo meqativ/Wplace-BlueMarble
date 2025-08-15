@@ -302,116 +302,154 @@ export default class TemplateManager {
       console.log(`Template:`);
       console.log(template);
 
+      // Get the current template instance to check for disabled colors
+      const currentTemplate = this.templatesArray?.[0]; // Assuming single template for now
+      const hasDisabledColors = currentTemplate && currentTemplate.getDisabledColors().length > 0;
+      
       // Check if enhanced mode is enabled
       const isEnhanced = window.bmEnhancedMode || false;
       
-      if (!isEnhanced) {
-        // Normal drawing without enhancement
+      if (!isEnhanced && !hasDisabledColors) {
+        // Normal drawing without enhancement or color filtering
         context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
       } else {
-        // Enhanced mode: add red borders to template pixels
-        const enhancedCanvas = document.createElement('canvas');
-        enhancedCanvas.width = template.bitmap.width;
-        enhancedCanvas.height = template.bitmap.height;
-        const enhancedCtx = enhancedCanvas.getContext('2d');
-        enhancedCtx.imageSmoothingEnabled = false;
+        // Apply color filtering and/or enhanced mode
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = template.bitmap.width;
+        tempCanvas.height = template.bitmap.height;
+        const tempCtx = tempCanvas.getContext('2d');
+        tempCtx.imageSmoothingEnabled = false;
         
-        // Draw original template
-        enhancedCtx.drawImage(template.bitmap, 0, 0);
+        // Draw original template to temp canvas
+        tempCtx.drawImage(template.bitmap, 0, 0);
         
-        // Get image data to process pixels
-        const imageData = enhancedCtx.getImageData(0, 0, enhancedCanvas.width, enhancedCanvas.height);
+        // Get image data for processing
+        const imageData = tempCtx.getImageData(0, 0, tempCanvas.width, tempCanvas.height);
         const data = imageData.data;
-        const width = enhancedCanvas.width;
-        const height = enhancedCanvas.height;
+        const width = tempCanvas.width;
+        const height = tempCanvas.height;
         
-        // Create a copy for border detection
-        const originalData = new Uint8ClampedArray(data);
+        // Create a copy for border detection if enhanced mode is enabled
+        const originalData = isEnhanced ? new Uint8ClampedArray(data) : null;
+        const templatePixels = isEnhanced ? new Set() : null;
         
-        // First pass: identify all template pixels (non-transparent)
-        const templatePixels = new Set();
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * 4;
-            const alpha = originalData[i + 3];
-            
-            if (alpha > 0) { // If pixel is not transparent
-              templatePixels.add(`${x},${y}`);
+        // First pass: Apply color filtering to center pixels
+        if (hasDisabledColors) {
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              // Only process center pixels of 3x3 blocks (same as template creation)
+              if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
+                continue;
+              }
+              
+              const i = (y * width + x) * 4;
+              const r = data[i];
+              const g = data[i + 1];
+              const b = data[i + 2];
+              const alpha = data[i + 3];
+              
+              // Skip transparent pixels
+              if (alpha === 0) continue;
+              
+              // Check if this color is disabled
+              const isDisabled = currentTemplate.isColorDisabled([r, g, b]);
+              
+              if (isDisabled) {
+                // Hide disabled colors by making them transparent
+                data[i + 3] = 0;
+              } else if (isEnhanced) {
+                // Track visible pixels for enhanced mode border detection
+                templatePixels.add(`${x},${y}`);
+              }
             }
           }
-        }
-        
-        // Second pass: create crosshair effect around template pixels
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * 4;
-            const alpha = originalData[i + 3];
-            
-            // Only modify transparent pixels (leave template pixels with original colors)
-            if (alpha === 0) {
+        } else if (isEnhanced) {
+          // If only enhanced mode (no color filtering), identify all template pixels
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const i = (y * width + x) * 4;
+              const alpha = originalData[i + 3];
               
-              // Check for red center positions (orthogonal neighbors)
-              const centerPositions = [
-                [x, y-1], // top
-                [x, y+1], // bottom  
-                [x-1, y], // left
-                [x+1, y]  // right
-              ];
-              
-              let isCenter = false;
-              for (const [cx, cy] of centerPositions) {
-                // Skip if out of bounds
-                if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
-                
-                // If there's a template pixel in orthogonal position
-                if (templatePixels.has(`${cx},${cy}`)) {
-                  isCenter = true;
-                  break;
-                }
-              }
-              
-              // Check for blue corner positions (diagonal neighbors)
-              const cornerPositions = [
-                [x+1, y+1], // bottom-right corner
-                [x-1, y+1], // bottom-left corner  
-                [x+1, y-1], // top-right corner
-                [x-1, y-1]  // top-left corner
-              ];
-              
-              let isCorner = false;
-              for (const [cx, cy] of cornerPositions) {
-                // Skip if out of bounds
-                if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
-                
-                // If there's a template pixel at diagonal position
-                if (templatePixels.has(`${cx},${cy}`)) {
-                  isCorner = true;
-                  break;
-                }
-              }
-              
-              if (isCenter) {
-                // Make orthogonal neighbors red (crosshair center)
-                data[i] = 255;     // Full red
-                data[i + 1] = 0;   // No green  
-                data[i + 2] = 0;   // No blue
-                data[i + 3] = 255; // Full opacity
-              } else if (isCorner) {
-                // Make diagonal neighbors blue (crosshair corners)
-                data[i] = 0;       // No red
-                data[i + 1] = 0;   // No green
-                data[i + 2] = 255; // Full blue
-                data[i + 3] = 255; // Full opacity
+              if (alpha > 0) { // If pixel is not transparent
+                templatePixels.add(`${x},${y}`);
               }
             }
           }
         }
         
-        // Put the modified image data back
-        enhancedCtx.putImageData(imageData, 0, 0);
+        // Second pass: Apply enhanced mode crosshair effect if enabled
+        if (isEnhanced && templatePixels) {
+          for (let y = 0; y < height; y++) {
+            for (let x = 0; x < width; x++) {
+              const i = (y * width + x) * 4;
+              const alpha = originalData[i + 3];
+              
+              // Only modify transparent pixels (leave template pixels with original colors)
+              if (alpha === 0) {
+                
+                // Check for red center positions (orthogonal neighbors)
+                const centerPositions = [
+                  [x, y-1], // top
+                  [x, y+1], // bottom  
+                  [x-1, y], // left
+                  [x+1, y]  // right
+                ];
+                
+                let isCenter = false;
+                for (const [cx, cy] of centerPositions) {
+                  // Skip if out of bounds
+                  if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+                  
+                  // If there's a template pixel in orthogonal position
+                  if (templatePixels.has(`${cx},${cy}`)) {
+                    isCenter = true;
+                    break;
+                  }
+                }
+                
+                // Check for blue corner positions (diagonal neighbors)
+                const cornerPositions = [
+                  [x+1, y+1], // bottom-right corner
+                  [x-1, y+1], // bottom-left corner  
+                  [x+1, y-1], // top-right corner
+                  [x-1, y-1]  // top-left corner
+                ];
+                
+                let isCorner = false;
+                for (const [cx, cy] of cornerPositions) {
+                  // Skip if out of bounds
+                  if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+                  
+                  // If there's a template pixel at diagonal position
+                  if (templatePixels.has(`${cx},${cy}`)) {
+                    isCorner = true;
+                    break;
+                  }
+                }
+                
+                if (isCenter) {
+                  // Make orthogonal neighbors red (crosshair center)
+                  data[i] = 255;     // Full red
+                  data[i + 1] = 0;   // No green  
+                  data[i + 2] = 0;   // No blue
+                  data[i + 3] = 255; // Full opacity
+                } else if (isCorner) {
+                  // Make diagonal neighbors blue (crosshair corners)
+                  data[i] = 0;       // No red
+                  data[i + 1] = 0;   // No green
+                  data[i + 2] = 255; // Full blue
+                  data[i + 3] = 255; // Full opacity
+                }
+              }
+            }
+          }
+        }
         
-        // Draw the enhanced template
-        context.drawImage(enhancedCanvas, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+        // Put the processed image data back
+        tempCtx.putImageData(imageData, 0, 0);
+        
+        // Draw the processed template
+        context.drawImage(tempCanvas, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
       }
     }
 
@@ -468,6 +506,7 @@ export default class TemplateManager {
           //const coords = templateValue?.coords?.split(',').map(Number); // "1,2,3,4" -> [1, 2, 3, 4]
           const tilesbase64 = templateValue.tiles;
           const templateTiles = {}; // Stores the template bitmap tiles for each tile.
+          let totalPixelCount = 0; // Calculate total pixels across all tiles
 
           for (const tile in tilesbase64) {
             console.log(tile);
@@ -478,6 +517,37 @@ export default class TemplateManager {
               const templateBlob = new Blob([templateUint8Array], { type: "image/png" }); // Uint8Array -> Blob
               const templateBitmap = await createImageBitmap(templateBlob) // Blob -> Bitmap
               templateTiles[tile] = templateBitmap;
+              
+              // Count pixels in this tile (only center pixels of 3x3 blocks matter)
+              try {
+                const canvas = document.createElement('canvas');
+                canvas.width = templateBitmap.width;
+                canvas.height = templateBitmap.height;
+                const ctx = canvas.getContext('2d');
+                ctx.imageSmoothingEnabled = false;
+                ctx.drawImage(templateBitmap, 0, 0);
+                const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imageData.data;
+                
+                for (let y = 0; y < canvas.height; y++) {
+                  for (let x = 0; x < canvas.width; x++) {
+                    // Only count center pixels (same logic as template creation)
+                    if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
+                      continue;
+                    }
+                    
+                    const i = (y * canvas.width + x) * 4;
+                    const alpha = data[i + 3];
+                    
+                    // Count non-transparent pixels
+                    if (alpha > 0) {
+                      totalPixelCount++;
+                    }
+                  }
+                }
+              } catch (error) {
+                console.warn('Failed to count pixels for tile:', tile, error);
+              }
             }
           }
 
@@ -489,6 +559,7 @@ export default class TemplateManager {
             //coords: coords
           });
           template.chunked = templateTiles;
+          template.pixelCount = totalPixelCount; // Set the calculated pixel count
           
           // Load disabled colors if they exist
           const disabledColors = templateValue.disabledColors;
@@ -518,7 +589,7 @@ export default class TemplateManager {
     this.templatesShouldBeDrawn = value;
   }
 
-  /** Recreates template tiles with current color filter settings
+  /** Updates template color filter settings (storage only, filtering applied during draw)
    * @param {number} templateIndex - Index of template to update (default: 0)
    * @since 1.0.0
    */
@@ -531,84 +602,29 @@ export default class TemplateManager {
     const template = this.templatesArray[templateIndex];
     
     try {
-      consoleLog('Updating template with color filter, disabled colors:', template.getDisabledColors());
+      consoleLog('Updating template color filter settings, disabled colors:', template.getDisabledColors());
       
-      let templateTiles, templateTilesBuffers;
-      
-      // Check if template has original file for full recreation
-      if (template.file) {
-        consoleLog('Template has original file, recreating tiles from source...');
-        
-        // Clear existing chunked data to force complete recreation
-        template.chunked = null;
-        
-        // Recreate template tiles with current filter settings from original file
-        const result = await template.createTemplateTiles();
-        templateTiles = result.templateTiles;
-        templateTilesBuffers = result.templateTilesBuffers;
-        
-        // Assign the new chunked data
-        template.chunked = templateTiles;
-        
-      } else {
-        consoleLog('Template loaded from storage, applying color filter to existing tiles...');
-        
-        // Template was loaded from storage, apply filter to existing tiles
-        templateTiles = await template.applyColorFilterToExistingTiles();
-        
-        // Generate new buffers from the updated tiles
-        templateTilesBuffers = {};
-        for (const [tileName, bitmap] of Object.entries(templateTiles)) {
-          const canvas = document.createElement('canvas');
-          canvas.width = bitmap.width || 300;
-          canvas.height = bitmap.height || 300;
-          const context = canvas.getContext('2d');
-          context.imageSmoothingEnabled = false;
-          context.drawImage(bitmap, 0, 0);
-          
-          try {
-            const canvasBlob = await new Promise((resolve, reject) => {
-              if (canvas.convertToBlob) {
-                canvas.convertToBlob().then(resolve).catch(reject);
-              } else {
-                canvas.toBlob(resolve, 'image/png');
-              }
-            });
-            const canvasBuffer = await canvasBlob.arrayBuffer();
-            const canvasBufferBytes = Array.from(new Uint8Array(canvasBuffer));
-            templateTilesBuffers[tileName] = uint8ToBase64(canvasBufferBytes);
-          } catch (error) {
-            consoleWarn('Canvas blob conversion failed, using data URL fallback');
-            const dataURL = canvas.toDataURL('image/png');
-            const base64 = dataURL.split(',')[1];
-            templateTilesBuffers[tileName] = base64;
-          }
-        }
-        
-        // Update chunked data with filtered tiles
-        template.chunked = templateTiles;
-      }
-      
-      consoleLog('Template tiles updated with filter applied, total tiles:', Object.keys(templateTiles).length);
+      // Only update storage settings, DON'T modify the actual tiles
+      // Color filtering will be applied during drawTemplateOnTile()
       
       // Update JSON if it exists
       if (this.templatesJSON && this.templatesJSON.templates) {
         const templateKey = `${template.sortID} ${template.authorID}`;
         if (this.templatesJSON.templates[templateKey]) {
-          this.templatesJSON.templates[templateKey].tiles = templateTilesBuffers;
+          // ONLY save the disabled colors setting, keep original tiles unchanged
           this.templatesJSON.templates[templateKey].disabledColors = template.getDisabledColors();
-          consoleLog('JSON updated with new filter settings');
+          consoleLog('JSON updated with new filter settings (settings only, tiles unchanged)');
         }
       }
       
-      // Store updated templates
+      // Store updated settings
       await this.#storeTemplates();
       
-      consoleLog('Template updated with color filter successfully');
+      consoleLog('Template color filter settings updated successfully');
       
     } catch (error) {
-      consoleError('Error updating template with color filter:', error);
-      this.overlay.handleDisplayError('Failed to update template with color filter');
+      consoleError('Error updating template color filter settings:', error);
+      this.overlay.handleDisplayError('Failed to update template color filter settings');
       throw error; // Re-throw for better error handling
     }
   }
