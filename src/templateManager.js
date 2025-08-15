@@ -328,43 +328,68 @@ export default class TemplateManager {
         // Create a copy for border detection
         const originalData = new Uint8ClampedArray(data);
         
-        // First pass: identify border pixels but don't modify them yet
-        const borderPixels = new Set();
+        // First pass: identify all template pixels (non-transparent)
+        const templatePixels = new Set();
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
             const alpha = originalData[i + 3];
             
             if (alpha > 0) { // If pixel is not transparent
-              // Check if this pixel is on the border of a colored area
-              const isOnBorder = (
-                x === 0 || x === width - 1 || y === 0 || y === height - 1 ||
-                // Check adjacent pixels for transparency
-                (x > 0 && originalData[((y * width + (x - 1)) * 4) + 3] === 0) || // left
-                (x < width - 1 && originalData[((y * width + (x + 1)) * 4) + 3] === 0) || // right
-                (y > 0 && originalData[(((y - 1) * width + x) * 4) + 3] === 0) || // top
-                (y < height - 1 && originalData[(((y + 1) * width + x) * 4) + 3] === 0) // bottom
-              );
+              templatePixels.add(`${x},${y}`);
+            }
+          }
+        }
+        
+        // Second pass: find pixels that should become red border (around template pixels)
+        const borderPixels = new Set();
+        const borderThickness = 2; // Thickness of the border in pixels
+        
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            const alpha = originalData[i + 3];
+            
+            // Only consider transparent pixels as potential border candidates
+            if (alpha === 0) {
+              // Check if this transparent pixel is near a template pixel
+              let nearTemplate = false;
               
-              if (isOnBorder) {
+              for (let dy = -borderThickness; dy <= borderThickness && !nearTemplate; dy++) {
+                for (let dx = -borderThickness; dx <= borderThickness && !nearTemplate; dx++) {
+                  const checkX = x + dx;
+                  const checkY = y + dy;
+                  
+                  // Skip if out of bounds
+                  if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) continue;
+                  
+                  // If there's a template pixel nearby, this should be a border
+                  if (templatePixels.has(`${checkX},${checkY}`)) {
+                    nearTemplate = true;
+                  }
+                }
+              }
+              
+              if (nearTemplate) {
                 borderPixels.add(`${x},${y}`);
               }
             }
           }
         }
         
-        // Second pass: add bright red borders around border pixels
+        // Third pass: apply the borders while preserving original template pixels
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
             
             if (borderPixels.has(`${x},${y}`)) {
-              // This is a border pixel - make it bright red for clear visibility
+              // This transparent pixel should become a red border
               data[i] = 255;     // Full red
               data[i + 1] = 0;   // No green
               data[i + 2] = 0;   // No blue
               data[i + 3] = 255; // Full opacity
             }
+            // Note: template pixels are left unchanged (preserve original colors)
           }
         }
         
