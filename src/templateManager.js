@@ -108,12 +108,19 @@ export default class TemplateManager {
    * @since 0.65.4
    */
   async createJSON() {
-    return {
+    const json = {
       "whoami": this.name.replace(' ', ''), // Name of userscript without spaces
       "scriptVersion": this.version, // Version of userscript
       "schemaVersion": this.templatesVersion, // Version of JSON schema
       "templates": {} // The templates
     };
+    
+    console.log('🔍 Debug - createJSON result:');
+    console.log('  - this.name:', this.name);
+    console.log('  - whoami:', json.whoami);
+    console.log('  - JSON:', json);
+    
+    return json;
   }
 
   /** Creates the template from the inputed file blob
@@ -179,8 +186,25 @@ export default class TemplateManager {
    * @since 0.72.7
    */
   async #storeTemplates() {
+    // Debug logging before storage
+    console.log('🔍 Debug - #storeTemplates called:');
+    console.log('  - this.templatesJSON:', this.templatesJSON);
+    console.log('  - typeof this.templatesJSON:', typeof this.templatesJSON);
+    console.log('  - is null/undefined:', this.templatesJSON == null);
+    
+    if (!this.templatesJSON) {
+      console.error('❌ Cannot store templates: this.templatesJSON is null/undefined');
+      return;
+    }
+    
     const data = JSON.stringify(this.templatesJSON);
     const timestamp = Date.now();
+    
+    console.log('🔍 Debug - Data to store:');
+    console.log('  - JSON string length:', data.length);
+    console.log('  - First 200 chars:', data.substring(0, 200));
+    console.log('  - Contains whoami:', data.includes('"whoami"'));
+    console.log('  - Contains templates:', data.includes('"templates"'));
     
     // Try TamperMonkey storage first
     try {
@@ -188,11 +212,13 @@ export default class TemplateManager {
         await GM.setValue('bmTemplates', data);
         await GM.setValue('bmTemplates_timestamp', timestamp);
         console.log('✅ Templates stored in TamperMonkey storage');
+        console.log('  - Stored data length:', data.length);
         return;
       } else if (typeof GM_setValue !== 'undefined') {
         GM_setValue('bmTemplates', data);
         GM_setValue('bmTemplates_timestamp', timestamp);
         console.log('✅ Templates stored in TamperMonkey storage (legacy)');
+        console.log('  - Stored data length:', data.length);
         return;
       }
     } catch (error) {
