@@ -341,9 +341,8 @@ export default class TemplateManager {
           }
         }
         
-        // Second pass: find pixels that should become red border (around template pixels)
+        // Second pass: find pixels that should become red border (only immediate neighbors)
         const borderPixels = new Set();
-        const borderThickness = 1; // Thickness of the border in pixels
         
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
@@ -352,25 +351,26 @@ export default class TemplateManager {
             
             // Only consider transparent pixels as potential border candidates
             if (alpha === 0) {
-              // Check if this transparent pixel is near a template pixel
-              let nearTemplate = false;
+              // Check only the 8 immediate neighboring pixels (no loops)
+              const neighbors = [
+                [x-1, y-1], [x, y-1], [x+1, y-1],  // top row
+                [x-1, y],             [x+1, y],    // middle row (skip center)
+                [x-1, y+1], [x, y+1], [x+1, y+1]  // bottom row
+              ];
               
-              for (let dy = -borderThickness; dy <= borderThickness && !nearTemplate; dy++) {
-                for (let dx = -borderThickness; dx <= borderThickness && !nearTemplate; dx++) {
-                  const checkX = x + dx;
-                  const checkY = y + dy;
-                  
-                  // Skip if out of bounds
-                  if (checkX < 0 || checkX >= width || checkY < 0 || checkY >= height) continue;
-                  
-                  // If there's a template pixel nearby, this should be a border
-                  if (templatePixels.has(`${checkX},${checkY}`)) {
-                    nearTemplate = true;
-                  }
+              let hasTemplateNeighbor = false;
+              for (const [nx, ny] of neighbors) {
+                // Skip if out of bounds
+                if (nx < 0 || nx >= width || ny < 0 || ny >= height) continue;
+                
+                // If there's a template pixel in immediate neighborhood
+                if (templatePixels.has(`${nx},${ny}`)) {
+                  hasTemplateNeighbor = true;
+                  break;
                 }
               }
               
-              if (nearTemplate) {
+              if (hasTemplateNeighbor) {
                 borderPixels.add(`${x},${y}`);
               }
             }
