@@ -417,8 +417,8 @@ export default class TemplateManager {
         const height = tempCanvas.height;
         
         // Create a copy for border detection if enhanced mode is enabled
-        const originalData = isEnhanced ? new Uint8ClampedArray(data) : null;
-        const templatePixels = isEnhanced ? new Set() : null;
+        const originalData = hasEnhancedColors ? new Uint8ClampedArray(data) : null;
+        const enhancedPixels = hasEnhancedColors ? new Set() : null;
         
         // First pass: Apply color filtering to center pixels
         if (hasDisabledColors) {
@@ -444,28 +444,34 @@ export default class TemplateManager {
               if (isDisabled) {
                 // Hide disabled colors by making them transparent
                 data[i + 3] = 0;
-              } else if (isEnhanced) {
-                // Track visible pixels for enhanced mode border detection
-                templatePixels.add(`${x},${y}`);
+              } else if (hasEnhancedColors && currentTemplate.isColorEnhanced([r, g, b])) {
+                // Track enhanced pixels for border detection
+                enhancedPixels.add(`${x},${y}`);
               }
             }
           }
-        } else if (isEnhanced) {
-          // If only enhanced mode (no color filtering), identify all template pixels
+        } else if (hasEnhancedColors) {
+          // If only enhanced mode (no color filtering), identify enhanced template pixels
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
               const i = (y * width + x) * 4;
               const alpha = originalData[i + 3];
               
-              if (alpha > 0) { // If pixel is not transparent
-                templatePixels.add(`${x},${y}`);
+              if (alpha > 0) {
+                const r = originalData[i];
+                const g = originalData[i + 1];
+                const b = originalData[i + 2];
+                
+                if (currentTemplate.isColorEnhanced([r, g, b])) {
+                  enhancedPixels.add(`${x},${y}`);
+                }
               }
             }
           }
         }
         
         // Second pass: Apply enhanced mode crosshair effect if enabled
-        if (isEnhanced && templatePixels) {
+        if (hasEnhancedColors && enhancedPixels) {
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
               const i = (y * width + x) * 4;
@@ -487,8 +493,8 @@ export default class TemplateManager {
                   // Skip if out of bounds
                   if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
                   
-                  // If there's a template pixel in orthogonal position
-                  if (templatePixels.has(`${cx},${cy}`)) {
+                  // If there's an enhanced template pixel in orthogonal position
+                  if (enhancedPixels.has(`${cx},${cy}`)) {
                     isCenter = true;
                     break;
                   }
@@ -507,8 +513,8 @@ export default class TemplateManager {
                   // Skip if out of bounds
                   if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
                   
-                  // If there's a template pixel at diagonal position
-                  if (templatePixels.has(`${cx},${cy}`)) {
+                  // If there's an enhanced template pixel at diagonal position
+                  if (enhancedPixels.has(`${cx},${cy}`)) {
                     isCorner = true;
                     break;
                   }
