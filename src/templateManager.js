@@ -61,9 +61,6 @@ export default class TemplateManager {
     this.templatesArray = []; // All Template instnaces currently loaded (Template)
     this.templatesJSON = null; // All templates currently loaded (JSON)
     this.templatesShouldBeDrawn = true; // Should ALL templates be drawn to the canvas?
-    
-    // Pixel progress tracking
-    this.globalColorStats = new Map(); // Global statistics across all tiles: colorKey -> {required, painted, correct}
   }
 
   /** Retrieves the pixel art canvas.
@@ -137,8 +134,7 @@ export default class TemplateManager {
     // Creates the JSON object if it does not already exist
     if (!this.templatesJSON) {this.templatesJSON = await this.createJSON(); console.log(`Creating JSON...`);}
 
-    // Reset progress statistics when creating new template
-    this.resetProgressStats();
+
 
     this.overlay.handleDisplayStatus(`Creating template at ${coords.join(', ')}...`);
 
@@ -384,8 +380,7 @@ export default class TemplateManager {
         console.log(`🚀 [Enhanced Debug] Using fast path (no enhancements)`);
         context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
         
-        // Count pixels by color for progress tracking (fast path)
-        this.#analyzePixelProgress(tileBitmap, template, tileCoords);
+
       } else {
         // Enhanced/Filtered path: Real-time processing for color filtering and/or enhanced mode
         console.log(`⚙️ [Enhanced Debug] Using enhanced/filtered path`);
@@ -555,9 +550,6 @@ export default class TemplateManager {
         
         // Draw the processed template
         context.drawImage(tempCanvas, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
-        
-        // Count pixels by color for progress tracking
-        this.#analyzePixelProgress(tileBitmap, template, tileCoords);
       }
     }
 
@@ -571,179 +563,7 @@ export default class TemplateManager {
     });
   }
 
-  /** Analyzes pixel progress by comparing template colors with painted pixels
-   * @param {ImageBitmap} tileBitmap - The current painted tile
-   * @param {Object} template - The template being analyzed
-   * @param {string} tileCoords - Tile coordinates for logging
-   * @private
-   * @since 1.0.0
-   */
-  #analyzePixelProgress(tileBitmap, template, tileCoords) {
-    try {
-      console.log(`📊 [Pixel Analysis] Analyzing tile ${tileCoords}...`);
-      
-      // Create canvas to analyze the painted tile
-      const tileCanvas = document.createElement('canvas');
-      tileCanvas.width = tileBitmap.width;
-      tileCanvas.height = tileBitmap.height;
-      const tileCtx = tileCanvas.getContext('2d');
-      tileCtx.imageSmoothingEnabled = false;
-      tileCtx.drawImage(tileBitmap, 0, 0);
-      
-      // Create canvas for template
-      const templateCanvas = document.createElement('canvas');
-      templateCanvas.width = template.bitmap.width;
-      templateCanvas.height = template.bitmap.height;
-      const templateCtx = templateCanvas.getContext('2d');
-      templateCtx.imageSmoothingEnabled = false;
-      templateCtx.drawImage(template.bitmap, 0, 0);
-      
-      // Get image data
-      const tileData = tileCtx.getImageData(0, 0, tileCanvas.width, tileCanvas.height);
-      const templateData = templateCtx.getImageData(0, 0, templateCanvas.width, templateCanvas.height);
-      
-      // Initialize counters
-      const colorStats = new Map(); // colorKey -> {required: number, painted: number, correct: number}
-      
-      // Calculate template offset within the tile
-      const offsetX = Number(template.pixelCoords[0]) * this.drawMult;
-      const offsetY = Number(template.pixelCoords[1]) * this.drawMult;
-      
-      // Analyze template pixels (center pixels only)
-      for (let y = 0; y < templateCanvas.height; y += this.drawMult) {
-        for (let x = 0; x < templateCanvas.width; x += this.drawMult) {
-          // Check center pixel of 3x3 block
-          const centerX = x + 1;
-          const centerY = y + 1;
-          
-          if (centerX >= templateCanvas.width || centerY >= templateCanvas.height) continue;
-          
-          const templateIndex = (centerY * templateCanvas.width + centerX) * 4;
-          const templateAlpha = templateData.data[templateIndex + 3];
-          
-          // Skip transparent template pixels
-          if (templateAlpha === 0) continue;
-          
-          const templateR = templateData.data[templateIndex];
-          const templateG = templateData.data[templateIndex + 1];
-          const templateB = templateData.data[templateIndex + 2];
-          const templateColorKey = `${templateR},${templateG},${templateB}`;
-          
-          // Initialize color stats if not exists
-          if (!colorStats.has(templateColorKey)) {
-            colorStats.set(templateColorKey, {
-              required: 0,
-              painted: 0,
-              correct: 0,
-              color: [templateR, templateG, templateB]
-            });
-          }
-          
-          const stats = colorStats.get(templateColorKey);
-          stats.required++;
-          
-          // Check corresponding pixel in painted tile
-          const tileX = centerX + offsetX;
-          const tileY = centerY + offsetY;
-          
-          if (tileX >= 0 && tileX < tileCanvas.width && tileY >= 0 && tileY < tileCanvas.height) {
-            const tileIndex = (tileY * tileCanvas.width + tileX) * 4;
-            const tileAlpha = tileData.data[tileIndex + 3];
-            
-            if (tileAlpha > 0) {
-              stats.painted++;
-              
-              const tileR = tileData.data[tileIndex];
-              const tileG = tileData.data[tileIndex + 1];
-              const tileB = tileData.data[tileIndex + 2];
-              
-              // Check if painted color matches template color
-              if (tileR === templateR && tileG === templateG && tileB === templateB) {
-                stats.correct++;
-              }
-            }
-          }
-        }
-      }
-      
-      // Update global statistics
-      for (const [colorKey, stats] of colorStats) {
-        if (!this.globalColorStats.has(colorKey)) {
-          this.globalColorStats.set(colorKey, {
-            required: 0,
-            painted: 0,
-            correct: 0,
-            color: stats.color
-          });
-        }
-        
-        const globalStats = this.globalColorStats.get(colorKey);
-        globalStats.required += stats.required;
-        globalStats.painted += stats.painted;
-        globalStats.correct += stats.correct;
-      }
-      
-      // Log tile results
-      console.log(`📊 [Pixel Analysis] Results for tile ${tileCoords}:`);
-      for (const [colorKey, stats] of colorStats) {
-        const remaining = stats.required - stats.correct;
-        const progress = stats.required > 0 ? ((stats.correct / stats.required) * 100).toFixed(1) : '0.0';
-        
-        console.log(`📊 [Color ${colorKey}] Required: ${stats.required}, Painted: ${stats.painted}, Correct: ${stats.correct}, Remaining: ${remaining}, Progress: ${progress}%`);
-      }
-      
-      // Update overlay with global progress
-      this.#updateProgressDisplay();
-      
-    } catch (error) {
-      console.warn('❌ [Pixel Analysis] Failed to analyze pixel progress:', error);
-    }
-  }
 
-  /** Updates the overlay display with current pixel progress
-   * @private
-   * @since 1.0.0
-   */
-  #updateProgressDisplay() {
-    try {
-      // Log global progress
-      console.log(`🌍 [Global Progress] Overall template progress:`);
-      
-      let totalRequired = 0;
-      let totalCorrect = 0;
-      
-      for (const [colorKey, stats] of this.globalColorStats) {
-        const remaining = stats.required - stats.correct;
-        const progress = stats.required > 0 ? ((stats.correct / stats.required) * 100).toFixed(1) : '0.0';
-        
-        totalRequired += stats.required;
-        totalCorrect += stats.correct;
-        
-        console.log(`🌍 [Global Color ${colorKey}] Required: ${stats.required}, Painted: ${stats.painted}, Correct: ${stats.correct}, Remaining: ${remaining}, Progress: ${progress}%`);
-      }
-      
-      const overallProgress = totalRequired > 0 ? ((totalCorrect / totalRequired) * 100).toFixed(1) : '0.0';
-      const totalRemaining = totalRequired - totalCorrect;
-      
-      console.log(`🌍 [Global Total] Required: ${totalRequired}, Correct: ${totalCorrect}, Remaining: ${totalRemaining}, Overall Progress: ${overallProgress}%`);
-      
-      // Update the status display with progress information
-      const progressText = `Progress: ${overallProgress}% (${totalCorrect}/${totalRequired} pixels)\n${totalRemaining} pixels remaining`;
-      this.overlay.handleDisplayStatus(progressText);
-      
-    } catch (error) {
-      console.warn('❌ [Progress Display] Failed to update progress display:', error);
-    }
-  }
-
-  /** Resets global pixel statistics
-   * @public
-   * @since 1.0.0
-   */
-  resetProgressStats() {
-    this.globalColorStats.clear();
-    console.log(`🔄 [Progress Reset] Global pixel statistics cleared`);
-  }
 
   /** Imports the JSON object, and appends it to any JSON object already loaded
    * @param {string} json - The JSON string to parse
@@ -753,8 +573,7 @@ export default class TemplateManager {
     console.log(`Importing JSON...`);
     console.log(json);
 
-    // Reset progress statistics when importing new template
-    this.resetProgressStats();
+
 
     // Debug logging
     console.log('🔍 Debug - importJSON analysis:');
