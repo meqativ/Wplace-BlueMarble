@@ -365,10 +365,37 @@ export default class TemplateManager {
       const isEnhanced = window.bmEnhancedMode || false;
       
       if (!isEnhanced && !hasDisabledColors) {
-        // Normal drawing without enhancement or color filtering
+        // Fast path: Normal drawing without enhancement or color filtering
         context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+      } else if (isEnhanced && !hasDisabledColors) {
+        // Fast path: Enhanced mode only, use pre-processed tiles
+        const tileKey = template.tileKey || 'unknown';
+        
+        // Check if we have cached enhanced tiles for this template
+        if (!currentTemplate.enhancedCacheValid || !currentTemplate.enhancedTilesCache.has(tileKey)) {
+          // Generate enhanced tiles cache if needed
+          if (!currentTemplate.enhancedCacheValid) {
+            console.log('🚀 Generating enhanced tiles cache for better performance...');
+            try {
+              currentTemplate.enhancedTilesCache = await currentTemplate.createEnhancedTiles(currentTemplate.chunked);
+              currentTemplate.enhancedCacheValid = true;
+              console.log('✅ Enhanced tiles cache created successfully');
+            } catch (error) {
+              console.warn('⚠️ Failed to create enhanced cache, falling back to real-time processing:', error);
+            }
+          }
+        }
+        
+        // Use cached enhanced tile if available
+        const enhancedTile = currentTemplate.enhancedTilesCache.get(tileKey);
+        if (enhancedTile) {
+          context.drawImage(enhancedTile, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+        } else {
+          // Fallback to original tile if enhanced cache failed
+          context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+        }
       } else {
-        // Apply color filtering and/or enhanced mode
+        // Slow path: Color filtering (with or without enhanced mode) - needs real-time processing
         const tempCanvas = document.createElement('canvas');
         tempCanvas.width = template.bitmap.width;
         tempCanvas.height = template.bitmap.height;

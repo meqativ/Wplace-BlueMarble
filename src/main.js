@@ -827,6 +827,12 @@ function buildColorFilterOverlay() {
       // Store enhanced mode state globally
       window.bmEnhancedMode = isEnhanced;
       
+      // Invalidate enhanced cache when toggling mode
+      const currentTemplate = templateManager.templatesArray?.[0];
+      if (currentTemplate) {
+        currentTemplate.invalidateEnhancedCache();
+      }
+      
       // Force template redraw to apply/remove enhanced mode
       refreshTemplateDisplay().catch(error => {
         console.warn('Error refreshing template for enhanced mode:', error);
@@ -1057,6 +1063,9 @@ async function refreshTemplateDisplay() {
       // Get the current template
       const currentTemplate = templateManager.templatesArray[0];
       consoleLog('Current disabled colors:', currentTemplate.getDisabledColors());
+      
+      // Invalidate enhanced cache when colors change
+      currentTemplate.invalidateEnhancedCache();
       
       // Disable templates first to clear the display
       templateManager.setTemplatesShouldBeDrawn(false);

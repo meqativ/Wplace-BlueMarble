@@ -40,6 +40,10 @@ export default class Template {
     this.tileSize = tileSize;
     this.pixelCount = 0; // Total pixel count in template
     this.disabledColors = new Set(); // Set of disabled color RGB values as strings "r,g,b"
+    
+    // Performance optimization: Cache enhanced tiles
+    this.enhancedTilesCache = new Map(); // key: tileKey, value: ImageBitmap with crosshair effect
+    this.enhancedCacheValid = false; // Track if cache needs to be regenerated
   }
 
   /** Creates chunks of the template for each tile.
@@ -388,5 +392,113 @@ export default class Template {
     }
 
     return updatedChunked;
+  }
+
+  /** Creates enhanced tiles with crosshair effect pre-processed for performance.
+   * This avoids real-time pixel processing during drawing.
+   * @param {Object} originalTiles - The original template tiles
+   * @returns {Promise<Map>} Map of enhanced tiles
+   * @since 1.0.0
+   */
+  async createEnhancedTiles(originalTiles) {
+    const enhancedTiles = new Map();
+    
+    for (const [tileKey, originalBitmap] of Object.entries(originalTiles)) {
+      try {
+        // Create canvas for processing
+        const canvas = document.createElement('canvas');
+        canvas.width = originalBitmap.width;
+        canvas.height = originalBitmap.height;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        
+        // Draw original bitmap
+        ctx.drawImage(originalBitmap, 0, 0);
+        
+        // Get image data for processing
+        const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+        const data = imageData.data;
+        const width = canvas.width;
+        const height = canvas.height;
+        
+        // Create copy of original data for reference
+        const originalData = new Uint8ClampedArray(data);
+        
+        // Find all template pixels (non-transparent)
+        const templatePixels = new Set();
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            const alpha = originalData[i + 3];
+            
+            if (alpha > 0) {
+              templatePixels.add(`${x},${y}`);
+            }
+          }
+        }
+        
+        // Apply crosshair effect to transparent neighbors
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            const alpha = originalData[i + 3];
+            
+            // Skip if pixel is not transparent
+            if (alpha > 0) continue;
+            
+            // Check if this transparent pixel is adjacent to a template pixel
+            const hasTemplateNeighbor = (
+              templatePixels.has(`${x},${y-1}`) || // Top
+              templatePixels.has(`${x},${y+1}`) || // Bottom
+              templatePixels.has(`${x-1},${y}`) || // Left
+              templatePixels.has(`${x+1},${y}`)    // Right
+            );
+            
+            const hasTemplateDiagonal = (
+              templatePixels.has(`${x-1},${y-1}`) || // Top-left
+              templatePixels.has(`${x+1},${y-1}`) || // Top-right
+              templatePixels.has(`${x-1},${y+1}`) || // Bottom-left
+              templatePixels.has(`${x+1},${y+1}`)    // Bottom-right
+            );
+            
+            if (hasTemplateNeighbor) {
+              // Orthogonal neighbors: Red crosshair center
+              data[i] = 255;     // Red
+              data[i + 1] = 0;   // Green
+              data[i + 2] = 0;   // Blue
+              data[i + 3] = 180; // Semi-transparent
+            } else if (hasTemplateDiagonal) {
+              // Diagonal neighbors: Blue crosshair corners
+              data[i] = 0;       // Red
+              data[i + 1] = 0;   // Green
+              data[i + 2] = 255; // Blue
+              data[i + 3] = 120; // More transparent
+            }
+          }
+        }
+        
+        // Put processed data back
+        ctx.putImageData(imageData, 0, 0);
+        
+        // Create bitmap from processed canvas
+        const enhancedBitmap = await createImageBitmap(canvas);
+        enhancedTiles.set(tileKey, enhancedBitmap);
+        
+      } catch (error) {
+        console.warn(`Failed to create enhanced tile for ${tileKey}:`, error);
+        // Fallback to original tile
+        enhancedTiles.set(tileKey, originalTiles[tileKey]);
+      }
+    }
+    
+    return enhancedTiles;
+  }
+
+  /** Invalidates enhanced tiles cache when color filter changes
+   * @since 1.0.0
+   */
+  invalidateEnhancedCache() {
+    this.enhancedCacheValid = false;
+    this.enhancedTilesCache.clear();
   }
 }
