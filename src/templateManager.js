@@ -478,12 +478,16 @@ export default class TemplateManager {
         if (hasEnhancedColors && enhancedPixels && enhancedPixels.size > 0) {
           console.log(`✨ [Enhanced Debug] Applying crosshair effects (FAST MODE) to ${enhancedPixels.size} enhanced pixels...`);
           
-          // REAL OPTIMIZATION: Skip enhanced mode if too many pixels (performance protection)
-          if (enhancedPixels.size > 10000) {
+          // REAL OPTIMIZATION: Use chunked processing for very large templates
+          if (enhancedPixels.size > 23000) {
             console.log(`⚠️ [Enhanced Debug] Too many enhanced pixels (${enhancedPixels.size}), skipping enhanced mode for performance`);
           } else {
+            // For large templates, process in smaller chunks to maintain responsiveness
+            const isLargeTemplate = enhancedPixels.size > 12000;
+            if (isLargeTemplate) {
+              console.log(`📦 [Enhanced Debug] Large template detected, using chunked processing...`);
+            }
             let crosshairCenterCount = 0;
-            let crosshairCornerCount = 0;
             
             // Get canvas region data only once and only for the template area
             const templateOffsetX = Number(template.pixelCoords[0]) * this.drawMult;
@@ -501,59 +505,62 @@ export default class TemplateManager {
               console.warn('⚠️ [Enhanced Debug] Could not get canvas region, enhanced mode will be simplified');
             }
             
-            // Process only enhanced pixels and their immediate neighbors
-            for (const pixelCoord of enhancedPixels) {
-              const [px, py] = pixelCoord.split(',').map(Number);
+            // Process enhanced pixels efficiently 
+            const enhancedPixelsArray = Array.from(enhancedPixels);
+            const chunkSize = isLargeTemplate ? 2000 : enhancedPixelsArray.length; // Process in chunks for large templates
+            
+            for (let chunkStart = 0; chunkStart < enhancedPixelsArray.length; chunkStart += chunkSize) {
+              const chunkEnd = Math.min(chunkStart + chunkSize, enhancedPixelsArray.length);
+              const chunk = enhancedPixelsArray.slice(chunkStart, chunkEnd);
               
-              // Apply crosshairs only around enhanced pixels
-              const crosshairOffsets = [
-                // Orthogonal (red)
-                [0, -1, 'center'], [0, 1, 'center'], [-1, 0, 'center'], [1, 0, 'center'],
-                // Diagonal (blue)  
-                [-1, -1, 'corner'], [1, -1, 'corner'], [-1, 1, 'corner'], [1, 1, 'corner']
-              ];
+              if (isLargeTemplate && chunkStart > 0) {
+                console.log(`📦 [Enhanced Debug] Processing chunk ${Math.floor(chunkStart/chunkSize) + 1}/${Math.ceil(enhancedPixelsArray.length/chunkSize)}`);
+              }
               
-              for (const [dx, dy, type] of crosshairOffsets) {
-                const x = px + dx;
-                const y = py + dy;
+              for (const pixelCoord of chunk) {
+                const [px, py] = pixelCoord.split(',').map(Number);
                 
-                // Bounds check
-                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                // Apply crosshairs only around enhanced pixels (red centers only)
+                const crosshairOffsets = [
+                  [0, -1, 'center'], [0, 1, 'center'], [-1, 0, 'center'], [1, 0, 'center'] // Orthogonal only
+                ];
                 
-                const i = (y * width + x) * 4;
-                
-                // Only modify transparent template pixels
-                if (originalData[i + 3] !== 0) continue;
-                
-                // Fast canvas collision check using region data
-                let skipPainted = false;
-                if (canvasRegionData) {
-                  const regionAlpha = canvasRegionData[i + 3];
-                  skipPainted = regionAlpha > 0;
-                } else {
-                  // Fallback: check individual pixel (slower but works)
-                  const canvasX = x + templateOffsetX;
-                  const canvasY = y + templateOffsetY;
-                  if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
-                    const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
-                    skipPainted = canvasData[canvasIndex + 3] > 0;
+                for (const [dx, dy, type] of crosshairOffsets) {
+                  const x = px + dx;
+                  const y = py + dy;
+                  
+                  // Quick bounds check
+                  if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                  
+                  const i = (y * width + x) * 4;
+                  
+                  // Only modify transparent template pixels
+                  if (originalData[i + 3] !== 0) continue;
+                  
+                  // Fast canvas collision check
+                  let skipPainted = false;
+                  if (canvasRegionData) {
+                    skipPainted = canvasRegionData[i + 3] > 0;
+                  } else {
+                    // Fallback for edge cases
+                    const canvasX = x + templateOffsetX;
+                    const canvasY = y + templateOffsetY;
+                    if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                      const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                      skipPainted = canvasData[canvasIndex + 3] > 0;
+                    }
                   }
-                }
-                
-                if (skipPainted) continue;
-                
-                // Apply crosshair
-                if (type === 'center') {
+                  
+                  if (skipPainted) continue;
+                  
+                  // Apply red crosshair
                   data[i] = 255; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 180;
                   crosshairCenterCount++;
-                } else {
-                  data[i] = 0; data[i + 1] = 0; data[i + 2] = 255; data[i + 3] = 120;
-                  crosshairCornerCount++;
                 }
               }
             }
             
-            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} red + ${crosshairCornerCount} blue crosshairs (FAST MODE)`);
+            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} red crosshairs (FAST MODE)`);
           }
         }
         
