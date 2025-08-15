@@ -40,6 +40,7 @@ export default class Template {
     this.tileSize = tileSize;
     this.pixelCount = 0; // Total pixel count in template
     this.disabledColors = new Set(); // Set of disabled color RGB values as strings "r,g,b"
+    this.enhancedColors = new Set(); // Set of enhanced color RGB values as strings "r,g,b"
     
     // Performance optimization: Cache enhanced tiles
     this.enhancedTilesCache = new Map(); // key: tileKey, value: ImageBitmap with crosshair effect
@@ -310,6 +311,53 @@ export default class Template {
     this.disabledColors = new Set(colorKeys);
   }
 
+  /** Enables enhanced mode for a specific color
+   * @param {number[]} rgbColor - RGB color array [r, g, b]
+   * @since 1.0.0
+   */
+  enableColorEnhanced(rgbColor) {
+    const colorKey = `${rgbColor[0]},${rgbColor[1]},${rgbColor[2]}`;
+    this.enhancedColors.add(colorKey);
+    this.invalidateEnhancedCache(); // Regenerate cache when enhanced colors change
+  }
+
+  /** Disables enhanced mode for a specific color
+   * @param {number[]} rgbColor - RGB color array [r, g, b]
+   * @since 1.0.0
+   */
+  disableColorEnhanced(rgbColor) {
+    const colorKey = `${rgbColor[0]},${rgbColor[1]},${rgbColor[2]}`;
+    this.enhancedColors.delete(colorKey);
+    this.invalidateEnhancedCache(); // Regenerate cache when enhanced colors change
+  }
+
+  /** Checks if a specific color has enhanced mode enabled
+   * @param {number[]} rgbColor - RGB color array [r, g, b]
+   * @returns {boolean} True if color is enhanced
+   * @since 1.0.0
+   */
+  isColorEnhanced(rgbColor) {
+    const colorKey = `${rgbColor[0]},${rgbColor[1]},${rgbColor[2]}`;
+    return this.enhancedColors.has(colorKey);
+  }
+
+  /** Gets the set of enhanced colors as an array
+   * @returns {Array<string>} Array of enhanced color strings "r,g,b"
+   * @since 1.0.0
+   */
+  getEnhancedColors() {
+    return Array.from(this.enhancedColors);
+  }
+
+  /** Sets enhanced colors from an array
+   * @param {Array<string>} enhancedColorsArray - Array of color strings "r,g,b"
+   * @since 1.0.0
+   */
+  setEnhancedColors(enhancedColorsArray) {
+    this.enhancedColors = new Set(enhancedColorsArray || []);
+    this.invalidateEnhancedCache();
+  }
+
   /** Applies color filter to existing chunked tiles without requiring original file
    * This method is used when templates are loaded from storage and don't have the original file
    * @returns {Object} Updated chunked tiles with color filter applied
@@ -424,15 +472,23 @@ export default class Template {
         // Create copy of original data for reference
         const originalData = new Uint8ClampedArray(data);
         
-        // Find all template pixels (non-transparent)
-        const templatePixels = new Set();
+        // Find template pixels that are enhanced (non-transparent AND color is in enhanced set)
+        const enhancedTemplatePixels = new Set();
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
             const alpha = originalData[i + 3];
             
             if (alpha > 0) {
-              templatePixels.add(`${x},${y}`);
+              const r = originalData[i];
+              const g = originalData[i + 1];
+              const b = originalData[i + 2];
+              const colorKey = `${r},${g},${b}`;
+              
+              // Only add to enhanced pixels if this color is marked as enhanced
+              if (this.enhancedColors.has(colorKey)) {
+                enhancedTemplatePixels.add(`${x},${y}`);
+              }
             }
           }
         }
@@ -446,28 +502,28 @@ export default class Template {
             // Skip if pixel is not transparent
             if (alpha > 0) continue;
             
-            // Check if this transparent pixel is adjacent to a template pixel
-            const hasTemplateNeighbor = (
-              templatePixels.has(`${x},${y-1}`) || // Top
-              templatePixels.has(`${x},${y+1}`) || // Bottom
-              templatePixels.has(`${x-1},${y}`) || // Left
-              templatePixels.has(`${x+1},${y}`)    // Right
+            // Check if this transparent pixel is adjacent to an enhanced template pixel
+            const hasEnhancedNeighbor = (
+              enhancedTemplatePixels.has(`${x},${y-1}`) || // Top
+              enhancedTemplatePixels.has(`${x},${y+1}`) || // Bottom
+              enhancedTemplatePixels.has(`${x-1},${y}`) || // Left
+              enhancedTemplatePixels.has(`${x+1},${y}`)    // Right
             );
             
-            const hasTemplateDiagonal = (
-              templatePixels.has(`${x-1},${y-1}`) || // Top-left
-              templatePixels.has(`${x+1},${y-1}`) || // Top-right
-              templatePixels.has(`${x-1},${y+1}`) || // Bottom-left
-              templatePixels.has(`${x+1},${y+1}`)    // Bottom-right
+            const hasEnhancedDiagonal = (
+              enhancedTemplatePixels.has(`${x-1},${y-1}`) || // Top-left
+              enhancedTemplatePixels.has(`${x+1},${y-1}`) || // Top-right
+              enhancedTemplatePixels.has(`${x-1},${y+1}`) || // Bottom-left
+              enhancedTemplatePixels.has(`${x+1},${y+1}`)    // Bottom-right
             );
             
-            if (hasTemplateNeighbor) {
+            if (hasEnhancedNeighbor) {
               // Orthogonal neighbors: Red crosshair center
               data[i] = 255;     // Red
               data[i + 1] = 0;   // Green
               data[i + 2] = 0;   // Blue
               data[i + 3] = 180; // Semi-transparent
-            } else if (hasTemplateDiagonal) {
+            } else if (hasEnhancedDiagonal) {
               // Diagonal neighbors: Blue crosshair corners
               data[i] = 0;       // Red
               data[i + 1] = 0;   // Green

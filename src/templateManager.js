@@ -361,29 +361,18 @@ export default class TemplateManager {
       const currentTemplate = this.templatesArray?.[0]; // Assuming single template for now
       const hasDisabledColors = currentTemplate && currentTemplate.getDisabledColors().length > 0;
       
-      // Check if enhanced mode is enabled
-      const isEnhanced = window.bmEnhancedMode || false;
+      // Check if any colors have enhanced mode enabled
+      const hasEnhancedColors = currentTemplate && currentTemplate.enhancedColors.size > 0;
       
-      if (!isEnhanced && !hasDisabledColors) {
+      if (!hasEnhancedColors && !hasDisabledColors) {
         // Fast path: Normal drawing without enhancement or color filtering
         context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
-      } else if (isEnhanced && !hasDisabledColors) {
+      } else if (hasEnhancedColors && !hasDisabledColors) {
         // Fast path: Enhanced mode only, use pre-processed tiles
         // Build the correct tile key from template coordinates  
         const tileKey = `${template.tileCoords[0].toString().padStart(4, '0')},${template.tileCoords[1].toString().padStart(4, '0')},${template.pixelCoords[0].toString().padStart(3, '0')},${template.pixelCoords[1].toString().padStart(3, '0')}`;
         
-        console.log('🔍 Enhanced mode debug:');
-        console.log('  - isEnhanced:', isEnhanced);
-        console.log('  - hasDisabledColors:', hasDisabledColors);
-        console.log('  - template object:', template);
-        console.log('  - template.tileKey:', template.tileKey);
-        console.log('  - template keys:', Object.keys(template));
-        console.log('  - tileKey from template:', tileKey);
-        console.log('  - enhancedCacheValid:', currentTemplate.enhancedCacheValid);
-        console.log('  - cache has tileKey:', currentTemplate.enhancedTilesCache.has(tileKey));
-        console.log('  - cache size:', currentTemplate.enhancedTilesCache.size);
-        console.log('  - chunked keys:', Object.keys(currentTemplate.chunked || {}));
-        console.log('  - cache keys:', Array.from(currentTemplate.enhancedTilesCache.keys()));
+        console.log('🚀 Using enhanced tiles cache for performance');
         
         // Check if we have cached enhanced tiles for this template
         if (!currentTemplate.enhancedCacheValid || !currentTemplate.enhancedTilesCache.has(tileKey)) {
@@ -403,15 +392,12 @@ export default class TemplateManager {
         
         // Use cached enhanced tile if available
         const enhancedTile = currentTemplate.enhancedTilesCache.get(tileKey);
-        console.log('🎯 Enhanced tile found:', !!enhancedTile);
         
         if (enhancedTile) {
           context.drawImage(enhancedTile, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
-          console.log('✅ Drew enhanced tile');
         } else {
           // Fallback to original tile if enhanced cache failed
           context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
-          console.log('⚠️ Used original tile as fallback');
         }
       } else {
         // Slow path: Color filtering (with or without enhanced mode) - needs real-time processing

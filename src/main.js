@@ -801,45 +801,18 @@ function buildColorFilterOverlay() {
     const controls = document.createElement('div');
     controls.style.cssText = 'margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;';
 
-    // Enhanced mode toggle button
-    const enhancedButton = document.createElement('button');
-    enhancedButton.textContent = 'Enhanced: OFF';
-    enhancedButton.style.cssText = `
-      background: #666;
-      border: none;
+    // Enhanced mode info text
+    const enhancedInfo = document.createElement('div');
+    enhancedInfo.textContent = 'Enhanced Mode: Select individual colors below';
+    enhancedInfo.style.cssText = `
+      background: #333;
       color: white;
-      padding: 6px 12px;
+      padding: 8px 12px;
       border-radius: 6px;
-      cursor: pointer;
       font-size: 0.9em;
       font-weight: bold;
+      text-align: center;
     `;
-    
-    let isEnhanced = window.bmEnhancedMode || false;
-    enhancedButton.textContent = `Enhanced: ${isEnhanced ? 'ON' : 'OFF'}`;
-    enhancedButton.style.background = isEnhanced ? '#4caf50' : '#666';
-    
-    enhancedButton.onclick = () => {
-      isEnhanced = !isEnhanced;
-      enhancedButton.textContent = `Enhanced: ${isEnhanced ? 'ON' : 'OFF'}`;
-      enhancedButton.style.background = isEnhanced ? '#4caf50' : '#666';
-      
-      // Store enhanced mode state globally
-      window.bmEnhancedMode = isEnhanced;
-      
-      // Invalidate enhanced cache when toggling mode
-      const currentTemplate = templateManager.templatesArray?.[0];
-      if (currentTemplate) {
-        currentTemplate.invalidateEnhancedCache();
-      }
-      
-      // Force template redraw to apply/remove enhanced mode
-      refreshTemplateDisplay().catch(error => {
-        console.warn('Error refreshing template for enhanced mode:', error);
-      });
-      
-      overlayMain.handleDisplayStatus(`Enhanced mode ${isEnhanced ? 'enabled' : 'disabled'}`);
-    };
 
     const enableAllButton = document.createElement('button');
     enableAllButton.textContent = 'Enable All';
@@ -865,7 +838,7 @@ function buildColorFilterOverlay() {
       font-size: 0.9em;
     `;
 
-    controls.appendChild(enhancedButton);
+    controls.appendChild(enhancedInfo);
     controls.appendChild(enableAllButton);
     controls.appendChild(disableAllButton);
 
@@ -886,20 +859,43 @@ function buildColorFilterOverlay() {
       const colorItem = document.createElement('div');
       const rgb = colorInfo.rgb;
       const isDisabled = currentTemplate.isColorDisabled(rgb);
+      const isEnhanced = currentTemplate.isColorEnhanced ? currentTemplate.isColorEnhanced(rgb) : false;
       
       colorItem.style.cssText = `
         background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});
         border: 3px solid ${isDisabled ? '#f44336' : '#4caf50'};
         border-radius: 8px;
-        padding: 8px;
+        padding: 6px;
         text-align: center;
-        cursor: pointer;
         transition: all 0.2s ease;
         position: relative;
-        min-height: 40px;
+        min-height: 60px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: space-between;
+      `;
+
+      // Color info and controls container
+      const controlsContainer = document.createElement('div');
+      controlsContainer.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+        width: 100%;
+      `;
+
+      // Color enable/disable click area (main area)
+      const colorClickArea = document.createElement('div');
+      colorClickArea.style.cssText = `
+        width: 100%;
+        height: 30px;
+        cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
+        position: relative;
       `;
 
       // Add overlay for disabled state
@@ -918,11 +914,47 @@ function buildColorFilterOverlay() {
           justify-content: center;
           color: white;
           font-weight: bold;
-          font-size: 20px;
+          font-size: 16px;
         `;
         overlay.textContent = '✕';
-        colorItem.appendChild(overlay);
+        colorClickArea.appendChild(overlay);
       }
+
+      // Enhanced mode checkbox
+      const enhancedContainer = document.createElement('div');
+      enhancedContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 10px;
+        color: white;
+        text-shadow: 1px 1px 1px rgba(0,0,0,0.8);
+        font-weight: bold;
+      `;
+
+      const enhancedCheckbox = document.createElement('input');
+      enhancedCheckbox.type = 'checkbox';
+      enhancedCheckbox.checked = isEnhanced;
+      enhancedCheckbox.disabled = isDisabled; // Disable checkbox if color is disabled
+      enhancedCheckbox.style.cssText = `
+        width: 14px;
+        height: 14px;
+        cursor: pointer;
+      `;
+
+      const enhancedLabel = document.createElement('label');
+      enhancedLabel.textContent = 'Enhanced';
+      enhancedLabel.style.cssText = `
+        cursor: pointer;
+        user-select: none;
+      `;
+
+      enhancedContainer.appendChild(enhancedCheckbox);
+      enhancedContainer.appendChild(enhancedLabel);
+
+      controlsContainer.appendChild(colorClickArea);
+      controlsContainer.appendChild(enhancedContainer);
+      colorItem.appendChild(controlsContainer);
 
       const colorName = document.createElement('div');
       colorName.textContent = colorInfo.name;
@@ -937,13 +969,16 @@ function buildColorFilterOverlay() {
 
       colorItem.appendChild(colorName);
 
-      colorItem.onclick = () => {
+      // Color enable/disable click handler (only on click area, not checkbox)
+      colorClickArea.onclick = (e) => {
+        e.stopPropagation(); // Prevent bubbling
         const wasDisabled = currentTemplate.isColorDisabled(rgb);
         if (wasDisabled) {
           currentTemplate.enableColor(rgb);
           colorItem.style.border = '3px solid #4caf50';
-          const overlay = colorItem.querySelector('div[style*="position: absolute"]');
+          const overlay = colorClickArea.querySelector('div[style*="position: absolute"]');
           if (overlay) overlay.remove();
+          enhancedCheckbox.disabled = false;
         } else {
           currentTemplate.disableColor(rgb);
           colorItem.style.border = '3px solid #f44336';
@@ -961,16 +996,42 @@ function buildColorFilterOverlay() {
             justify-content: center;
             color: white;
             font-weight: bold;
-            font-size: 20px;
+            font-size: 16px;
           `;
           overlay.textContent = '✕';
-          colorItem.appendChild(overlay);
+          colorClickArea.appendChild(overlay);
+          enhancedCheckbox.disabled = true;
+          enhancedCheckbox.checked = false;
         }
         
         // Refresh template display in real-time
         refreshTemplateDisplay().catch(error => {
           consoleError('Error refreshing template:', error);
         });
+      };
+
+      // Enhanced checkbox handler
+      enhancedCheckbox.onchange = (e) => {
+        e.stopPropagation(); // Prevent bubbling
+        if (enhancedCheckbox.checked) {
+          currentTemplate.enableColorEnhanced(rgb);
+        } else {
+          currentTemplate.disableColorEnhanced(rgb);
+        }
+        
+        // Refresh template display in real-time
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing enhanced mode:', error);
+        });
+      };
+
+      // Label click handler
+      enhancedLabel.onclick = (e) => {
+        e.stopPropagation();
+        if (!enhancedCheckbox.disabled) {
+          enhancedCheckbox.checked = !enhancedCheckbox.checked;
+          enhancedCheckbox.onchange(e);
+        }
       };
 
       colorGrid.appendChild(colorItem);
