@@ -556,6 +556,10 @@ export default class TemplateManager {
   async #parseBlueMarble(json) {
 
     console.log(`Parsing BlueMarble...`);
+    
+    // *** FIX: Restore templatesJSON from loaded data ***
+    this.templatesJSON = json;
+    console.log('🔍 Debug - templatesJSON restored:', this.templatesJSON);
 
     const templates = json.templates;
 
