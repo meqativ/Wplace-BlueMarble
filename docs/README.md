@@ -1,3 +1,6 @@
+
+## THIS IS A FORK THAT ADD COLOR FILTER OPTION IN THE BLUE MARBLE, IT ALLOW THE USER TO SELECT WHICH PIXEL COLOR THEY WANT IN THE TEMPLATE
+
 <table>
   <tr>
     <td><a href="#blue-marble">Blue Marble</a></td>
@@ -94,6 +97,7 @@
     <a href="https://github.com/SwingTheVine/Wplace-BlueMarble/blob/main/docs/CONTRIBUTING.md">Click here</a> to read the contributing guidelines.
   </details>
 </p>
+
 
 <h2>Overview</h2>
 <p>
