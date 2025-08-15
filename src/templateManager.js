@@ -155,6 +155,7 @@ export default class TemplateManager {
       "coords": coords.join(', '), // The coords of the template
       "enabled": true,
       "disabledColors": template.getDisabledColors(), // Store disabled colors
+      "enhancedColors": template.getEnhancedColors(), // Store enhanced colors
       "tiles": templateTilesBuffers // Stores the chunked tile buffers
     };
 
@@ -681,6 +682,12 @@ export default class TemplateManager {
             template.setDisabledColors(disabledColors);
           }
           
+          // Load enhanced colors if they exist
+          const enhancedColors = templateValue.enhancedColors;
+          if (enhancedColors && Array.isArray(enhancedColors)) {
+            template.setEnhancedColors(enhancedColors);
+          }
+          
           this.templatesArray.push(template);
           console.log(this.templatesArray);
           console.log(`^^^ This ^^^`);
@@ -725,8 +732,9 @@ export default class TemplateManager {
       if (this.templatesJSON && this.templatesJSON.templates) {
         const templateKey = `${template.sortID} ${template.authorID}`;
         if (this.templatesJSON.templates[templateKey]) {
-          // ONLY save the disabled colors setting, keep original tiles unchanged
+          // ONLY save the color settings, keep original tiles unchanged
           this.templatesJSON.templates[templateKey].disabledColors = template.getDisabledColors();
+          this.templatesJSON.templates[templateKey].enhancedColors = template.getEnhancedColors();
           consoleLog('JSON updated with new filter settings (settings only, tiles unchanged)');
         }
       }
