@@ -1,5 +1,5 @@
 import Template from "./Template";
-import { base64ToUint8, numberToEncoded, consoleLog, consoleError, consoleWarn } from "./utils";
+import { base64ToUint8, uint8ToBase64, numberToEncoded, consoleLog, consoleError, consoleWarn } from "./utils";
 
 /** Manages the template system.
  * This class handles all external requests for template modification, creation, and analysis.
@@ -424,17 +424,63 @@ export default class TemplateManager {
     try {
       consoleLog('Updating template with color filter, disabled colors:', template.getDisabledColors());
       
-      // Clear existing chunked data to force complete recreation
-      template.chunked = null;
+      let templateTiles, templateTilesBuffers;
       
-      // Recreate template tiles with current filter settings
-      consoleLog('Creating new template tiles with color filter...');
-      const { templateTiles, templateTilesBuffers } = await template.createTemplateTiles();
+      // Check if template has original file for full recreation
+      if (template.file) {
+        consoleLog('Template has original file, recreating tiles from source...');
+        
+        // Clear existing chunked data to force complete recreation
+        template.chunked = null;
+        
+        // Recreate template tiles with current filter settings from original file
+        const result = await template.createTemplateTiles();
+        templateTiles = result.templateTiles;
+        templateTilesBuffers = result.templateTilesBuffers;
+        
+        // Assign the new chunked data
+        template.chunked = templateTiles;
+        
+      } else {
+        consoleLog('Template loaded from storage, applying color filter to existing tiles...');
+        
+        // Template was loaded from storage, apply filter to existing tiles
+        templateTiles = await template.applyColorFilterToExistingTiles();
+        
+        // Generate new buffers from the updated tiles
+        templateTilesBuffers = {};
+        for (const [tileName, bitmap] of Object.entries(templateTiles)) {
+          const canvas = document.createElement('canvas');
+          canvas.width = bitmap.width || 300;
+          canvas.height = bitmap.height || 300;
+          const context = canvas.getContext('2d');
+          context.imageSmoothingEnabled = false;
+          context.drawImage(bitmap, 0, 0);
+          
+          try {
+            const canvasBlob = await new Promise((resolve, reject) => {
+              if (canvas.convertToBlob) {
+                canvas.convertToBlob().then(resolve).catch(reject);
+              } else {
+                canvas.toBlob(resolve, 'image/png');
+              }
+            });
+            const canvasBuffer = await canvasBlob.arrayBuffer();
+            const canvasBufferBytes = Array.from(new Uint8Array(canvasBuffer));
+            templateTilesBuffers[tileName] = uint8ToBase64(canvasBufferBytes);
+          } catch (error) {
+            consoleWarn('Canvas blob conversion failed, using data URL fallback');
+            const dataURL = canvas.toDataURL('image/png');
+            const base64 = dataURL.split(',')[1];
+            templateTilesBuffers[tileName] = base64;
+          }
+        }
+        
+        // Update chunked data with filtered tiles
+        template.chunked = templateTiles;
+      }
       
-      // Assign the new chunked data
-      template.chunked = templateTiles;
-      
-      consoleLog('Template tiles recreated with filter applied, total tiles:', Object.keys(templateTiles).length);
+      consoleLog('Template tiles updated with filter applied, total tiles:', Object.keys(templateTiles).length);
       
       // Update JSON if it exists
       if (this.templatesJSON && this.templatesJSON.templates) {

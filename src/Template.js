@@ -305,4 +305,83 @@ export default class Template {
   setDisabledColors(colorKeys) {
     this.disabledColors = new Set(colorKeys);
   }
+
+  /** Applies color filter to existing chunked tiles without requiring original file
+   * This method is used when templates are loaded from storage and don't have the original file
+   * @returns {Object} Updated chunked tiles with color filter applied
+   * @since 1.0.0
+   */
+  async applyColorFilterToExistingTiles() {
+    if (!this.chunked) {
+      throw new Error('No chunked tiles available to apply color filter');
+    }
+
+    const shreadSize = 3; // Must match the value used in createTemplateTiles
+    const updatedChunked = {};
+
+    for (const [tileName, bitmap] of Object.entries(this.chunked)) {
+      // Create a canvas to work with the existing tile
+      const canvas = document.createElement('canvas');
+      const context = canvas.getContext('2d', { willReadFrequently: true });
+
+      // Get dimensions from the bitmap
+      let width, height;
+      if (bitmap.width !== undefined) {
+        width = bitmap.width;
+        height = bitmap.height;
+      } else {
+        // For canvas elements
+        width = bitmap.width || 300; // fallback
+        height = bitmap.height || 300;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+      context.imageSmoothingEnabled = false;
+
+      // Draw the existing bitmap to canvas
+      context.clearRect(0, 0, width, height);
+      context.drawImage(bitmap, 0, 0);
+
+      // Get image data to process pixels
+      const imageData = context.getImageData(0, 0, width, height);
+
+      // Process each pixel to apply color filter
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const pixelIndex = (y * width + x) * 4;
+          
+          // Get current pixel RGB values
+          const r = imageData.data[pixelIndex];
+          const g = imageData.data[pixelIndex + 1];
+          const b = imageData.data[pixelIndex + 2];
+          const alpha = imageData.data[pixelIndex + 3];
+          
+          // Skip transparent pixels
+          if (alpha === 0) continue;
+          
+          // Check if this color is disabled
+          const isDisabled = this.isColorDisabled([r, g, b]);
+          
+          if (isDisabled) {
+            // Make disabled colors transparent
+            imageData.data[pixelIndex + 3] = 0;
+          }
+        }
+      }
+
+      // Put the processed image data back to canvas
+      context.putImageData(imageData, 0, 0);
+
+      // Create new bitmap from processed canvas
+      try {
+        updatedChunked[tileName] = await createImageBitmap(canvas);
+      } catch (error) {
+        console.warn('createImageBitmap failed for tile, using canvas directly');
+        updatedChunked[tileName] = canvas.cloneNode(true);
+      }
+    }
+
+    return updatedChunked;
+  }
 }
