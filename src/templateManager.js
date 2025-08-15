@@ -302,8 +302,66 @@ export default class TemplateManager {
       console.log(`Template:`);
       console.log(template);
 
-      // Draws the each template on the tile based on it's relative position
-      context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+      // Check if enhanced mode is enabled
+      const isEnhanced = window.bmEnhancedMode || false;
+      
+      if (!isEnhanced) {
+        // Normal drawing without enhancement
+        context.drawImage(template.bitmap, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+      } else {
+        // Enhanced mode: add red borders to template pixels
+        const enhancedCanvas = document.createElement('canvas');
+        enhancedCanvas.width = template.bitmap.width;
+        enhancedCanvas.height = template.bitmap.height;
+        const enhancedCtx = enhancedCanvas.getContext('2d');
+        enhancedCtx.imageSmoothingEnabled = false;
+        
+        // Draw original template
+        enhancedCtx.drawImage(template.bitmap, 0, 0);
+        
+        // Get image data to process pixels
+        const imageData = enhancedCtx.getImageData(0, 0, enhancedCanvas.width, enhancedCanvas.height);
+        const data = imageData.data;
+        const width = enhancedCanvas.width;
+        const height = enhancedCanvas.height;
+        
+        // Create a copy for border detection
+        const originalData = new Uint8ClampedArray(data);
+        
+        // Process each pixel to add red borders
+        for (let y = 0; y < height; y++) {
+          for (let x = 0; x < width; x++) {
+            const i = (y * width + x) * 4;
+            const alpha = originalData[i + 3];
+            
+            if (alpha > 0) { // If pixel is not transparent
+              // Check if this pixel is on the border of a colored area
+              const isOnBorder = (
+                x === 0 || x === width - 1 || y === 0 || y === height - 1 ||
+                // Check adjacent pixels for transparency
+                (x > 0 && originalData[((y * width + (x - 1)) * 4) + 3] === 0) || // left
+                (x < width - 1 && originalData[((y * width + (x + 1)) * 4) + 3] === 0) || // right
+                (y > 0 && originalData[(((y - 1) * width + x) * 4) + 3] === 0) || // top
+                (y < height - 1 && originalData[(((y + 1) * width + x) * 4) + 3] === 0) // bottom
+              );
+              
+              if (isOnBorder) {
+                // Add red border
+                data[i] = 255;     // Red
+                data[i + 1] = 0;   // Green  
+                data[i + 2] = 0;   // Blue
+                data[i + 3] = 255; // Alpha (fully opaque)
+              }
+            }
+          }
+        }
+        
+        // Put the modified image data back
+        enhancedCtx.putImageData(imageData, 0, 0);
+        
+        // Draw the enhanced template
+        context.drawImage(enhancedCanvas, Number(template.pixelCoords[0]) * this.drawMult, Number(template.pixelCoords[1]) * this.drawMult);
+      }
     }
 
     // Use compatible blob conversion

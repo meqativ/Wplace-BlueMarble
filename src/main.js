@@ -653,7 +653,41 @@ function buildColorFilterOverlay() {
 
     // Controls
     const controls = document.createElement('div');
-    controls.style.cssText = 'margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;';
+    controls.style.cssText = 'margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;';
+
+    // Enhanced mode toggle button
+    const enhancedButton = document.createElement('button');
+    enhancedButton.textContent = 'Enhanced: OFF';
+    enhancedButton.style.cssText = `
+      background: #666;
+      border: none;
+      color: white;
+      padding: 6px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: bold;
+    `;
+    
+    let isEnhanced = window.bmEnhancedMode || false;
+    enhancedButton.textContent = `Enhanced: ${isEnhanced ? 'ON' : 'OFF'}`;
+    enhancedButton.style.background = isEnhanced ? '#4caf50' : '#666';
+    
+    enhancedButton.onclick = () => {
+      isEnhanced = !isEnhanced;
+      enhancedButton.textContent = `Enhanced: ${isEnhanced ? 'ON' : 'OFF'}`;
+      enhancedButton.style.background = isEnhanced ? '#4caf50' : '#666';
+      
+      // Store enhanced mode state globally
+      window.bmEnhancedMode = isEnhanced;
+      
+      // Force template redraw to apply/remove enhanced mode
+      refreshTemplateDisplay().catch(error => {
+        console.warn('Error refreshing template for enhanced mode:', error);
+      });
+      
+      overlayMain.handleDisplayStatus(`Enhanced mode ${isEnhanced ? 'enabled' : 'disabled'}`);
+    };
 
     const enableAllButton = document.createElement('button');
     enableAllButton.textContent = 'Enable All';
@@ -679,6 +713,7 @@ function buildColorFilterOverlay() {
       font-size: 0.9em;
     `;
 
+    controls.appendChild(enhancedButton);
     controls.appendChild(enableAllButton);
     controls.appendChild(disableAllButton);
 
