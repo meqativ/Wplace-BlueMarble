@@ -39,6 +39,7 @@ export default class Template {
     this.chunked = chunked;
     this.tileSize = tileSize;
     this.pixelCount = 0; // Total pixel count in template
+    this.disabledColors = new Set(); // Set of disabled color RGB values as strings "r,g,b"
   }
 
   /** Creates chunks of the template for each tile.
@@ -130,12 +131,17 @@ export default class Template {
           for (let x = 0; x < canvasWidth; x++) {
             // For every pixel...
             const pixelIndex = (y * canvasWidth + x) * 4; // Find the pixel index in an array where every 4 indexes are 1 pixel
+            
+            // Get current pixel RGB values
+            const r = imageData.data[pixelIndex];
+            const g = imageData.data[pixelIndex + 1];
+            const b = imageData.data[pixelIndex + 2];
+            
+            // Check if this color is disabled
+            const isDisabled = this.isColorDisabled([r, g, b]);
+            
             // If the pixel is the color #deface, draw a translucent gray checkerboard pattern
-            if (
-              imageData.data[pixelIndex] === 222 &&
-              imageData.data[pixelIndex + 1] === 250 &&
-              imageData.data[pixelIndex + 2] === 206
-            ) {
+            if (r === 222 && g === 250 && b === 206) {
               if ((x + y) % 2 === 0) { // Formula for checkerboard pattern
                 imageData.data[pixelIndex] = 0;
                 imageData.data[pixelIndex + 1] = 0;
@@ -144,6 +150,9 @@ export default class Template {
               } else { // Transparent negative space
                 imageData.data[pixelIndex + 3] = 0;
               }
+            } else if (isDisabled) {
+              // Make disabled colors transparent
+              imageData.data[pixelIndex + 3] = 0;
             } else if (x % shreadSize !== 1 || y % shreadSize !== 1) { // Otherwise only draw the middle pixel
               imageData.data[pixelIndex + 3] = 0; // Make the pixel transparent on the alpha channel
             }
@@ -181,5 +190,49 @@ export default class Template {
     console.log('Template Tiles: ', templateTiles);
     console.log('Template Tiles Buffers: ', templateTilesBuffers);
     return { templateTiles, templateTilesBuffers };
+  }
+
+  /** Disables a specific color in the template
+   * @param {number[]} rgbColor - RGB color array [r, g, b]
+   * @since 1.0.0
+   */
+  disableColor(rgbColor) {
+    const colorKey = rgbColor.join(',');
+    this.disabledColors.add(colorKey);
+  }
+
+  /** Enables a specific color in the template
+   * @param {number[]} rgbColor - RGB color array [r, g, b]
+   * @since 1.0.0
+   */
+  enableColor(rgbColor) {
+    const colorKey = rgbColor.join(',');
+    this.disabledColors.delete(colorKey);
+  }
+
+  /** Checks if a color is disabled
+   * @param {number[]} rgbColor - RGB color array [r, g, b]
+   * @returns {boolean} True if color is disabled
+   * @since 1.0.0
+   */
+  isColorDisabled(rgbColor) {
+    const colorKey = rgbColor.join(',');
+    return this.disabledColors.has(colorKey);
+  }
+
+  /** Gets all disabled colors
+   * @returns {string[]} Array of disabled color keys "r,g,b"
+   * @since 1.0.0
+   */
+  getDisabledColors() {
+    return Array.from(this.disabledColors);
+  }
+
+  /** Sets disabled colors from an array
+   * @param {string[]} colorKeys - Array of color keys "r,g,b"
+   * @since 1.0.0
+   */
+  setDisabledColors(colorKeys) {
+    this.disabledColors = new Set(colorKeys);
   }
 }

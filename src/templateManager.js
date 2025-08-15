@@ -147,6 +147,7 @@ export default class TemplateManager {
       "name": template.displayName, // Display name of template
       "coords": coords.join(', '), // The coords of the template
       "enabled": true,
+      "disabledColors": template.getDisabledColors(), // Store disabled colors
       "tiles": templateTilesBuffers // Stores the chunked tile buffers
     };
 
@@ -370,6 +371,13 @@ export default class TemplateManager {
             //coords: coords
           });
           template.chunked = templateTiles;
+          
+          // Load disabled colors if they exist
+          const disabledColors = templateValue.disabledColors;
+          if (disabledColors && Array.isArray(disabledColors)) {
+            template.setDisabledColors(disabledColors);
+          }
+          
           this.templatesArray.push(template);
           console.log(this.templatesArray);
           console.log(`^^^ This ^^^`);
@@ -390,5 +398,75 @@ export default class TemplateManager {
    */
   setTemplatesShouldBeDrawn(value) {
     this.templatesShouldBeDrawn = value;
+  }
+
+  /** Recreates template tiles with current color filter settings
+   * @param {number} templateIndex - Index of template to update (default: 0)
+   * @since 1.0.0
+   */
+  async updateTemplateWithColorFilter(templateIndex = 0) {
+    if (!this.templatesArray || !this.templatesArray[templateIndex]) {
+      console.warn('No template available for color filter update');
+      return;
+    }
+
+    const template = this.templatesArray[templateIndex];
+    
+    try {
+      this.overlay.handleDisplayStatus('Updating template with color filter...');
+      
+      // Recreate template tiles with current filter settings
+      const { templateTiles, templateTilesBuffers } = await template.createTemplateTiles();
+      template.chunked = templateTiles;
+      
+      // Update JSON if it exists
+      if (this.templatesJSON && this.templatesJSON.templates) {
+        const templateKey = `${template.sortID} ${template.authorID}`;
+        if (this.templatesJSON.templates[templateKey]) {
+          this.templatesJSON.templates[templateKey].tiles = templateTilesBuffers;
+          this.templatesJSON.templates[templateKey].disabledColors = template.getDisabledColors();
+        }
+      }
+      
+      // Store updated templates
+      await this.#storeTemplates();
+      
+      this.overlay.handleDisplayStatus('Template updated with color filter!');
+      
+    } catch (error) {
+      console.error('Error updating template with color filter:', error);
+      this.overlay.handleDisplayError('Failed to update template with color filter');
+    }
+  }
+
+  /** Updates disabled colors for a specific template
+   * @param {string[]} disabledColors - Array of disabled color keys "r,g,b"
+   * @param {number} templateIndex - Index of template to update (default: 0)
+   * @since 1.0.0
+   */
+  async setTemplateDisabledColors(disabledColors, templateIndex = 0) {
+    if (!this.templatesArray || !this.templatesArray[templateIndex]) {
+      console.warn('No template available for color filter update');
+      return;
+    }
+
+    const template = this.templatesArray[templateIndex];
+    template.setDisabledColors(disabledColors);
+    
+    // Update the template tiles
+    await this.updateTemplateWithColorFilter(templateIndex);
+  }
+
+  /** Gets disabled colors for a specific template
+   * @param {number} templateIndex - Index of template (default: 0)
+   * @returns {string[]} Array of disabled color keys "r,g,b"
+   * @since 1.0.0
+   */
+  getTemplateDisabledColors(templateIndex = 0) {
+    if (!this.templatesArray || !this.templatesArray[templateIndex]) {
+      return [];
+    }
+    
+    return this.templatesArray[templateIndex].getDisabledColors();
   }
 }

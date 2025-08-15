@@ -276,3 +276,48 @@ div:has(> #bm-input-file-template),
 #bm-overlay button:disabled {
   text-decoration: line-through;
 }
+
+/* Color filter button special styling */
+#bm-button-color-filter {
+  background: linear-gradient(45deg, #ff6b35, #f7931e, #ffd23f, #06d6a0, #118ab2, #073b4c);
+  background-size: 300% 300%;
+  animation: colorShift 3s ease-in-out infinite;
+  font-weight: bold;
+  position: relative;
+  overflow: hidden;
+}
+
+#bm-button-color-filter:hover, #bm-button-color-filter:focus-visible {
+  animation-duration: 1s;
+  transform: scale(1.05);
+}
+
+@keyframes colorShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Color filter overlay styles */
+#bm-color-filter-overlay {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+}
+
+#bm-color-filter-overlay::-webkit-scrollbar {
+  width: 8px;
+}
+
+#bm-color-filter-overlay::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+#bm-color-filter-overlay::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 4px;
+}
+
+#bm-color-filter-overlay::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.5);
+}

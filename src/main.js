@@ -523,6 +523,11 @@ function buildOverlayMain() {
             instance.handleDisplayStatus(`Disabled templates!`);
           }
         }).buildElement()
+        .addButton({'id': 'bm-button-color-filter', 'textContent': 'Color Filter'}, (instance, button) => {
+          button.onclick = () => {
+            buildColorFilterOverlay();
+          }
+        }).buildElement()
       .buildElement()
       .addTextarea({'id': overlayMain.outputStatusId, 'placeholder': `Status: Sleeping...\nVersion: ${version}`, 'readOnly': true}).buildElement()
       .addDiv({'id': 'bm-contain-buttons-action'})
@@ -565,4 +570,283 @@ function buildOverlayTabTemplate() {
       .buildElement()
     .buildElement()
   .buildOverlay();
+}
+
+/** Builds and displays the color filter overlay
+ * @since 1.0.0
+ */
+function buildColorFilterOverlay() {
+  // Check if templates are available
+  if (!templateManager.templatesArray || templateManager.templatesArray.length === 0) {
+    overlayMain.handleDisplayError('No templates available for color filtering!');
+    return;
+  }
+
+  // Remove existing color filter overlay if it exists
+  const existingOverlay = document.getElementById('bm-color-filter-overlay');
+  if (existingOverlay) {
+    existingOverlay.remove();
+  }
+
+  // Import the color palette from utils
+  import('./utils.js').then(utils => {
+    const colorPalette = utils.colorpalette;
+    
+    // Create the color filter overlay
+    const colorFilterOverlay = document.createElement('div');
+    colorFilterOverlay.id = 'bm-color-filter-overlay';
+    colorFilterOverlay.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(21, 48, 99, 0.95);
+      color: white;
+      padding: 20px;
+      border-radius: 12px;
+      z-index: 9001;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
+    `;
+
+    // Header
+    const header = document.createElement('div');
+    header.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      padding-bottom: 10px;
+    `;
+
+    const title = document.createElement('h2');
+    title.textContent = 'Template Color Filter';
+    title.style.cssText = 'margin: 0; font-size: 1.2em;';
+
+    const closeButton = document.createElement('button');
+    closeButton.textContent = '✕';
+    closeButton.style.cssText = `
+      background: #d32f2f;
+      border: none;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    `;
+    closeButton.onclick = () => colorFilterOverlay.remove();
+
+    header.appendChild(title);
+    header.appendChild(closeButton);
+
+    // Instructions
+    const instructions = document.createElement('p');
+    instructions.textContent = 'Click on colors to toggle their visibility in the template. Disabled colors will be hidden.';
+    instructions.style.cssText = 'margin: 0 0 15px 0; font-size: 0.9em; color: #ccc;';
+
+    // Controls
+    const controls = document.createElement('div');
+    controls.style.cssText = 'margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap;';
+
+    const enableAllButton = document.createElement('button');
+    enableAllButton.textContent = 'Enable All';
+    enableAllButton.style.cssText = `
+      background: #4caf50;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+    `;
+
+    const disableAllButton = document.createElement('button');
+    disableAllButton.textContent = 'Disable All';
+    disableAllButton.style.cssText = `
+      background: #f44336;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.9em;
+    `;
+
+    controls.appendChild(enableAllButton);
+    controls.appendChild(disableAllButton);
+
+    // Color grid
+    const colorGrid = document.createElement('div');
+    colorGrid.style.cssText = `
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      gap: 8px;
+      margin-bottom: 20px;
+    `;
+
+    // Get current template
+    const currentTemplate = templateManager.templatesArray[0];
+
+    // Create color items
+    colorPalette.forEach((colorInfo, index) => {
+      const colorItem = document.createElement('div');
+      const rgb = colorInfo.rgb;
+      const isDisabled = currentTemplate.isColorDisabled(rgb);
+      
+      colorItem.style.cssText = `
+        background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});
+        border: 3px solid ${isDisabled ? '#f44336' : '#4caf50'};
+        border-radius: 8px;
+        padding: 8px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        min-height: 40px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+
+      // Add overlay for disabled state
+      if (isDisabled) {
+        const overlay = document.createElement('div');
+        overlay.style.cssText = `
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          bottom: 0;
+          background: rgba(244, 67, 54, 0.3);
+          border-radius: 5px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          color: white;
+          font-weight: bold;
+          font-size: 20px;
+        `;
+        overlay.textContent = '✕';
+        colorItem.appendChild(overlay);
+      }
+
+      const colorName = document.createElement('div');
+      colorName.textContent = colorInfo.name;
+      colorName.style.cssText = `
+        font-size: 0.8em;
+        text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+        color: white;
+        font-weight: bold;
+        z-index: 1;
+        position: relative;
+      `;
+
+      colorItem.appendChild(colorName);
+
+      colorItem.onclick = () => {
+        const wasDisabled = currentTemplate.isColorDisabled(rgb);
+        if (wasDisabled) {
+          currentTemplate.enableColor(rgb);
+          colorItem.style.border = '3px solid #4caf50';
+          const overlay = colorItem.querySelector('div[style*="position: absolute"]');
+          if (overlay) overlay.remove();
+        } else {
+          currentTemplate.disableColor(rgb);
+          colorItem.style.border = '3px solid #f44336';
+          const overlay = document.createElement('div');
+          overlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(244, 67, 54, 0.3);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 20px;
+          `;
+          overlay.textContent = '✕';
+          colorItem.appendChild(overlay);
+        }
+        
+        // Refresh template display
+        refreshTemplateDisplay();
+      };
+
+      colorGrid.appendChild(colorItem);
+    });
+
+    // Enable/Disable all functionality
+    enableAllButton.onclick = () => {
+      colorPalette.forEach((colorInfo) => {
+        currentTemplate.enableColor(colorInfo.rgb);
+      });
+      colorFilterOverlay.remove();
+      buildColorFilterOverlay(); // Rebuild to reflect changes
+      refreshTemplateDisplay();
+    };
+
+    disableAllButton.onclick = () => {
+      colorPalette.forEach((colorInfo) => {
+        currentTemplate.disableColor(colorInfo.rgb);
+      });
+      colorFilterOverlay.remove();
+      buildColorFilterOverlay(); // Rebuild to reflect changes
+      refreshTemplateDisplay();
+    };
+
+    // Apply button
+    const applyButton = document.createElement('button');
+    applyButton.textContent = 'Apply & Close';
+    applyButton.style.cssText = `
+      background: #2196f3;
+      border: none;
+      color: white;
+      padding: 12px 24px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 1em;
+      width: 100%;
+      margin-top: 10px;
+    `;
+    applyButton.onclick = () => {
+      colorFilterOverlay.remove();
+      refreshTemplateDisplay();
+      overlayMain.handleDisplayStatus('Color filter applied successfully!');
+    };
+
+    // Assemble overlay
+    colorFilterOverlay.appendChild(header);
+    colorFilterOverlay.appendChild(instructions);
+    colorFilterOverlay.appendChild(controls);
+    colorFilterOverlay.appendChild(colorGrid);
+    colorFilterOverlay.appendChild(applyButton);
+
+    document.body.appendChild(colorFilterOverlay);
+  }).catch(err => {
+    console.error('Failed to load color palette:', err);
+    overlayMain.handleDisplayError('Failed to load color palette!');
+  });
+}
+
+/** Refreshes the template display to show color filter changes
+ * @since 1.0.0
+ */
+function refreshTemplateDisplay() {
+  // This will trigger a re-render of the template
+  if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+    // Use the new color filter update method
+    templateManager.updateTemplateWithColorFilter(0);
+  }
 }
