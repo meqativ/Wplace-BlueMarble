@@ -453,8 +453,14 @@ export default class TemplateManager {
           }
         } else if (hasEnhancedColors) {
           // If only enhanced mode (no color filtering), identify enhanced template pixels
+          // IMPORTANT: Only process center pixels of 3x3 blocks (template pixels) to avoid affecting painted pixels
           for (let y = 0; y < height; y++) {
             for (let x = 0; x < width; x++) {
+              // Only process center pixels of 3x3 blocks (same as template creation)
+              if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
+                continue;
+              }
+              
               const i = (y * width + x) * 4;
               const alpha = originalData[i + 3];
               
@@ -494,8 +500,9 @@ export default class TemplateManager {
                   // Skip if out of bounds
                   if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
                   
-                  // If there's an enhanced template pixel in orthogonal position
-                  if (enhancedPixels.has(`${cx},${cy}`)) {
+                  // Only apply enhanced mode if the neighboring pixel is a template center pixel (not a painted pixel)
+                  // Template center pixels are at positions where cx % drawMult === 1 && cy % drawMult === 1
+                  if (cx % this.drawMult === 1 && cy % this.drawMult === 1 && enhancedPixels.has(`${cx},${cy}`)) {
                     isCenter = true;
                     break;
                   }
@@ -514,8 +521,9 @@ export default class TemplateManager {
                   // Skip if out of bounds
                   if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
                   
-                  // If there's an enhanced template pixel at diagonal position
-                  if (enhancedPixels.has(`${cx},${cy}`)) {
+                  // Only apply enhanced mode if the neighboring pixel is a template center pixel (not a painted pixel)
+                  // Template center pixels are at positions where cx % drawMult === 1 && cy % drawMult === 1
+                  if (cx % this.drawMult === 1 && cy % this.drawMult === 1 && enhancedPixels.has(`${cx},${cy}`)) {
                     isCorner = true;
                     break;
                   }
