@@ -341,39 +341,36 @@ export default class TemplateManager {
           }
         }
         
-        // Second pass: create crosshair effect on template pixels
+        // Second pass: create crosshair effect around template pixels
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
             const alpha = originalData[i + 3];
             
-            // Only modify template pixels (non-transparent)
-            if (alpha > 0) {
-              // Create crosshair pattern: center red, corners blue
-              // Check if pixel is at center or corner of template pixel
-              const isCenter = true; // Every template pixel gets center treatment
-              const isCorner = false; // We'll modify corners separately
-              
-              if (isCenter) {
-                // Make center red (like a crosshair center)
-                data[i] = 255;     // Full red
-                data[i + 1] = 0;   // No green  
-                data[i + 2] = 0;   // No blue
-                data[i + 3] = 255; // Full opacity
-              }
-            }
-          }
-        }
-        
-        // Third pass: add blue corners around template pixels
-        for (let y = 0; y < height; y++) {
-          for (let x = 0; x < width; x++) {
-            const i = (y * width + x) * 4;
-            const alpha = originalData[i + 3];
-            
-            // Only consider transparent pixels for corner placement
+            // Only modify transparent pixels (leave template pixels with original colors)
             if (alpha === 0) {
-              // Check if this transparent pixel is at a corner of a template pixel
+              
+              // Check for red center positions (orthogonal neighbors)
+              const centerPositions = [
+                [x, y-1], // top
+                [x, y+1], // bottom  
+                [x-1, y], // left
+                [x+1, y]  // right
+              ];
+              
+              let isCenter = false;
+              for (const [cx, cy] of centerPositions) {
+                // Skip if out of bounds
+                if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+                
+                // If there's a template pixel in orthogonal position
+                if (templatePixels.has(`${cx},${cy}`)) {
+                  isCenter = true;
+                  break;
+                }
+              }
+              
+              // Check for blue corner positions (diagonal neighbors)
               const cornerPositions = [
                 [x+1, y+1], // bottom-right corner
                 [x-1, y+1], // bottom-left corner  
@@ -386,15 +383,21 @@ export default class TemplateManager {
                 // Skip if out of bounds
                 if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
                 
-                // If there's a template pixel at this corner position
+                // If there's a template pixel at diagonal position
                 if (templatePixels.has(`${cx},${cy}`)) {
                   isCorner = true;
                   break;
                 }
               }
               
-              if (isCorner) {
-                // Make corner blue
+              if (isCenter) {
+                // Make orthogonal neighbors red (crosshair center)
+                data[i] = 255;     // Full red
+                data[i + 1] = 0;   // No green  
+                data[i + 2] = 0;   // No blue
+                data[i + 3] = 255; // Full opacity
+              } else if (isCorner) {
+                // Make diagonal neighbors blue (crosshair corners)
                 data[i] = 0;       // No red
                 data[i + 1] = 0;   // No green
                 data[i + 2] = 255; // Full blue
