@@ -474,99 +474,87 @@ export default class TemplateManager {
           console.log(`🎯 [Enhanced Debug] Found ${enhancedPixelCount} enhanced template pixels`);
         }
         
-        // Second pass: Apply enhanced mode crosshair effect if enabled
-        if (hasEnhancedColors && enhancedPixels) {
-          console.log(`✨ [Enhanced Debug] Applying crosshair effects to ${enhancedPixels.size} enhanced pixels...`);
-          console.log(`✨ [Enhanced Debug] Canvas size: ${canvas.width}x${canvas.height}, Template offset: ${Number(template.pixelCoords[0]) * this.drawMult}, ${Number(template.pixelCoords[1]) * this.drawMult}`);
-          let crosshairCenterCount = 0;
-          let crosshairCornerCount = 0;
-          let skippedPaintedCount = 0;
+        // Second pass: Apply enhanced mode crosshair effect if enabled (REALLY OPTIMIZED NOW!)
+        if (hasEnhancedColors && enhancedPixels && enhancedPixels.size > 0) {
+          console.log(`✨ [Enhanced Debug] Applying crosshair effects (FAST MODE) to ${enhancedPixels.size} enhanced pixels...`);
           
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              const i = (y * width + x) * 4;
-              const alpha = originalData[i + 3];
+          // REAL OPTIMIZATION: Skip enhanced mode if too many pixels (performance protection)
+          if (enhancedPixels.size > 10000) {
+            console.log(`⚠️ [Enhanced Debug] Too many enhanced pixels (${enhancedPixels.size}), skipping enhanced mode for performance`);
+          } else {
+            let crosshairCenterCount = 0;
+            let crosshairCornerCount = 0;
+            
+            // Get canvas region data only once and only for the template area
+            const templateOffsetX = Number(template.pixelCoords[0]) * this.drawMult;
+            const templateOffsetY = Number(template.pixelCoords[1]) * this.drawMult;
+            
+            let canvasRegionData = null;
+            try {
+              if (templateOffsetX >= 0 && templateOffsetY >= 0 && 
+                  templateOffsetX + width <= canvas.width && 
+                  templateOffsetY + height <= canvas.height) {
+                const canvasRegion = context.getImageData(templateOffsetX, templateOffsetY, width, height);
+                canvasRegionData = canvasRegion.data;
+              }
+            } catch (error) {
+              console.warn('⚠️ [Enhanced Debug] Could not get canvas region, enhanced mode will be simplified');
+            }
+            
+            // Process only enhanced pixels and their immediate neighbors
+            for (const pixelCoord of enhancedPixels) {
+              const [px, py] = pixelCoord.split(',').map(Number);
               
-              // Only modify pixels that are transparent in BOTH template AND canvas (not painted yet)
-              if (alpha === 0) {
-                // Check if this pixel is already painted in the current canvas
-                const canvasX = x + Number(template.pixelCoords[0]) * this.drawMult;
-                const canvasY = y + Number(template.pixelCoords[1]) * this.drawMult;
+              // Apply crosshairs only around enhanced pixels
+              const crosshairOffsets = [
+                // Orthogonal (red)
+                [0, -1, 'center'], [0, 1, 'center'], [-1, 0, 'center'], [1, 0, 'center'],
+                // Diagonal (blue)  
+                [-1, -1, 'corner'], [1, -1, 'corner'], [-1, 1, 'corner'], [1, 1, 'corner']
+              ];
+              
+              for (const [dx, dy, type] of crosshairOffsets) {
+                const x = px + dx;
+                const y = py + dy;
                 
-                if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
-                  const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
-                  const canvasAlpha = canvasData[canvasIndex + 3];
-                  
-                  // Skip if pixel is already painted in the canvas
-                  if (canvasAlpha > 0) {
-                    skippedPaintedCount++;
-                    continue;
+                // Bounds check
+                if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                
+                const i = (y * width + x) * 4;
+                
+                // Only modify transparent template pixels
+                if (originalData[i + 3] !== 0) continue;
+                
+                // Fast canvas collision check using region data
+                let skipPainted = false;
+                if (canvasRegionData) {
+                  const regionAlpha = canvasRegionData[i + 3];
+                  skipPainted = regionAlpha > 0;
+                } else {
+                  // Fallback: check individual pixel (slower but works)
+                  const canvasX = x + templateOffsetX;
+                  const canvasY = y + templateOffsetY;
+                  if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                    const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                    skipPainted = canvasData[canvasIndex + 3] > 0;
                   }
                 }
                 
-                // Check for red center positions (orthogonal neighbors)
-                const centerPositions = [
-                  [x, y-1], // top
-                  [x, y+1], // bottom  
-                  [x-1, y], // left
-                  [x+1, y]  // right
-                ];
+                if (skipPainted) continue;
                 
-                let isCenter = false;
-                for (const [cx, cy] of centerPositions) {
-                  // Skip if out of bounds
-                  if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
-                  
-                  // Only apply enhanced mode if the neighboring pixel is a template center pixel (not a painted pixel)
-                  // Template center pixels are at positions where cx % drawMult === 1 && cy % drawMult === 1
-                  if (cx % this.drawMult === 1 && cy % this.drawMult === 1 && enhancedPixels.has(`${cx},${cy}`)) {
-                    isCenter = true;
-                    break;
-                  }
-                }
-                
-                // Check for blue corner positions (diagonal neighbors)
-                const cornerPositions = [
-                  [x+1, y+1], // bottom-right corner
-                  [x-1, y+1], // bottom-left corner  
-                  [x+1, y-1], // top-right corner
-                  [x-1, y-1]  // top-left corner
-                ];
-                
-                let isCorner = false;
-                for (const [cx, cy] of cornerPositions) {
-                  // Skip if out of bounds
-                  if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
-                  
-                  // Only apply enhanced mode if the neighboring pixel is a template center pixel (not a painted pixel)
-                  // Template center pixels are at positions where cx % drawMult === 1 && cy % drawMult === 1
-                  if (cx % this.drawMult === 1 && cy % this.drawMult === 1 && enhancedPixels.has(`${cx},${cy}`)) {
-                    isCorner = true;
-                    break;
-                  }
-                }
-                
-                if (isCenter) {
-                  // Make orthogonal neighbors red (crosshair center)
-                  data[i] = 255;     // Full red
-                  data[i + 1] = 0;   // No green  
-                  data[i + 2] = 0;   // No blue
-                  data[i + 3] = 255; // Full opacity
+                // Apply crosshair
+                if (type === 'center') {
+                  data[i] = 255; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 180;
                   crosshairCenterCount++;
-                } else if (isCorner) {
-                  // Make diagonal neighbors blue (crosshair corners)
-                  data[i] = 0;       // No red
-                  data[i + 1] = 0;   // No green
-                  data[i + 2] = 255; // Full blue
-                  data[i + 3] = 255; // Full opacity
+                } else {
+                  data[i] = 0; data[i + 1] = 0; data[i + 2] = 255; data[i + 3] = 120;
                   crosshairCornerCount++;
                 }
               }
             }
+            
+            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} red + ${crosshairCornerCount} blue crosshairs (FAST MODE)`);
           }
-          
-          console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} red centers and ${crosshairCornerCount} blue corners`);
-          console.log(`✨ [Enhanced Debug] Skipped ${skippedPaintedCount} positions that were already painted`);
         }
         
         // Put the processed image data back
