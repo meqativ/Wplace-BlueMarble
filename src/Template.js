@@ -351,6 +351,11 @@ export default class Template {
         for (let x = 0; x < width; x++) {
           const pixelIndex = (y * width + x) * 4;
           
+          // Only process center pixels of the 3x3 shread blocks (same logic as createTemplateTiles)
+          if (x % shreadSize !== 1 || y % shreadSize !== 1) {
+            continue; // Skip non-center pixels
+          }
+          
           // Get current pixel RGB values
           const r = imageData.data[pixelIndex];
           const g = imageData.data[pixelIndex + 1];
@@ -364,7 +369,7 @@ export default class Template {
           const isDisabled = this.isColorDisabled([r, g, b]);
           
           if (isDisabled) {
-            // Make disabled colors transparent
+            // Make disabled colors transparent (same as createTemplateTiles logic)
             imageData.data[pixelIndex + 3] = 0;
           }
         }
