@@ -181,9 +181,145 @@ const apiManager = new ApiManager(templateManager); // Constructs a new ApiManag
 
 overlayMain.setApiManager(apiManager); // Sets the API manager
 
-const storageTemplates = JSON.parse(GM_getValue('bmTemplates', '{}'));
-console.log(storageTemplates);
-templateManager.importJSON(storageTemplates); // Loads the templates
+// Load templates with fallback system
+async function loadTemplates() {
+  let storageTemplates = {};
+  let storageSource = 'none';
+  
+  // Try TamperMonkey storage first
+  try {
+    if (typeof GM !== 'undefined' && GM.getValue) {
+      const data = await GM.getValue('bmTemplates', '{}');
+      storageTemplates = JSON.parse(data);
+      storageSource = 'TamperMonkey (async)';
+    } else if (typeof GM_getValue !== 'undefined') {
+      const data = GM_getValue('bmTemplates', '{}');
+      storageTemplates = JSON.parse(data);
+      storageSource = 'TamperMonkey (legacy)';
+    }
+  } catch (error) {
+    console.warn('⚠️ TamperMonkey storage load failed:', error);
+    
+    // Fallback to localStorage
+    try {
+      const data = localStorage.getItem('bmTemplates') || '{}';
+      storageTemplates = JSON.parse(data);
+      storageSource = 'localStorage (fallback)';
+    } catch (fallbackError) {
+      console.error('❌ All storage methods failed:', fallbackError);
+      storageTemplates = {};
+      storageSource = 'empty (all failed)';
+    }
+  }
+  
+  console.log(`📂 Templates loaded from: ${storageSource}`);
+  console.log('📦 Storage data:', storageTemplates);
+  
+  // Validate loaded data
+  const templateCount = Object.keys(storageTemplates?.templates || {}).length;
+  
+  if (templateCount === 0 && storageSource !== 'empty (all failed)') {
+    console.warn('⚠️ No templates found but storage source was available');
+    
+    // Try to recover from backup or alternative storage
+    try {
+      // Check if there's a backup in the other storage system
+      let backupData = {};
+      
+      if (storageSource.includes('TamperMonkey')) {
+        // Try localStorage as backup
+        const lsBackup = localStorage.getItem('bmTemplates');
+        if (lsBackup) {
+          backupData = JSON.parse(lsBackup);
+          console.log('🔄 Found backup in localStorage');
+        }
+      } else {
+        // Try TamperMonkey as backup
+        let tmBackup = null;
+        if (typeof GM_getValue !== 'undefined') {
+          tmBackup = GM_getValue('bmTemplates', null);
+        }
+        if (tmBackup) {
+          backupData = JSON.parse(tmBackup);
+          console.log('🔄 Found backup in TamperMonkey storage');
+        }
+      }
+      
+      const backupCount = Object.keys(backupData?.templates || {}).length;
+      if (backupCount > 0) {
+        console.log(`✅ Recovering ${backupCount} templates from backup`);
+        storageTemplates = backupData;
+        // Save recovered data to both storages
+        setTimeout(() => templateManager.updateTemplateWithColorFilter(), 1000);
+      }
+    } catch (recoveryError) {
+      console.error('❌ Recovery failed:', recoveryError);
+    }
+  }
+  
+  templateManager.importJSON(storageTemplates); // Loads the templates
+  
+  if (templateCount > 0) {
+    console.log(`✅ Successfully loaded ${templateCount} templates`);
+  } else {
+    console.log('ℹ️ No templates loaded - start by creating a new template');
+  }
+}
+
+// Storage migration and validation
+async function migrateAndValidateStorage() {
+  try {
+    // Check if we have data in both storages
+    let tmData = null;
+    let lsData = null;
+    let tmTimestamp = 0;
+    let lsTimestamp = 0;
+    
+    // Get TamperMonkey data
+    try {
+      if (typeof GM !== 'undefined' && GM.getValue) {
+        tmData = await GM.getValue('bmTemplates', null);
+        tmTimestamp = await GM.getValue('bmTemplates_timestamp', 0);
+      } else if (typeof GM_getValue !== 'undefined') {
+        tmData = GM_getValue('bmTemplates', null);
+        tmTimestamp = GM_getValue('bmTemplates_timestamp', 0);
+      }
+    } catch (e) { console.warn('TM check failed:', e); }
+    
+    // Get localStorage data
+    try {
+      lsData = localStorage.getItem('bmTemplates');
+      lsTimestamp = parseInt(localStorage.getItem('bmTemplates_timestamp') || '0');
+    } catch (e) { console.warn('LS check failed:', e); }
+    
+    // If we have data in both, use the most recent
+    if (tmData && lsData && tmTimestamp !== lsTimestamp) {
+      console.log(`🔄 Data sync: TM(${new Date(tmTimestamp).toLocaleString()}) vs LS(${new Date(lsTimestamp).toLocaleString()})`);
+      
+      if (tmTimestamp > lsTimestamp) {
+        // TamperMonkey is newer, update localStorage
+        localStorage.setItem('bmTemplates', tmData);
+        localStorage.setItem('bmTemplates_timestamp', tmTimestamp.toString());
+        console.log('✅ Synced localStorage with newer TamperMonkey data');
+      } else {
+        // localStorage is newer, update TamperMonkey
+        if (typeof GM !== 'undefined' && GM.setValue) {
+          await GM.setValue('bmTemplates', lsData);
+          await GM.setValue('bmTemplates_timestamp', lsTimestamp);
+        } else if (typeof GM_setValue !== 'undefined') {
+          GM_setValue('bmTemplates', lsData);
+          GM_setValue('bmTemplates_timestamp', lsTimestamp);
+        }
+        console.log('✅ Synced TamperMonkey with newer localStorage data');
+      }
+    }
+  } catch (error) {
+    console.warn('⚠️ Storage migration failed:', error);
+  }
+}
+
+// Load templates on startup
+Promise.resolve(migrateAndValidateStorage()).then(() => loadTemplates());
 
 buildOverlayMain(); // Builds the main overlay
 

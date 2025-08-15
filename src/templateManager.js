@@ -174,11 +174,40 @@ export default class TemplateManager {
 
   }
 
-  /** Stores the JSON object of the loaded templates into TamperMonkey (GreaseMonkey) storage.
+  /** Stores the JSON object of the loaded templates into storage with fallback system.
+   * Tries TamperMonkey first, falls back to localStorage if that fails.
    * @since 0.72.7
    */
   async #storeTemplates() {
-    GM.setValue('bmTemplates', JSON.stringify(this.templatesJSON));
+    const data = JSON.stringify(this.templatesJSON);
+    const timestamp = Date.now();
+    
+    // Try TamperMonkey storage first
+    try {
+      if (typeof GM !== 'undefined' && GM.setValue) {
+        await GM.setValue('bmTemplates', data);
+        await GM.setValue('bmTemplates_timestamp', timestamp);
+        console.log('✅ Templates stored in TamperMonkey storage');
+        return;
+      } else if (typeof GM_setValue !== 'undefined') {
+        GM_setValue('bmTemplates', data);
+        GM_setValue('bmTemplates_timestamp', timestamp);
+        console.log('✅ Templates stored in TamperMonkey storage (legacy)');
+        return;
+      }
+    } catch (error) {
+      console.warn('⚠️ TamperMonkey storage failed:', error);
+    }
+    
+    // Fallback to localStorage
+    try {
+      localStorage.setItem('bmTemplates', data);
+      localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
+      console.log('✅ Templates stored in localStorage (fallback)');
+    } catch (error) {
+      console.error('❌ All storage methods failed:', error);
+      alert('Erro crítico: Não foi possível salvar templates. Verifique as permissões do navegador.');
+    }
   }
 
   /** Deletes a template from the JSON object.
