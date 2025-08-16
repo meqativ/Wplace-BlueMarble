@@ -808,6 +808,8 @@ function buildColorFilterOverlay() {
     searchInput.type = 'text';
     searchInput.id = 'bm-color-search';
     searchInput.placeholder = 'Search colors by name or RGB (e.g., "red", "255,0,0")...';
+    searchInput.autocomplete = 'off';
+    searchInput.spellcheck = false;
     searchInput.style.cssText = `
       width: 100%;
       padding: 12px 45px 12px 15px;
@@ -819,6 +821,12 @@ function buildColorFilterOverlay() {
       outline: none;
       transition: all 0.2s ease;
       box-sizing: border-box;
+      font-family: inherit;
+      -webkit-user-select: text;
+      -moz-user-select: text;
+      -ms-user-select: text;
+      user-select: text;
+      pointer-events: auto;
     `;
 
     const searchIcon = document.createElement('div');
@@ -907,6 +915,22 @@ function buildColorFilterOverlay() {
       if (!searchInput.value) {
         searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
       }
+    });
+
+    // Prevent any interference with spacebar and other keys
+    searchInput.addEventListener('keydown', (e) => {
+      // Allow all normal typing including spacebar
+      e.stopPropagation();
+    });
+
+    searchInput.addEventListener('keyup', (e) => {
+      // Allow all normal typing including spacebar
+      e.stopPropagation();
+    });
+
+    searchInput.addEventListener('keypress', (e) => {
+      // Allow all normal typing including spacebar
+      e.stopPropagation();
     });
 
     // Clear button functionality
