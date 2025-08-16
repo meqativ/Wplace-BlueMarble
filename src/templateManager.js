@@ -50,6 +50,7 @@ export default class TemplateManager {
     this.encodingBase = '!#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~'; // Characters to use for encoding/decoding
     this.tileSize = 1000; // The number of pixels in a tile. Assumes the tile is square
     this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
+    this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong} (from Storage fork)
     
     // Template
     this.canvasTemplate = null; // Our canvas
@@ -572,6 +573,88 @@ export default class TemplateManager {
       }
     }
 
+    // ==================== PIXEL COUNTING (Storage Fork Logic) ====================
+    // Count painted/wrong/required pixels for this tile
+    if (templatesToDraw.length > 0) {
+      let paintedCount = 0;
+      let wrongCount = 0;
+      let requiredCount = 0;
+      
+      try {
+        // Get tile pixels BEFORE drawing templates (from earlier in function)
+        const currentImageData = context.getImageData(0, 0, drawSize, drawSize);
+        const tilePixels = currentImageData.data;
+        
+        for (const template of templatesToDraw) {
+          // Count pixels using Storage fork logic (center pixels only)
+          const tempW = template.bitmap.width;
+          const tempH = template.bitmap.height;
+          const tempCanvas = document.createElement('canvas');
+          tempCanvas.width = tempW;
+          tempCanvas.height = tempH;
+          const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+          tempCtx.imageSmoothingEnabled = false;
+          tempCtx.drawImage(template.bitmap, 0, 0);
+          const tImg = tempCtx.getImageData(0, 0, tempW, tempH);
+          const tData = tImg.data;
+
+          const offsetX = Number(template.pixelCoords[0]) * this.drawMult;
+          const offsetY = Number(template.pixelCoords[1]) * this.drawMult;
+
+          for (let y = 0; y < tempH; y++) {
+            for (let x = 0; x < tempW; x++) {
+              // Only evaluate the center pixel of each 3x3 block
+              if ((x % this.drawMult) !== 1 || (y % this.drawMult) !== 1) { continue; }
+              
+              const gx = x + offsetX;
+              const gy = y + offsetY;
+              if (gx < 0 || gy < 0 || gx >= drawSize || gy >= drawSize) { continue; }
+              
+              const tIdx = (y * tempW + x) * 4;
+              const tr = tData[tIdx];
+              const tg = tData[tIdx + 1];
+              const tb = tData[tIdx + 2];
+              const ta = tData[tIdx + 3];
+              
+              // Ignore transparent and semi-transparent (deface uses alpha 32)
+              if (ta < 64) { continue; }
+              // Ignore #deface explicitly
+              if (tr === 222 && tg === 250 && tb === 206) { continue; }
+              
+              requiredCount++;
+
+              // Check if pixel is correctly painted on canvas
+              const tileIdx = (gy * drawSize + gx) * 4;
+              const pr = tilePixels[tileIdx];
+              const pg = tilePixels[tileIdx + 1];
+              const pb = tilePixels[tileIdx + 2];
+              const pa = tilePixels[tileIdx + 3];
+
+              if (pa < 64) {
+                // Unpainted -> neither painted nor wrong
+              } else if (pr === tr && pg === tg && pb === tb) {
+                paintedCount++;
+              } else {
+                wrongCount++;
+              }
+            }
+          }
+        }
+        
+        // Store tile progress stats
+        this.tileProgress.set(tileCoords, {
+          painted: paintedCount,
+          required: requiredCount,
+          wrong: wrongCount,
+        });
+        
+        consoleLog(`📊 [Tile Progress] ${tileCoords}: ${paintedCount}/${requiredCount} painted, ${wrongCount} wrong`);
+        
+      } catch (error) {
+        consoleWarn('Failed to compute tile progress stats:', error);
+      }
+    }
+
     // Use compatible blob conversion
     return await new Promise((resolve, reject) => {
       if (canvas.convertToBlob) {
@@ -829,81 +912,61 @@ export default class TemplateManager {
     consoleLog('🎯 [Enhanced Pixel Analysis] Template found:', template.displayName);
     
     try {
-      const colorStats = {};
-      let totalPixelsAnalyzed = 0;
-      let totalPixelsPainted = 0;
-      let totalPixelsNeedCrosshair = 0;
+      // Check if we have tile-based progress data (from Storage fork logic)
+      consoleLog('🔍 [Enhanced Pixel Analysis] Checking tile progress data:', this.tileProgress);
       
-      // Get template canvas element
-      const canvas = document.getElementById(this.canvasTemplateID);
-      if (!canvas) {
-        consoleWarn('🚨 [Enhanced Pixel Analysis] No template canvas found');
+      if (this.tileProgress && this.tileProgress.size > 0) {
+        // Use tile-based analysis like the Storage fork
+        const colorStats = {};
+        
+        // Aggregate painted/wrong across tiles that have been processed
+        let totalPainted = 0;
+        let totalRequired = 0;
+        let totalWrong = 0;
+        
+        for (const [tileKey, stats] of this.tileProgress.entries()) {
+          totalPainted += stats.painted || 0;
+          totalRequired += stats.required || 0;  
+          totalWrong += stats.wrong || 0;
+        }
+        
+        consoleLog(`📊 [Enhanced Pixel Analysis] Aggregated from ${this.tileProgress.size} tiles:`);
+        consoleLog(`   Total painted: ${totalPainted}`);
+        consoleLog(`   Total required: ${totalRequired}`);
+        consoleLog(`   Total wrong: ${totalWrong}`);
+        
+        // Use template's color palette to break down by color
+        if (template.colorPalette) {
+          for (const [colorKey, paletteInfo] of Object.entries(template.colorPalette)) {
+            const colorCount = paletteInfo.count || 0;
+            
+            // Estimate painted pixels for this color proportionally  
+            const proportionOfTemplate = totalRequired > 0 ? colorCount / totalRequired : 0;
+            const paintedForColor = Math.round(totalPainted * proportionOfTemplate);
+            const wrongForColor = Math.round(totalWrong * proportionOfTemplate);
+            
+            colorStats[colorKey] = {
+              totalRequired: colorCount,
+              painted: paintedForColor,
+              needsCrosshair: colorCount - paintedForColor,
+              percentage: colorCount > 0 ? Math.round((paintedForColor / colorCount) * 100) : 0,
+              remaining: colorCount - paintedForColor
+            };
+            
+            consoleLog(`📊 [Enhanced Pixel Analysis] ${colorKey}: ${paintedForColor}/${colorCount} (${colorStats[colorKey].percentage}%) - ${colorStats[colorKey].needsCrosshair} need crosshair`);
+          }
+        }
+        
+        consoleLog('✅ [Enhanced Pixel Analysis] SUMMARY (from tileProgress):');
+        consoleLog(`   Total painted: ${totalPainted}/${totalRequired} (${totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0}%)`);
+        consoleLog(`   Wrong pixels: ${totalWrong}`);
+        
+        return colorStats;
+        
+      } else {
+        consoleWarn('🚨 [Enhanced Pixel Analysis] No tile progress data available - need to wait for tiles to be processed');
         return this.getFallbackSimulatedStats(template);
       }
-      
-      consoleLog('🎯 [Enhanced Pixel Analysis] Found canvas:', canvas.width, 'x', canvas.height);
-      consoleLog('🎯 [Enhanced Pixel Analysis] Template has', Object.keys(template.chunked || {}).length, 'tiles');
-      
-      // Check enhanced colors configuration
-      const hasEnhancedColors = template.enhancedColors && template.enhancedColors.size > 0;
-      consoleLog('🎯 [Enhanced Pixel Analysis] Has enhanced colors:', hasEnhancedColors);
-      if (hasEnhancedColors) {
-        consoleLog('🎯 [Enhanced Pixel Analysis] Enhanced colors:', Array.from(template.enhancedColors));
-      }
-      
-      // Analyze each tile using enhanced mode logic
-      for (const [tileKey, tileBitmap] of Object.entries(template.chunked || {})) {
-        consoleLog(`🔍 [Enhanced Pixel Analysis] Analyzing tile: ${tileKey}`);
-        
-        try {
-          const tileStats = this.analyzeTileWithEnhancedLogic(
-            tileKey, 
-            tileBitmap, 
-            template, 
-            canvas, 
-            hasEnhancedColors
-          );
-          
-          // Merge tile stats into overall stats
-          for (const [colorKey, stats] of Object.entries(tileStats.colorStats)) {
-            if (!colorStats[colorKey]) {
-              colorStats[colorKey] = {
-                totalRequired: 0,
-                painted: 0,
-                needsCrosshair: 0,
-                percentage: 0
-              };
-            }
-            
-            colorStats[colorKey].totalRequired += stats.totalRequired;
-            colorStats[colorKey].painted += stats.painted;
-            colorStats[colorKey].needsCrosshair += stats.needsCrosshair;
-          }
-          
-          totalPixelsAnalyzed += tileStats.totalAnalyzed;
-          totalPixelsPainted += tileStats.totalPainted;
-          totalPixelsNeedCrosshair += tileStats.totalNeedCrosshair;
-          
-        } catch (error) {
-          consoleWarn(`🚨 [Enhanced Pixel Analysis] Failed to analyze tile ${tileKey}:`, error);
-        }
-      }
-      
-      // Calculate final percentages
-      for (const [colorKey, stats] of Object.entries(colorStats)) {
-        stats.percentage = stats.totalRequired > 0 ? 
-          Math.round((stats.painted / stats.totalRequired) * 100) : 0;
-        
-        consoleLog(`📊 [Enhanced Pixel Analysis] ${colorKey}: ${stats.painted}/${stats.totalRequired} (${stats.percentage}%) - ${stats.needsCrosshair} need crosshair`);
-      }
-      
-      consoleLog(`✅ [Enhanced Pixel Analysis] SUMMARY:`);
-      consoleLog(`   Total pixels analyzed: ${totalPixelsAnalyzed}`);
-      consoleLog(`   Total correctly painted: ${totalPixelsPainted}`);
-      consoleLog(`   Total need crosshair: ${totalPixelsNeedCrosshair}`);
-      consoleLog(`   Overall progress: ${totalPixelsAnalyzed > 0 ? Math.round((totalPixelsPainted / totalPixelsAnalyzed) * 100) : 0}%`);
-      
-      return colorStats;
       
     } catch (error) {
       consoleError('❌ [Enhanced Pixel Analysis] Analysis failed:', error);
