@@ -581,9 +581,24 @@ export default class TemplateManager {
       let requiredCount = 0;
       
       try {
-        // Get tile pixels BEFORE drawing templates (from earlier in function)
-        const currentImageData = context.getImageData(0, 0, drawSize, drawSize);
-        const tilePixels = currentImageData.data;
+        // CRITICAL FIX: Use the actual tile blob data (from server)
+        // This represents the real pixels painted on the server, not our template overlay
+        const realTileImageData = context.getImageData(0, 0, drawSize, drawSize);
+        
+        // BUT we need to get this BEFORE we draw the template overlay
+        // Let's get the raw tile data directly from tileBlob parameter
+        const realTileBitmap = await createImageBitmap(tileBlob);
+        const realTileCanvas = document.createElement('canvas');
+        realTileCanvas.width = drawSize;
+        realTileCanvas.height = drawSize;
+        const realTileCtx = realTileCanvas.getContext('2d', { willReadFrequently: true });
+        realTileCtx.imageSmoothingEnabled = false;
+        realTileCtx.clearRect(0, 0, drawSize, drawSize);
+        realTileCtx.drawImage(realTileBitmap, 0, 0, drawSize, drawSize);
+        
+        const tilePixels = realTileCtx.getImageData(0, 0, drawSize, drawSize).data;
+        
+        consoleLog(`🔍 [Real Tile Analysis] Using actual tile data from server: ${realTileBitmap.width}x${realTileBitmap.height}`);
         
         for (const template of templatesToDraw) {
           // Count pixels using Storage fork logic (center pixels only)
@@ -632,10 +647,19 @@ export default class TemplateManager {
 
               if (pa < 64) {
                 // Unpainted -> neither painted nor wrong
+                if (paintedCount + wrongCount < 10) { // Log first 10 pixels
+                  consoleLog(`⚪ [Pixel Analysis] (${gx},${gy}) UNPAINTED: template=${tr},${tg},${tb} vs tile=transparent`);
+                }
               } else if (pr === tr && pg === tg && pb === tb) {
                 paintedCount++;
+                if (paintedCount + wrongCount < 10) { // Log first 10 pixels
+                  consoleLog(`✅ [Pixel Analysis] (${gx},${gy}) CORRECT: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
+                }
               } else {
                 wrongCount++;
+                if (paintedCount + wrongCount < 10) { // Log first 10 pixels
+                  consoleLog(`❌ [Pixel Analysis] (${gx},${gy}) WRONG: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
+                }
               }
             }
           }
