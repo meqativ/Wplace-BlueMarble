@@ -836,7 +836,7 @@ function buildColorFilterOverlay() {
         <div style="width: ${overallProgress}%; height: 100%; background: linear-gradient(90deg, #2196f3, #4caf50); transition: width 0.3s ease;"></div>
       </div>
       <div style="font-size: 0.8em; color: #ffab00; margin-top: 5px;">
-        🎯 ${totalNeedCrosshair.toLocaleString()} pixels need crosshair
+        ${totalNeedCrosshair.toLocaleString()} Pixels Left
       </div>
     `;
 
@@ -1001,7 +1001,7 @@ function buildColorFilterOverlay() {
 
     // Enhanced mode info text
     const enhancedInfo = document.createElement('div');
-    enhancedInfo.textContent = 'Enhanced Mode: Enable Crosshair Highlight';
+    enhancedInfo.textContent = 'Enhanced Mode';
     enhancedInfo.style.cssText = `
       background: #333;
       color: white;
@@ -1038,6 +1038,19 @@ function buildColorFilterOverlay() {
 
     const disableAllButton = document.createElement('button');
     disableAllButton.textContent = 'Disable All';
+    const disableAllEnhancedButton = document.createElement('button');
+    disableAllEnhancedButton.textContent = 'Disable all Enhanced';
+    disableAllEnhancedButton.style.cssText = `
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-left: 8px;
+    `;
+    buttonRow.appendChild(disableAllEnhancedButton);
+
     disableAllButton.style.cssText = `
       background: #f44336;
       border: none;
@@ -1202,13 +1215,8 @@ function buildColorFilterOverlay() {
               ${stats.painted.toLocaleString()}/${stats.totalRequired.toLocaleString()} (${progressPercentage}%)
             </div>
             <div style="color: rgba(255,255,255,0.7); font-size: 0.9em;">
-              ${remainingPixels.toLocaleString()} restantes
+              ${remainingPixels.toLocaleString()} Left
             </div>
-            ${stats.needsCrosshair > 0 ? `
-              <div style="color: #ffab00; font-size: 0.9em; margin-top: 1px;">
-                🎯 ${stats.needsCrosshair.toLocaleString()} crosshair
-              </div>
-            ` : ''}
           </div>
           <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 3px; overflow: hidden;">
             <div style="width: ${progressPercentage}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); transition: width 0.3s ease;"></div>
@@ -1334,6 +1342,23 @@ function buildColorFilterOverlay() {
       } catch (error) {
         consoleError('Error disabling all colors:', error);
         overlayMain.handleDisplayError('Failed to disable all colors');
+      }
+    };
+
+    // Disable all Enhanced: clears enhancedColors set and rebuilds
+    disableAllEnhancedButton.onclick = async () => {
+      try {
+        const tmpl = templateManager.templatesArray?.[0];
+        if (tmpl && tmpl.enhancedColors && tmpl.enhancedColors.size > 0) {
+          tmpl.enhancedColors.clear();
+          // Persist settings
+          await templateManager.saveColorFilterSettings();
+          await refreshTemplateDisplay();
+          buildColorFilterOverlay();
+        }
+      } catch (error) {
+        consoleError('Error disabling all enhanced colors:', error);
+        overlayMain.handleDisplayError('Failed to disable all enhanced colors');
       }
     };
 
