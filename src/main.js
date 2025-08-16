@@ -797,6 +797,125 @@ function buildColorFilterOverlay() {
     instructions.textContent = 'Click on colors to toggle their visibility in the template. Disabled colors will be hidden.';
     instructions.style.cssText = 'margin: 0 0 15px 0; font-size: 0.9em; color: #ccc;';
 
+    // Search box
+    const searchContainer = document.createElement('div');
+    searchContainer.style.cssText = `
+      margin: 0 0 20px 0;
+      position: relative;
+    `;
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.id = 'bm-color-search';
+    searchInput.placeholder = 'Search colors by name or RGB (e.g., "red", "255,0,0")...';
+    searchInput.style.cssText = `
+      width: 100%;
+      padding: 12px 45px 12px 15px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 8px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
+      font-size: 1em;
+      outline: none;
+      transition: all 0.2s ease;
+      box-sizing: border-box;
+    `;
+
+    const searchIcon = document.createElement('div');
+    searchIcon.innerHTML = '🔍';
+    searchIcon.style.cssText = `
+      position: absolute;
+      right: 15px;
+      top: 50%;
+      transform: translateY(-50%);
+      font-size: 1.2em;
+      pointer-events: none;
+    `;
+
+    const searchClearButton = document.createElement('button');
+    searchClearButton.innerHTML = '✕';
+    searchClearButton.style.cssText = `
+      position: absolute;
+      right: 45px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 1.2em;
+      cursor: pointer;
+      padding: 0;
+      width: 20px;
+      height: 20px;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    `;
+
+    searchContainer.appendChild(searchInput);
+    searchContainer.appendChild(searchIcon);
+    searchContainer.appendChild(searchClearButton);
+
+    // Search functionality
+    const performSearch = (searchTerm) => {
+      const term = searchTerm.toLowerCase().trim();
+      const colorItems = colorGrid.querySelectorAll('[data-color-item]');
+      let visibleCount = 0;
+
+      colorItems.forEach(item => {
+        const colorName = item.getAttribute('data-color-name').toLowerCase();
+        const colorRgb = item.getAttribute('data-color-rgb');
+        
+        // Search by name or RGB values
+        const matchesName = colorName.includes(term);
+        const matchesRgb = colorRgb.includes(term);
+        const matchesRgbFormatted = colorRgb.replace(/,/g, ' ').includes(term);
+        
+        if (term === '' || matchesName || matchesRgb || matchesRgbFormatted) {
+          item.style.display = 'flex';
+          visibleCount++;
+        } else {
+          item.style.display = 'none';
+        }
+      });
+
+      // Show/hide clear button
+      if (term) {
+        searchClearButton.style.display = 'flex';
+      } else {
+        searchClearButton.style.display = 'none';
+      }
+
+      // Update search input border color based on results
+      if (term && visibleCount === 0) {
+        searchInput.style.borderColor = '#f44336'; // Red if no results
+      } else {
+        searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)'; // Default
+      }
+    };
+
+    // Search input event listeners
+    searchInput.addEventListener('input', (e) => {
+      performSearch(e.target.value);
+    });
+
+    searchInput.addEventListener('focus', () => {
+      searchInput.style.borderColor = '#2196f3';
+    });
+
+    searchInput.addEventListener('blur', () => {
+      if (!searchInput.value) {
+        searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+      }
+    });
+
+    // Clear button functionality
+    searchClearButton.addEventListener('click', () => {
+      searchInput.value = '';
+      performSearch('');
+      searchInput.focus();
+    });
+
     // Controls
     const controls = document.createElement('div');
     controls.style.cssText = 'margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;';
@@ -860,6 +979,11 @@ function buildColorFilterOverlay() {
       const rgb = colorInfo.rgb;
       const isDisabled = currentTemplate.isColorDisabled(rgb);
       const isEnhanced = currentTemplate.isColorEnhanced ? currentTemplate.isColorEnhanced(rgb) : false;
+      
+      // Add data attributes for search functionality
+      colorItem.setAttribute('data-color-item', 'true');
+      colorItem.setAttribute('data-color-name', colorInfo.name);
+      colorItem.setAttribute('data-color-rgb', rgb.join(','));
       
       colorItem.style.cssText = `
         background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});
@@ -1100,6 +1224,7 @@ function buildColorFilterOverlay() {
     // Assemble overlay
     colorFilterOverlay.appendChild(header);
     colorFilterOverlay.appendChild(instructions);
+    colorFilterOverlay.appendChild(searchContainer);
     colorFilterOverlay.appendChild(controls);
     colorFilterOverlay.appendChild(colorGrid);
     colorFilterOverlay.appendChild(applyButton);
