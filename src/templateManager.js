@@ -688,7 +688,28 @@ export default class TemplateManager {
           wrong: wrongCount,
         });
         
+        // DETAILED ACCURACY DEBUG: Show change from last analysis
+        const lastProgressKey = `lastProgress_${tileX}_${tileY}`;
+        const lastProgress = this[lastProgressKey] || { painted: 0, required: 0, wrong: 0 };
+        const paintedDiff = paintedCount - lastProgress.painted;
+        const wrongDiff = wrongCount - lastProgress.wrong;
+        
+        if (paintedDiff !== 0 || wrongDiff !== 0) {
+          consoleLog(`🎯 [Accuracy Debug] Change detected:`);
+          consoleLog(`   📈 Painted: ${paintedDiff > 0 ? '+' : ''}${paintedDiff} (${lastProgress.painted} → ${paintedCount})`);
+          consoleLog(`   ❌ Wrong: ${wrongDiff > 0 ? '+' : ''}${wrongDiff} (${lastProgress.wrong} → ${wrongCount})`);
+          consoleLog(`   🎨 Net Progress: ${paintedDiff - wrongDiff} pixels`);
+        }
+        
+        // Store current progress for next comparison
+        this[lastProgressKey] = { painted: paintedCount, required: requiredCount, wrong: wrongCount };
+        
         consoleLog(`📊 [Tile Progress] ${tileCoords}: ${paintedCount}/${requiredCount} painted, ${wrongCount} wrong`);
+        
+        // CROSSHAIR COMPARISON DEBUG: Compare with enhanced mode logic
+        const missingPixels = requiredCount - paintedCount;
+        const totalProblems = missingPixels + wrongCount;
+        consoleLog(`🎯 [Crosshair Debug] Missing: ${missingPixels}, Wrong: ${wrongCount}, Total problems: ${totalProblems}`);
         
       } catch (error) {
         consoleWarn('Failed to compute tile progress stats:', error);
