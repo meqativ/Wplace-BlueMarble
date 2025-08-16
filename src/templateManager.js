@@ -834,10 +834,10 @@ export default class TemplateManager {
       let totalPixelsPainted = 0;
       let totalPixelsNeedCrosshair = 0;
       
-      // Get canvas element
-      const canvas = document.querySelector('canvas');
+      // Get template canvas element
+      const canvas = document.getElementById(this.canvasTemplateID);
       if (!canvas) {
-        consoleWarn('🚨 [Enhanced Pixel Analysis] No canvas found on page');
+        consoleWarn('🚨 [Enhanced Pixel Analysis] No template canvas found');
         return this.getFallbackSimulatedStats(template);
       }
       
@@ -925,10 +925,15 @@ export default class TemplateManager {
     const [tileX, tileY, pixelX, pixelY] = coords;
     
     // Calculate canvas position for this tile
-    const canvasX = tileX * this.tileSize + pixelX;
-    const canvasY = tileY * this.tileSize + pixelY;
+    // For template canvas, use direct coordinates (template canvas shows the full template)
+    const canvasX = pixelX - template.coords[2];
+    const canvasY = pixelY - template.coords[3];
     
-    consoleLog(`🔍 [Tile Analysis] Tile position: canvas(${canvasX},${canvasY}), size: ${tileBitmap.width}x${tileBitmap.height}`);
+    consoleLog(`🔍 [Tile Analysis] Tile key: ${tileKey}`);
+    consoleLog(`🔍 [Tile Analysis] Parsed coords: tileX=${tileX}, tileY=${tileY}, pixelX=${pixelX}, pixelY=${pixelY}`);
+    consoleLog(`🔍 [Tile Analysis] Template base coords: (${template.coords[2]}, ${template.coords[3]})`);
+    consoleLog(`🔍 [Tile Analysis] Calculated canvas position: (${canvasX},${canvasY}), tile size: ${tileBitmap.width}x${tileBitmap.height}`);
+    consoleLog(`🔍 [Tile Analysis] Canvas total size: ${canvas.width}x${canvas.height}`);
     
     // Get template bitmap data
     const tempCanvas = document.createElement('canvas');
