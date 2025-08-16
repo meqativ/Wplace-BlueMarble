@@ -612,6 +612,9 @@ export default class TemplateManager {
         
         consoleLog(`🔍 [Real Tile Analysis] Using actual tile data from server: ${drawSize}x${drawSize}`);
         
+        // Prepare per-color breakdown that will be populated from template bitmap comparisons
+        const colorBreakdown = {};
+
         for (const template of templatesToDraw) {
           // Count pixels using Storage fork logic (center pixels only)
           const tempW = template.bitmap.width;
@@ -648,6 +651,12 @@ export default class TemplateManager {
               // Ignore #deface explicitly
               if (tr === 222 && tg === 250 && tb === 206) { continue; }
               
+              // Track required count for this specific template color
+              const colorKey = `${tr},${tg},${tb}`;
+              if (!colorBreakdown[colorKey]) {
+                colorBreakdown[colorKey] = { painted: 0, required: 0, wrong: 0 };
+              }
+              colorBreakdown[colorKey].required++;
               requiredCount++;
 
               // Check if pixel is correctly painted on canvas
@@ -664,59 +673,16 @@ export default class TemplateManager {
                 }
               } else if (pr === tr && pg === tg && pb === tb) {
                 paintedCount++;
+                colorBreakdown[colorKey].painted++;
                 if (paintedCount + wrongCount < 10) { // Log first 10 pixels
                   consoleLog(`✅ [Pixel Analysis] (${gx},${gy}) CORRECT: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
                 }
               } else {
                 wrongCount++;
+                colorBreakdown[colorKey].wrong++;
                 if (paintedCount + wrongCount < 10) { // Log first 10 pixels
                   consoleLog(`❌ [Pixel Analysis] (${gx},${gy}) WRONG: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
                 }
-              }
-            }
-          }
-        }
-        
-        // Store tile progress stats with PER-COLOR breakdown
-        const colorBreakdown = {};
-        
-        // Re-analyze to get per-color stats (more expensive but accurate)
-        for (let gy = 1; gy < drawSize; gy += this.drawMult) {
-          for (let gx = 1; gx < drawSize; gx += this.drawMult) {
-            const templateIndex = (gy * drawSize + gx) * 4;
-            const templateAlpha = tilePixels[templateIndex + 3];
-            
-            if (templateAlpha < 64) continue; // Skip transparent
-            
-            const templateR = tilePixels[templateIndex];
-            const templateG = tilePixels[templateIndex + 1];
-            const templateB = tilePixels[templateIndex + 2];
-            
-            // Skip #deface color
-            if (templateR === 222 && templateG === 250 && templateB === 206) continue;
-            
-            const colorKey = `${templateR},${templateG},${templateB}`;
-            
-            // Initialize color stats if not exists
-            if (!colorBreakdown[colorKey]) {
-              colorBreakdown[colorKey] = { painted: 0, required: 0, wrong: 0 };
-            }
-            
-            colorBreakdown[colorKey].required++;
-            
-            // Check if this specific color pixel is painted correctly
-            const tileIndex = (gy * drawSize + gx) * 4;
-            const tileAlpha = tilePixels[tileIndex + 3];
-            
-            if (tileAlpha > 0) {
-              const tileR = tilePixels[tileIndex];
-              const tileG = tilePixels[tileIndex + 1];
-              const tileB = tilePixels[tileIndex + 2];
-              
-              if (tileR === templateR && tileG === templateG && tileB === templateB) {
-                colorBreakdown[colorKey].painted++;
-              } else {
-                colorBreakdown[colorKey].wrong++;
               }
             }
           }
