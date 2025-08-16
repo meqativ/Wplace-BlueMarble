@@ -583,6 +583,10 @@ export default class TemplateManager {
       
       try {
         // CRITICAL FIX: Use cached tile blob data for consistency
+        // Extract tileX and tileY from tileCoords parameter
+        const coordsParts = tileCoords.split(',');
+        const tileX = parseInt(coordsParts[0]);
+        const tileY = parseInt(coordsParts[1]);
         const tileKey = `${tileX},${tileY}`;
         let tileImageData;
         
