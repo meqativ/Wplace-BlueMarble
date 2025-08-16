@@ -7,7 +7,7 @@
 // @license      MPL-2.0
 // @supportURL   https://discord.gg/tpeBPy46hf
 // @homepageURL  https://github.com/Seris0/Wplace-BlueMarble
-// @icon         https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/072581e6b50bb2a2605045212c1bf2e115a83362/dist/assets/Favicon.png
+// @icon         https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/e592966b9f7264c7db48cc936047804383cf8f12/dist/assets/Favicon.png
 // @updateURL    https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/BlueMarble.user.js
 // @downloadURL  https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/BlueMarble.user.js
 // @run-at       document-start
@@ -16,7 +16,7 @@
 // @grant        GM_addStyle
 // @grant        GM.setValue
 // @grant        GM_getValue
-// @resource     CSS-BM-File https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/072581e6b50bb2a2605045212c1bf2e115a83362/dist/BlueMarble.user.css
+// @resource     CSS-BM-File https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/e592966b9f7264c7db48cc936047804383cf8f12/dist/BlueMarble.user.css
 // ==/UserScript==
 
 // Wplace  --> https://wplace.live
