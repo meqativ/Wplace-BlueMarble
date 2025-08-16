@@ -51,6 +51,7 @@ export default class TemplateManager {
     this.tileSize = 1000; // The number of pixels in a tile. Assumes the tile is square
     this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
     this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong} (from Storage fork)
+    this.tileAnalysisCache = new Map(); // Cache for consistent tile analysis within same refresh
     
     // Template
     this.canvasTemplate = null; // Our canvas
@@ -581,24 +582,35 @@ export default class TemplateManager {
       let requiredCount = 0;
       
       try {
-        // CRITICAL FIX: Use the actual tile blob data (from server)
-        // This represents the real pixels painted on the server, not our template overlay
-        const realTileImageData = context.getImageData(0, 0, drawSize, drawSize);
+        // CRITICAL FIX: Use cached tile blob data for consistency
+        const tileKey = `${tileX},${tileY}`;
+        let tileImageData;
         
-        // BUT we need to get this BEFORE we draw the template overlay
-        // Let's get the raw tile data directly from tileBlob parameter
-        const realTileBitmap = await createImageBitmap(tileBlob);
-        const realTileCanvas = document.createElement('canvas');
-        realTileCanvas.width = drawSize;
-        realTileCanvas.height = drawSize;
-        const realTileCtx = realTileCanvas.getContext('2d', { willReadFrequently: true });
-        realTileCtx.imageSmoothingEnabled = false;
-        realTileCtx.clearRect(0, 0, drawSize, drawSize);
-        realTileCtx.drawImage(realTileBitmap, 0, 0, drawSize, drawSize);
+        if (this.tileAnalysisCache.has(tileKey)) {
+          tileImageData = this.tileAnalysisCache.get(tileKey);
+          consoleLog(`🔄 [Tile Cache] Using cached data for tile ${tileKey}`);
+        } else {
+          // CRITICAL FIX: Use the actual tile blob data (from server)
+          // This represents the real pixels painted on the server, not our template overlay
+          
+          // Get the raw tile data directly from tileBlob parameter
+          const realTileBitmap = await createImageBitmap(tileBlob);
+          const realTileCanvas = document.createElement('canvas');
+          realTileCanvas.width = drawSize;
+          realTileCanvas.height = drawSize;
+          const realTileCtx = realTileCanvas.getContext('2d', { willReadFrequently: true });
+          realTileCtx.imageSmoothingEnabled = false;
+          realTileCtx.clearRect(0, 0, drawSize, drawSize);
+          realTileCtx.drawImage(realTileBitmap, 0, 0, drawSize, drawSize);
+          
+          tileImageData = realTileCtx.getImageData(0, 0, drawSize, drawSize);
+          this.tileAnalysisCache.set(tileKey, tileImageData);
+          consoleLog(`💾 [Tile Cache] Cached data for tile ${tileKey}`);
+        }
         
-        const tilePixels = realTileCtx.getImageData(0, 0, drawSize, drawSize).data;
+        const tilePixels = tileImageData.data;
         
-        consoleLog(`🔍 [Real Tile Analysis] Using actual tile data from server: ${realTileBitmap.width}x${realTileBitmap.height}`);
+        consoleLog(`🔍 [Real Tile Analysis] Using actual tile data from server: ${drawSize}x${drawSize}`);
         
         for (const template of templatesToDraw) {
           // Count pixels using Storage fork logic (center pixels only)
@@ -934,6 +946,10 @@ export default class TemplateManager {
 
     const template = this.templatesArray[templateIndex];
     consoleLog('🎯 [Enhanced Pixel Analysis] Template found:', template.displayName);
+    
+    // Clear analysis cache for fresh calculation
+    this.tileAnalysisCache.clear();
+    consoleLog('🔄 [Enhanced Pixel Analysis] Cache cleared for consistent analysis');
     
     try {
       // Check if we have tile-based progress data (from Storage fork logic)
