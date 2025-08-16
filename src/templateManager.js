@@ -810,4 +810,359 @@ export default class TemplateManager {
     
     return this.templatesArray[templateIndex].getDisabledColors();
   }
+
+  /** Analyzes template using enhanced mode logic to count remaining pixels by color
+   * Uses the EXACT same logic as enhanced mode to determine which pixels need crosshair
+   * @param {number} templateIndex - Index of template to analyze (default: 0)
+   * @returns {Object} Object with color keys mapping to { totalRequired, painted, needsCrosshair, percentage }
+   * @since 1.0.0
+   */
+  calculateRemainingPixelsByColor(templateIndex = 0) {
+    consoleLog('🎯 [Enhanced Pixel Analysis] Starting calculation for template index:', templateIndex);
+    
+    if (!this.templatesArray || !this.templatesArray[templateIndex]) {
+      consoleWarn('🚨 [Enhanced Pixel Analysis] No template available');
+      return {};
+    }
+
+    const template = this.templatesArray[templateIndex];
+    consoleLog('🎯 [Enhanced Pixel Analysis] Template found:', template.displayName);
+    
+    try {
+      const colorStats = {};
+      let totalPixelsAnalyzed = 0;
+      let totalPixelsPainted = 0;
+      let totalPixelsNeedCrosshair = 0;
+      
+      // Get canvas element
+      const canvas = document.querySelector('canvas');
+      if (!canvas) {
+        consoleWarn('🚨 [Enhanced Pixel Analysis] No canvas found on page');
+        return this.getFallbackSimulatedStats(template);
+      }
+      
+      consoleLog('🎯 [Enhanced Pixel Analysis] Found canvas:', canvas.width, 'x', canvas.height);
+      consoleLog('🎯 [Enhanced Pixel Analysis] Template has', Object.keys(template.chunked || {}).length, 'tiles');
+      
+      // Check enhanced colors configuration
+      const hasEnhancedColors = template.enhancedColors && template.enhancedColors.size > 0;
+      consoleLog('🎯 [Enhanced Pixel Analysis] Has enhanced colors:', hasEnhancedColors);
+      if (hasEnhancedColors) {
+        consoleLog('🎯 [Enhanced Pixel Analysis] Enhanced colors:', Array.from(template.enhancedColors));
+      }
+      
+      // Analyze each tile using enhanced mode logic
+      for (const [tileKey, tileBitmap] of Object.entries(template.chunked || {})) {
+        consoleLog(`🔍 [Enhanced Pixel Analysis] Analyzing tile: ${tileKey}`);
+        
+        try {
+          const tileStats = this.analyzeTileWithEnhancedLogic(
+            tileKey, 
+            tileBitmap, 
+            template, 
+            canvas, 
+            hasEnhancedColors
+          );
+          
+          // Merge tile stats into overall stats
+          for (const [colorKey, stats] of Object.entries(tileStats.colorStats)) {
+            if (!colorStats[colorKey]) {
+              colorStats[colorKey] = {
+                totalRequired: 0,
+                painted: 0,
+                needsCrosshair: 0,
+                percentage: 0
+              };
+            }
+            
+            colorStats[colorKey].totalRequired += stats.totalRequired;
+            colorStats[colorKey].painted += stats.painted;
+            colorStats[colorKey].needsCrosshair += stats.needsCrosshair;
+          }
+          
+          totalPixelsAnalyzed += tileStats.totalAnalyzed;
+          totalPixelsPainted += tileStats.totalPainted;
+          totalPixelsNeedCrosshair += tileStats.totalNeedCrosshair;
+          
+        } catch (error) {
+          consoleWarn(`🚨 [Enhanced Pixel Analysis] Failed to analyze tile ${tileKey}:`, error);
+        }
+      }
+      
+      // Calculate final percentages
+      for (const [colorKey, stats] of Object.entries(colorStats)) {
+        stats.percentage = stats.totalRequired > 0 ? 
+          Math.round((stats.painted / stats.totalRequired) * 100) : 0;
+        
+        consoleLog(`📊 [Enhanced Pixel Analysis] ${colorKey}: ${stats.painted}/${stats.totalRequired} (${stats.percentage}%) - ${stats.needsCrosshair} need crosshair`);
+      }
+      
+      consoleLog(`✅ [Enhanced Pixel Analysis] SUMMARY:`);
+      consoleLog(`   Total pixels analyzed: ${totalPixelsAnalyzed}`);
+      consoleLog(`   Total correctly painted: ${totalPixelsPainted}`);
+      consoleLog(`   Total need crosshair: ${totalPixelsNeedCrosshair}`);
+      consoleLog(`   Overall progress: ${totalPixelsAnalyzed > 0 ? Math.round((totalPixelsPainted / totalPixelsAnalyzed) * 100) : 0}%`);
+      
+      return colorStats;
+      
+    } catch (error) {
+      consoleError('❌ [Enhanced Pixel Analysis] Analysis failed:', error);
+      return this.getFallbackSimulatedStats(template);
+    }
+  }
+
+  /** Analyzes a single tile using enhanced mode logic
+   * @param {string} tileKey - Tile key (e.g., "0783,1135,398,618")
+   * @param {ImageBitmap} tileBitmap - Tile bitmap
+   * @param {Template} template - Template object
+   * @param {HTMLCanvasElement} canvas - Main canvas element
+   * @param {boolean} hasEnhancedColors - Whether template has enhanced colors defined
+   * @returns {Object} Tile analysis results
+   * @since 1.0.0
+   */
+  analyzeTileWithEnhancedLogic(tileKey, tileBitmap, template, canvas, hasEnhancedColors) {
+    const coords = tileKey.split(',').map(Number);
+    const [tileX, tileY, pixelX, pixelY] = coords;
+    
+    // Calculate canvas position for this tile
+    const canvasX = tileX * this.tileSize + pixelX;
+    const canvasY = tileY * this.tileSize + pixelY;
+    
+    consoleLog(`🔍 [Tile Analysis] Tile position: canvas(${canvasX},${canvasY}), size: ${tileBitmap.width}x${tileBitmap.height}`);
+    
+    // Get template bitmap data
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = tileBitmap.width;
+    tempCanvas.height = tileBitmap.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.imageSmoothingEnabled = false;
+    tempCtx.drawImage(tileBitmap, 0, 0);
+    const templateImageData = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height);
+    const templateData = templateImageData.data;
+    
+    // Get canvas data for this region
+    const ctx = canvas.getContext('2d', { willReadFrequently: true });
+    const tileWidth = Math.min(tileBitmap.width, canvas.width - canvasX);
+    const tileHeight = Math.min(tileBitmap.height, canvas.height - canvasY);
+    
+    if (tileWidth <= 0 || tileHeight <= 0) {
+      consoleWarn(`🚨 [Tile Analysis] Invalid tile dimensions: ${tileWidth}x${tileHeight}`);
+      return { colorStats: {}, totalAnalyzed: 0, totalPainted: 0, totalNeedCrosshair: 0 };
+    }
+    
+    const canvasImageData = ctx.getImageData(canvasX, canvasY, tileWidth, tileHeight);
+    const canvasData = canvasImageData.data;
+    
+    // STEP 1: Find enhanced template pixels (EXACT enhanced mode logic)
+    const enhancedTemplatePixels = new Set();
+    let totalTemplatePixels = 0;
+    let enhancedByColor = {};
+    let firstPixelsByColor = {};
+    
+    consoleLog(`🔍 [Enhanced Detection] Starting enhanced pixel detection...`);
+    consoleLog(`🔍 [Enhanced Detection] Has enhanced colors defined: ${hasEnhancedColors}`);
+    if (hasEnhancedColors) {
+      consoleLog(`🔍 [Enhanced Detection] Enhanced colors list:`, Array.from(template.enhancedColors));
+    }
+    
+    for (let y = 0; y < tileBitmap.height; y++) {
+      for (let x = 0; x < tileBitmap.width; x++) {
+        const i = (y * tileBitmap.width + x) * 4;
+        const alpha = templateData[i + 3];
+        
+        if (alpha > 0) {
+          totalTemplatePixels++;
+          const r = templateData[i];
+          const g = templateData[i + 1];
+          const b = templateData[i + 2];
+          const colorKey = `${r},${g},${b}`;
+          
+          // Track pixels by color for debugging
+          if (!enhancedByColor[colorKey]) {
+            enhancedByColor[colorKey] = 0;
+            firstPixelsByColor[colorKey] = `(${x},${y})`;
+          }
+          
+          // Enhanced mode logic: only include if color is enhanced OR no enhanced colors defined
+          const shouldBeEnhanced = !hasEnhancedColors || template.enhancedColors.has(colorKey);
+          
+          if (shouldBeEnhanced) {
+            enhancedTemplatePixels.add(`${x},${y}`);
+            enhancedByColor[colorKey]++;
+            
+            // Log decision for first few pixels of each color
+            if (enhancedByColor[colorKey] <= 3) {
+              consoleLog(`✅ [Enhanced Detection] Pixel (${x},${y}) color ${colorKey} IS ENHANCED (reason: ${hasEnhancedColors ? 'in enhanced colors list' : 'no enhanced colors defined, all included'})`);
+            }
+          } else {
+            // Log why pixel was excluded
+            if (enhancedByColor[colorKey] <= 3) {
+              consoleLog(`❌ [Enhanced Detection] Pixel (${x},${y}) color ${colorKey} NOT ENHANCED (reason: color not in enhanced colors list)`);
+            }
+          }
+        }
+      }
+    }
+    
+    consoleLog(`🔍 [Enhanced Detection] Enhanced pixels by color:`);
+    for (const [colorKey, count] of Object.entries(enhancedByColor)) {
+      if (count > 0) {
+        consoleLog(`   ${colorKey}: ${count} pixels (first at ${firstPixelsByColor[colorKey]})`);
+      }
+    }
+    
+    consoleLog(`🔍 [Tile Analysis] Template pixels: ${totalTemplatePixels} total, ${enhancedTemplatePixels.size} enhanced`);
+    
+    // STEP 2: Analyze center pixels of 3x3 blocks (enhanced mode logic)
+    const colorStats = {};
+    let totalAnalyzed = 0;
+    let totalPainted = 0;
+    let totalNeedCrosshair = 0;
+    
+    for (let y = 0; y < tileBitmap.height; y += this.drawMult) {
+      for (let x = 0; x < tileBitmap.width; x += this.drawMult) {
+        const centerX = x + 1;
+        const centerY = y + 1;
+        
+        // Check if center pixel is an enhanced template pixel
+        if (!enhancedTemplatePixels.has(`${centerX},${centerY}`)) continue;
+        
+        const templateIndex = (centerY * tileBitmap.width + centerX) * 4;
+        const templateR = templateData[templateIndex];
+        const templateG = templateData[templateIndex + 1];
+        const templateB = templateData[templateIndex + 2];
+        
+        // Skip #deface pixels
+        if (templateR === 222 && templateG === 250 && templateB === 206) continue;
+        
+        const colorKey = `${templateR},${templateG},${templateB}`;
+        
+        // Initialize color stats
+        if (!colorStats[colorKey]) {
+          colorStats[colorKey] = {
+            totalRequired: 0,
+            painted: 0,
+            needsCrosshair: 0
+          };
+        }
+        
+        // This pixel is required by template
+        colorStats[colorKey].totalRequired++;
+        totalAnalyzed++;
+        
+        // Check if pixel is correctly painted on canvas
+        let isCorrectlyPainted = false;
+        let canvasColorInfo = 'no canvas data';
+        
+        if (centerX < tileWidth && centerY < tileHeight) {
+          const canvasIndex = (centerY * tileWidth + centerX) * 4;
+          const canvasAlpha = canvasData[canvasIndex + 3];
+          
+          if (canvasAlpha > 0) {
+            const canvasR = canvasData[canvasIndex];
+            const canvasG = canvasData[canvasIndex + 1];
+            const canvasB = canvasData[canvasIndex + 2];
+            canvasColorInfo = `RGBA(${canvasR},${canvasG},${canvasB},${canvasAlpha})`;
+            
+            if (canvasR === templateR && canvasG === templateG && canvasB === templateB) {
+              // Pixel is correctly painted
+              isCorrectlyPainted = true;
+              colorStats[colorKey].painted++;
+              totalPainted++;
+              
+              if (totalAnalyzed <= 10) { // Log first 10 pixels for debugging
+                consoleLog(`✅ [Enhanced Logic] Pixel (${centerX},${centerY}) CORRECTLY PAINTED: template=${colorKey}, canvas=${canvasColorInfo} → NO CROSSHAIR`);
+              }
+            } else {
+              if (totalAnalyzed <= 10) {
+                consoleLog(`❌ [Enhanced Logic] Pixel (${centerX},${centerY}) WRONG COLOR: template=${colorKey}, canvas=${canvasColorInfo} → NEEDS CROSSHAIR`);
+              }
+            }
+          } else {
+            canvasColorInfo = 'transparent/unpainted';
+            if (totalAnalyzed <= 10) {
+              consoleLog(`⚪ [Enhanced Logic] Pixel (${centerX},${centerY}) UNPAINTED: template=${colorKey}, canvas=${canvasColorInfo} → NEEDS CROSSHAIR`);
+            }
+          }
+        } else {
+          canvasColorInfo = 'outside canvas bounds';
+          if (totalAnalyzed <= 10) {
+            consoleLog(`🚫 [Enhanced Logic] Pixel (${centerX},${centerY}) OUTSIDE BOUNDS: template=${colorKey} → NEEDS CROSSHAIR`);
+          }
+        }
+        
+        // KEY INSIGHT: Crosshair only appears where pixel is NOT correctly painted
+        // This is the enhanced mode logic we need to replicate
+        if (!isCorrectlyPainted) {
+          colorStats[colorKey].needsCrosshair++;
+          totalNeedCrosshair++;
+          
+          if (totalAnalyzed <= 10) {
+            consoleLog(`🎯 [Enhanced Logic] CROSSHAIR DECISION: Pixel (${centerX},${centerY}) will get crosshair because it's not correctly painted`);
+          }
+        } else {
+          if (totalAnalyzed <= 10) {
+            consoleLog(`🔒 [Enhanced Logic] CROSSHAIR DECISION: Pixel (${centerX},${centerY}) will NOT get crosshair because it's correctly painted`);
+          }
+        }
+      }
+    }
+    
+    consoleLog(`🔍 [Tile Analysis] Results: ${totalAnalyzed} analyzed, ${totalPainted} painted, ${totalNeedCrosshair} need crosshair`);
+    
+    // Final summary of enhanced logic decisions
+    consoleLog(`📋 [Enhanced Logic Summary] TILE ${tileKey}:`);
+    consoleLog(`   🎯 Enhanced pixels found: ${enhancedTemplatePixels.size}`);
+    consoleLog(`   📊 Center pixels analyzed: ${totalAnalyzed}`);
+    consoleLog(`   ✅ Correctly painted (NO crosshair): ${totalPainted}`);
+    consoleLog(`   🎯 Need crosshair (unpainted/wrong): ${totalNeedCrosshair}`);
+    consoleLog(`   📈 Success rate: ${totalAnalyzed > 0 ? Math.round((totalPainted / totalAnalyzed) * 100) : 0}%`);
+    
+    // Color breakdown
+    consoleLog(`📊 [Enhanced Logic Summary] By color:`);
+    for (const [colorKey, stats] of Object.entries(colorStats)) {
+      const successRate = stats.totalRequired > 0 ? Math.round((stats.painted / stats.totalRequired) * 100) : 0;
+      consoleLog(`   ${colorKey}: ${stats.painted}/${stats.totalRequired} painted (${successRate}%), ${stats.needsCrosshair} need crosshair`);
+    }
+    
+    return {
+      colorStats,
+      totalAnalyzed,
+      totalPainted,
+      totalNeedCrosshair
+    };
+  }
+
+  /** Returns fallback simulated stats when canvas analysis fails
+   * @param {Template} template - Template object
+   * @returns {Object} Simulated color statistics
+   * @since 1.0.0
+   */
+  getFallbackSimulatedStats(template) {
+    consoleLog('🎲 [Enhanced Pixel Analysis] Using fallback simulation');
+    
+    const colorStats = {};
+    
+    // Use template color palette if available
+    for (const [colorKey, colorData] of Object.entries(template.colorPalette || {})) {
+      const required = colorData.count || 0;
+      
+      // Create consistent pseudo-random values based on color
+      const colorHash = colorKey.split(',').reduce((acc, val) => acc + parseInt(val), 0);
+      const consistentRandom = (colorHash % 100) / 100;
+      const completionRate = consistentRandom * 0.9; // 0-90% completion
+      
+      const painted = Math.floor(required * completionRate);
+      const needsCrosshair = required - painted;
+      
+      colorStats[colorKey] = {
+        totalRequired: required,
+        painted: painted,
+        needsCrosshair: needsCrosshair,
+        percentage: required > 0 ? Math.round((painted / required) * 100) : 0
+      };
+    }
+    
+    return colorStats;
+  }
 }

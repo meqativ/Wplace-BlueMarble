@@ -734,9 +734,30 @@ function buildColorFilterOverlay() {
     existingOverlay.remove();
   }
 
+  consoleLog('🎯 [Color Filter] Starting color filter overlay build...');
+
   // Import the color palette from utils
   import('./utils.js').then(utils => {
     const colorPalette = utils.colorpalette;
+    
+    // Get enhanced pixel analysis data
+    consoleLog('🎯 [Color Filter] Calculating pixel statistics...');
+    const pixelStats = templateManager.calculateRemainingPixelsByColor();
+    consoleLog('🎯 [Color Filter] Pixel statistics received:', pixelStats);
+    
+    // Calculate overall progress
+    let totalRequired = 0;
+    let totalPainted = 0;
+    let totalNeedCrosshair = 0;
+    
+    for (const stats of Object.values(pixelStats)) {
+      totalRequired += stats.totalRequired || 0;
+      totalPainted += stats.painted || 0;
+      totalNeedCrosshair += stats.needsCrosshair || 0;
+    }
+    
+    const overallProgress = totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0;
+    consoleLog(`🎯 [Color Filter] Overall progress: ${totalPainted}/${totalRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair`);
     
     // Create the color filter overlay
     const colorFilterOverlay = document.createElement('div');
@@ -791,6 +812,33 @@ function buildColorFilterOverlay() {
 
     header.appendChild(title);
     header.appendChild(closeButton);
+
+    // Progress Summary
+    const progressSummary = document.createElement('div');
+    progressSummary.style.cssText = `
+      background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 15px;
+      margin: 15px 0;
+      color: white;
+      text-align: center;
+    `;
+    
+    progressSummary.innerHTML = `
+      <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 8px;">
+        📊 Template Progress: ${overallProgress}%
+      </div>
+      <div style="font-size: 0.9em; color: #ccc; margin-bottom: 10px;">
+        ${totalPainted.toLocaleString()} / ${totalRequired.toLocaleString()} pixels painted
+      </div>
+      <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
+        <div style="width: ${overallProgress}%; height: 100%; background: linear-gradient(90deg, #2196f3, #4caf50); transition: width 0.3s ease;"></div>
+      </div>
+      <div style="font-size: 0.8em; color: #ffab00; margin-top: 5px;">
+        🎯 ${totalNeedCrosshair.toLocaleString()} pixels need crosshair
+      </div>
+    `;
 
     // Instructions
     const instructions = document.createElement('p');
@@ -1135,9 +1183,58 @@ function buildColorFilterOverlay() {
         font-weight: bold;
         z-index: 1;
         position: relative;
+        text-align: center;
+        margin-bottom: 2px;
+      `;
+
+      // Add pixel statistics display
+      const colorKey = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+      const stats = pixelStats[colorKey];
+      const pixelStatsDisplay = document.createElement('div');
+      
+      if (stats && stats.totalRequired > 0) {
+        const progressPercentage = stats.percentage || 0;
+        const remainingPixels = stats.totalRequired - stats.painted;
+        
+        pixelStatsDisplay.innerHTML = `
+          <div style="font-size: 0.65em; color: rgba(255,255,255,0.9); text-shadow: 1px 1px 2px rgba(0,0,0,0.8); line-height: 1.2;">
+            <div style="margin-bottom: 1px;">
+              ${stats.painted.toLocaleString()}/${stats.totalRequired.toLocaleString()} (${progressPercentage}%)
+            </div>
+            <div style="color: rgba(255,255,255,0.7); font-size: 0.9em;">
+              ${remainingPixels.toLocaleString()} restantes
+            </div>
+            ${stats.needsCrosshair > 0 ? `
+              <div style="color: #ffab00; font-size: 0.9em; margin-top: 1px;">
+                🎯 ${stats.needsCrosshair.toLocaleString()} crosshair
+              </div>
+            ` : ''}
+          </div>
+          <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 3px; overflow: hidden;">
+            <div style="width: ${progressPercentage}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); transition: width 0.3s ease;"></div>
+          </div>
+        `;
+        
+        consoleLog(`🎯 [Color Filter] Displaying stats for ${colorInfo.name} (${colorKey}): ${stats.painted}/${stats.totalRequired} (${progressPercentage}%) - ${stats.needsCrosshair} need crosshair`);
+      } else {
+        pixelStatsDisplay.innerHTML = `
+          <div style="font-size: 0.65em; color: rgba(255,255,255,0.6); text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+            Não usado no template
+          </div>
+        `;
+        
+        consoleLog(`🎯 [Color Filter] Color ${colorInfo.name} (${colorKey}) not used in template`);
+      }
+      
+      pixelStatsDisplay.style.cssText = `
+        z-index: 1;
+        position: relative;
+        padding: 2px 4px;
+        text-align: center;
       `;
 
       colorItem.appendChild(colorName);
+      colorItem.appendChild(pixelStatsDisplay);
 
       // Color enable/disable click handler (only on click area, not checkbox)
       colorClickArea.onclick = (e) => {
@@ -1254,6 +1351,26 @@ function buildColorFilterOverlay() {
       width: 100%;
       margin-top: 10px;
     `;
+
+    // Refresh Statistics button
+    const refreshStatsButton = document.createElement('button');
+    refreshStatsButton.textContent = '🔄 Atualizar Estatísticas';
+    refreshStatsButton.style.cssText = `
+      background: #4caf50;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9em;
+      width: 100%;
+      margin-top: 10px;
+    `;
+    
+    refreshStatsButton.onclick = () => {
+      consoleLog('🔄 [Color Filter] Refreshing statistics...');
+      buildColorFilterOverlay(); // Rebuild overlay with fresh data
+    };
     applyButton.onclick = async () => {
       colorFilterOverlay.remove();
       overlayMain.handleDisplayStatus('Applying color filter...');
@@ -1269,10 +1386,12 @@ function buildColorFilterOverlay() {
 
     // Assemble overlay
     colorFilterOverlay.appendChild(header);
+    colorFilterOverlay.appendChild(progressSummary);
     colorFilterOverlay.appendChild(instructions);
     colorFilterOverlay.appendChild(searchContainer);
     colorFilterOverlay.appendChild(controls);
     colorFilterOverlay.appendChild(colorGrid);
+    colorFilterOverlay.appendChild(refreshStatsButton);
     colorFilterOverlay.appendChild(applyButton);
 
     document.body.appendChild(colorFilterOverlay);
