@@ -936,7 +936,17 @@ export default class TemplateManager {
         consoleLog(`   Total wrong: ${totalWrong}`);
         
         // Use template's color palette to break down by color
-        if (template.colorPalette) {
+        consoleLog('🔍 [Enhanced Pixel Analysis] Template colorPalette:', template.colorPalette);
+        consoleLog('🔍 [Enhanced Pixel Analysis] ColorPalette keys:', Object.keys(template.colorPalette || {}));
+        
+        // If no color palette, rebuild it from tile data
+        if (!template.colorPalette || Object.keys(template.colorPalette).length === 0) {
+          consoleLog('🔧 [Enhanced Pixel Analysis] Color palette empty, rebuilding from tiles...');
+          template.colorPalette = this.buildColorPaletteFromTileProgress(template);
+          consoleLog('🔧 [Enhanced Pixel Analysis] Rebuilt palette:', Object.keys(template.colorPalette));
+        }
+        
+        if (template.colorPalette && Object.keys(template.colorPalette).length > 0) {
           for (const [colorKey, paletteInfo] of Object.entries(template.colorPalette)) {
             const colorCount = paletteInfo.count || 0;
             
@@ -1199,6 +1209,64 @@ export default class TemplateManager {
       totalPainted,
       totalNeedCrosshair
     };
+  }
+
+  /** Builds color palette from template tiles (Storage fork style)
+   * @param {Template} template - Template object  
+   * @returns {Object} Color palette with count for each color
+   * @since 1.0.0
+   */
+  buildColorPaletteFromTileProgress(template) {
+    const colorPalette = {};
+    
+    try {
+      // Analyze each tile bitmap to count colors (like Storage fork)
+      for (const [tileKey, tileBitmap] of Object.entries(template.chunked || {})) {
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = tileBitmap.width;
+        tempCanvas.height = tileBitmap.height;
+        const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+        tempCtx.imageSmoothingEnabled = false;
+        tempCtx.drawImage(tileBitmap, 0, 0);
+        const imageData = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height);
+        const data = imageData.data;
+        
+        // Count center pixels only (like Storage fork)
+        for (let y = 0; y < tileBitmap.height; y++) {
+          for (let x = 0; x < tileBitmap.width; x++) {
+            // Only count center pixels of 3x3 blocks
+            if ((x % this.drawMult) !== 1 || (y % this.drawMult) !== 1) { continue; }
+            
+            const idx = (y * tileBitmap.width + x) * 4;
+            const r = data[idx];
+            const g = data[idx + 1];
+            const b = data[idx + 2];
+            const a = data[idx + 3];
+            
+            // Ignore transparent and semi-transparent
+            if (a < 64) { continue; }
+            // Ignore #deface explicitly
+            if (r === 222 && g === 250 && b === 206) { continue; }
+            
+            const colorKey = `${r},${g},${b}`;
+            if (!colorPalette[colorKey]) {
+              colorPalette[colorKey] = { count: 0, enabled: true };
+            }
+            colorPalette[colorKey].count++;
+          }
+        }
+      }
+      
+      consoleLog(`🔧 [Build Palette] Found ${Object.keys(colorPalette).length} colors in tiles`);
+      for (const [colorKey, info] of Object.entries(colorPalette)) {
+        consoleLog(`   ${colorKey}: ${info.count} pixels`);
+      }
+      
+    } catch (error) {
+      consoleWarn('🚨 [Build Palette] Failed to build color palette:', error);
+    }
+    
+    return colorPalette;
   }
 
   /** Returns fallback simulated stats when canvas analysis fails
