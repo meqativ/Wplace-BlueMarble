@@ -51,7 +51,6 @@ export default class TemplateManager {
     this.tileSize = 1000; // The number of pixels in a tile. Assumes the tile is square
     this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
     this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong} (from Storage fork)
-    this.tileAnalysisCache = new Map(); // Cache for consistent tile analysis within same refresh
     
     // Template
     this.canvasTemplate = null; // Our canvas
@@ -582,7 +581,7 @@ export default class TemplateManager {
       let requiredCount = 0;
       
       try {
-        // CRITICAL FIX: Use cached tile blob data for consistency
+        // CRITICAL FIX: Always use fresh tile blob data (no cache for pixel analysis)
         // Extract tileX and tileY from tileCoords parameter
         const coordsParts = tileCoords.split(',');
         const tileX = parseInt(coordsParts[0]);
@@ -590,10 +589,8 @@ export default class TemplateManager {
         const tileKey = `${tileX},${tileY}`;
         let tileImageData;
         
-        if (this.tileAnalysisCache.has(tileKey)) {
-          tileImageData = this.tileAnalysisCache.get(tileKey);
-          consoleLog(`🔄 [Tile Cache] Using cached data for tile ${tileKey}`);
-        } else {
+        // ALWAYS get fresh data for accurate pixel counting
+        {
           // CRITICAL FIX: Use the actual tile blob data (from server)
           // This represents the real pixels painted on the server, not our template overlay
           
@@ -608,8 +605,7 @@ export default class TemplateManager {
           realTileCtx.drawImage(realTileBitmap, 0, 0, drawSize, drawSize);
           
           tileImageData = realTileCtx.getImageData(0, 0, drawSize, drawSize);
-          this.tileAnalysisCache.set(tileKey, tileImageData);
-          consoleLog(`💾 [Tile Cache] Cached data for tile ${tileKey}`);
+          consoleLog(`🔄 [Fresh Analysis] Using fresh tile data for ${tileKey}`);
         }
         
         const tilePixels = tileImageData.data;
@@ -681,11 +677,56 @@ export default class TemplateManager {
           }
         }
         
-        // Store tile progress stats
+        // Store tile progress stats with PER-COLOR breakdown
+        const colorBreakdown = {};
+        
+        // Re-analyze to get per-color stats (more expensive but accurate)
+        for (let gy = 1; gy < drawSize; gy += this.drawMult) {
+          for (let gx = 1; gx < drawSize; gx += this.drawMult) {
+            const templateIndex = (gy * drawSize + gx) * 4;
+            const templateAlpha = tilePixels[templateIndex + 3];
+            
+            if (templateAlpha < 64) continue; // Skip transparent
+            
+            const templateR = tilePixels[templateIndex];
+            const templateG = tilePixels[templateIndex + 1];
+            const templateB = tilePixels[templateIndex + 2];
+            
+            // Skip #deface color
+            if (templateR === 222 && templateG === 250 && templateB === 206) continue;
+            
+            const colorKey = `${templateR},${templateG},${templateB}`;
+            
+            // Initialize color stats if not exists
+            if (!colorBreakdown[colorKey]) {
+              colorBreakdown[colorKey] = { painted: 0, required: 0, wrong: 0 };
+            }
+            
+            colorBreakdown[colorKey].required++;
+            
+            // Check if this specific color pixel is painted correctly
+            const tileIndex = (gy * drawSize + gx) * 4;
+            const tileAlpha = tilePixels[tileIndex + 3];
+            
+            if (tileAlpha > 0) {
+              const tileR = tilePixels[tileIndex];
+              const tileG = tilePixels[tileIndex + 1];
+              const tileB = tilePixels[tileIndex + 2];
+              
+              if (tileR === templateR && tileG === templateG && tileB === templateB) {
+                colorBreakdown[colorKey].painted++;
+              } else {
+                colorBreakdown[colorKey].wrong++;
+              }
+            }
+          }
+        }
+        
         this.tileProgress.set(tileCoords, {
           painted: paintedCount,
           required: requiredCount,
           wrong: wrongCount,
+          colorBreakdown: colorBreakdown // NEW: Per-color detailed stats
         });
         
         // DETAILED ACCURACY DEBUG: Show change from last analysis
@@ -972,9 +1013,8 @@ export default class TemplateManager {
     const template = this.templatesArray[templateIndex];
     consoleLog('🎯 [Enhanced Pixel Analysis] Template found:', template.displayName);
     
-    // Clear analysis cache for fresh calculation
-    this.tileAnalysisCache.clear();
-    consoleLog('🔄 [Enhanced Pixel Analysis] Cache cleared for consistent analysis');
+          // Using fresh tile data for accurate analysis (no cache)
+      consoleLog('🔄 [Enhanced Pixel Analysis] Using fresh tile analysis for accuracy');
     
     try {
       // Check if we have tile-based progress data (from Storage fork logic)
@@ -984,21 +1024,35 @@ export default class TemplateManager {
         // Use tile-based analysis like the Storage fork
         const colorStats = {};
         
-        // Aggregate painted/wrong across tiles that have been processed
+        // Aggregate painted/wrong across tiles - WITH REAL PER-COLOR STATS
         let totalPainted = 0;
         let totalRequired = 0;
         let totalWrong = 0;
+        const realColorStats = {}; // Real per-color statistics from tile analysis
         
         for (const [tileKey, stats] of this.tileProgress.entries()) {
           totalPainted += stats.painted || 0;
           totalRequired += stats.required || 0;  
           totalWrong += stats.wrong || 0;
+          
+          // NEW: Aggregate real per-color stats from this tile
+          if (stats.colorBreakdown) {
+            for (const [colorKey, colorData] of Object.entries(stats.colorBreakdown)) {
+              if (!realColorStats[colorKey]) {
+                realColorStats[colorKey] = { painted: 0, required: 0, wrong: 0 };
+              }
+              realColorStats[colorKey].painted += colorData.painted;
+              realColorStats[colorKey].required += colorData.required;
+              realColorStats[colorKey].wrong += colorData.wrong;
+            }
+          }
         }
         
         consoleLog(`📊 [Enhanced Pixel Analysis] Aggregated from ${this.tileProgress.size} tiles:`);
         consoleLog(`   Total painted: ${totalPainted}`);
         consoleLog(`   Total required: ${totalRequired}`);
         consoleLog(`   Total wrong: ${totalWrong}`);
+        consoleLog(`🎨 [Real Color Stats] Found ${Object.keys(realColorStats).length} colors with precise data`);
         
         // Use template's color palette to break down by color
         consoleLog('🔍 [Enhanced Pixel Analysis] Template colorPalette:', template.colorPalette);
@@ -1015,20 +1069,36 @@ export default class TemplateManager {
           for (const [colorKey, paletteInfo] of Object.entries(template.colorPalette)) {
             const colorCount = paletteInfo.count || 0;
             
-            // Estimate painted pixels for this color proportionally  
-            const proportionOfTemplate = totalRequired > 0 ? colorCount / totalRequired : 0;
-            const paintedForColor = Math.round(totalPainted * proportionOfTemplate);
-            const wrongForColor = Math.round(totalWrong * proportionOfTemplate);
+            // Use REAL color data if available, otherwise fall back to proportional
+            let paintedForColor, wrongForColor, needsCrosshair, percentage;
+            
+            if (realColorStats[colorKey]) {
+              // Use PRECISE data from per-color tile analysis
+              paintedForColor = realColorStats[colorKey].painted;
+              wrongForColor = realColorStats[colorKey].wrong;
+              needsCrosshair = realColorStats[colorKey].required - paintedForColor;
+              percentage = realColorStats[colorKey].required > 0 ? 
+                Math.round((paintedForColor / realColorStats[colorKey].required) * 100) : 0;
+              
+              consoleLog(`🎯 [REAL DATA] ${colorKey}: ${paintedForColor}/${realColorStats[colorKey].required} (${percentage}%) - ${needsCrosshair} need crosshair`);
+            } else {
+              // Fall back to proportional estimation for colors without real data
+              const proportionOfTemplate = totalRequired > 0 ? colorCount / totalRequired : 0;
+              paintedForColor = Math.round(totalPainted * proportionOfTemplate);
+              wrongForColor = Math.round(totalWrong * proportionOfTemplate);
+              needsCrosshair = colorCount - paintedForColor;
+              percentage = colorCount > 0 ? Math.round((paintedForColor / colorCount) * 100) : 0;
+              
+              consoleLog(`📊 [ESTIMATED] ${colorKey}: ${paintedForColor}/${colorCount} (${percentage}%) - ${needsCrosshair} need crosshair`);
+            }
             
             colorStats[colorKey] = {
-              totalRequired: colorCount,
+              totalRequired: realColorStats[colorKey] ? realColorStats[colorKey].required : colorCount,
               painted: paintedForColor,
-              needsCrosshair: colorCount - paintedForColor,
-              percentage: colorCount > 0 ? Math.round((paintedForColor / colorCount) * 100) : 0,
-              remaining: colorCount - paintedForColor
+              needsCrosshair: Math.max(0, needsCrosshair),
+              percentage: percentage,
+              remaining: Math.max(0, needsCrosshair)
             };
-            
-            consoleLog(`📊 [Enhanced Pixel Analysis] ${colorKey}: ${paintedForColor}/${colorCount} (${colorStats[colorKey].percentage}%) - ${colorStats[colorKey].needsCrosshair} need crosshair`);
           }
         }
         
