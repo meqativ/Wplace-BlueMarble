@@ -918,11 +918,18 @@ function buildColorFilterOverlay() {
 
     // Controls
     const controls = document.createElement('div');
-    controls.style.cssText = 'margin-bottom: 20px; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;';
+    controls.style.cssText = `
+      margin-bottom: 20px; 
+      display: flex; 
+      gap: 10px; 
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: nowrap;
+    `;
 
     // Enhanced mode info text
     const enhancedInfo = document.createElement('div');
-    enhancedInfo.textContent = 'Enhanced Mode: Select individual colors below';
+    enhancedInfo.textContent = 'Enhanced Mode: Enable Crosshair Highlight';
     enhancedInfo.style.cssText = `
       background: #333;
       color: white;
@@ -931,6 +938,17 @@ function buildColorFilterOverlay() {
       font-size: 0.9em;
       font-weight: bold;
       text-align: center;
+      flex: 1;
+      min-width: 0;
+      margin-right: auto;
+    `;
+
+    // Buttons container to keep them together
+    const buttonsContainer = document.createElement('div');
+    buttonsContainer.style.cssText = `
+      display: flex;
+      gap: 10px;
+      flex-shrink: 0;
     `;
 
     const enableAllButton = document.createElement('button');
@@ -943,6 +961,7 @@ function buildColorFilterOverlay() {
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9em;
+      white-space: nowrap;
     `;
 
     const disableAllButton = document.createElement('button');
@@ -955,11 +974,14 @@ function buildColorFilterOverlay() {
       border-radius: 6px;
       cursor: pointer;
       font-size: 0.9em;
+      white-space: nowrap;
     `;
 
+    buttonsContainer.appendChild(enableAllButton);
+    buttonsContainer.appendChild(disableAllButton);
+    
     controls.appendChild(enhancedInfo);
-    controls.appendChild(enableAllButton);
-    controls.appendChild(disableAllButton);
+    controls.appendChild(buttonsContainer);
 
     // Color grid
     const colorGrid = document.createElement('div');
