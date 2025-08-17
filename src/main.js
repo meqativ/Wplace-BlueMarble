@@ -713,12 +713,12 @@ function buildOverlayMain() {
         }
       }).buildElement()
       .buildElement()
+      .buildElement()
       .addButton({'id': 'bm-button-color-filter', innerHTML: icons.colorFilterIcon + 'Color Filter'}, (instance, button) => {
         button.onclick = () => {
           buildColorFilterOverlay();
         }
       }).buildElement()
-      .buildElement()
       .addTextarea({'id': overlayMain.outputStatusId, 'placeholder': `Status: Sleeping...\nVersion: ${version}`, 'readOnly': true}).buildElement()
       .addDiv({'id': 'bm-contain-buttons-action'})
         .addDiv()
