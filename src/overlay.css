@@ -181,10 +181,10 @@ div:has(> #bm-button-teleport) {
 #bm-contain-coords input[type="number"] {
   appearance: auto;
   -moz-appearance: textfield;
-  width: 5.5ch;
-  margin-left: 1ch;
+  width: 4ch;
+  margin-left: 0.5ch;
   background-color: rgba(0, 0, 0, 0.2);
-  padding: 0 0.5ch;
+  padding: 0 0.3ch;
   font-size: small;
 }
 
