@@ -518,17 +518,19 @@ export default class Template {
             );
             
             if (hasEnhancedNeighbor) {
-              // Orthogonal neighbors: Red crosshair center
-              data[i] = 255;     // Red
-              data[i + 1] = 0;   // Green
-              data[i + 2] = 0;   // Blue
-              data[i + 3] = 180; // Semi-transparent
+              // Orthogonal neighbors: User-configured crosshair center
+              const crosshairColor = this.getCrosshairColor();
+              data[i] = crosshairColor.rgb[0];
+              data[i + 1] = crosshairColor.rgb[1];
+              data[i + 2] = crosshairColor.rgb[2];
+              data[i + 3] = crosshairColor.alpha;
             } else if (hasEnhancedDiagonal) {
-              // Diagonal neighbors: Blue crosshair corners
-              data[i] = 0;       // Red
-              data[i + 1] = 0;   // Green
-              data[i + 2] = 255; // Blue
-              data[i + 3] = 120; // More transparent
+              // Diagonal neighbors: Dimmer version of crosshair color
+              const crosshairColor = this.getCrosshairColor();
+              data[i] = Math.floor(crosshairColor.rgb[0] * 0.6);     // Dimmer
+              data[i + 1] = Math.floor(crosshairColor.rgb[1] * 0.6); // Dimmer
+              data[i + 2] = Math.floor(crosshairColor.rgb[2] * 0.6); // Dimmer
+              data[i + 3] = Math.floor(crosshairColor.alpha * 0.67); // More transparent
             }
           }
         }
@@ -556,5 +558,32 @@ export default class Template {
   invalidateEnhancedCache() {
     this.enhancedCacheValid = false;
     this.enhancedTilesCache.clear();
+  }
+
+  /** Gets the saved crosshair color from storage
+   * @returns {Object} The crosshair color configuration
+   * @since 1.0.0 
+   */
+  getCrosshairColor() {
+    try {
+      // Try TamperMonkey storage first
+      if (typeof GM_getValue !== 'undefined') {
+        const saved = GM_getValue('bmCrosshairColor', null);
+        if (saved) return JSON.parse(saved);
+      }
+      
+      // Fallback to localStorage
+      const saved = localStorage.getItem('bmCrosshairColor');
+      if (saved) return JSON.parse(saved);
+    } catch (error) {
+      console.warn('Failed to load crosshair color:', error);
+    }
+    
+    // Default red color
+    return {
+      name: 'Vermelho',
+      rgb: [255, 0, 0],
+      alpha: 180
+    };
   }
 }

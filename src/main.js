@@ -865,7 +865,27 @@ function buildColorFilterOverlay() {
     `;
     closeButton.onclick = () => colorFilterOverlay.remove();
 
+    // Settings button 
+    const settingsButton = document.createElement('button');
+    settingsButton.innerHTML = icons.settingsIcon;
+    settingsButton.style.cssText = `
+      background: #6c757d;
+      border: none;
+      color: white;
+      width: 30px;
+      height: 30px;
+      border-radius: 50%;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 8px;
+    `;
+    settingsButton.onclick = () => buildCrosshairSettingsOverlay();
+
     header.appendChild(title);
+    header.appendChild(settingsButton);
     header.appendChild(closeButton);
 
     // Progress Summary
@@ -1566,4 +1586,401 @@ async function refreshTemplateDisplay() {
   } else {
     consoleWarn('No templates available to refresh');
   }
+}
+
+/** Gets the saved crosshair color from storage
+ * @returns {Object} The crosshair color configuration
+ * @since 1.0.0 
+ */
+function getCrosshairColor() {
+  try {
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairColor', null);
+      if (saved) return JSON.parse(saved);
+    }
+    
+    // Fallback to localStorage
+    const saved = localStorage.getItem('bmCrosshairColor');
+    if (saved) return JSON.parse(saved);
+  } catch (error) {
+    consoleWarn('Failed to load crosshair color:', error);
+  }
+  
+  // Default red color
+  return {
+    name: 'Vermelho',
+    rgb: [255, 0, 0],
+    alpha: 180
+  };
+}
+
+/** Saves the crosshair color to storage
+ * @param {Object} colorConfig - The color configuration to save
+ * @since 1.0.0
+ */
+function saveCrosshairColor(colorConfig) {
+  try {
+    const colorString = JSON.stringify(colorConfig);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairColor', colorString);
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairColor', colorString);
+    
+    consoleLog('Crosshair color saved:', colorConfig);
+  } catch (error) {
+    consoleError('Failed to save crosshair color:', error);
+  }
+}
+
+/** Builds and displays the crosshair settings overlay
+ * @since 1.0.0
+ */
+function buildCrosshairSettingsOverlay() {
+  // Remove existing settings overlay if it exists
+  const existingOverlay = document.getElementById('bm-crosshair-settings-overlay');
+  if (existingOverlay) {
+    existingOverlay.remove();
+  }
+
+  // Get current crosshair color
+  const currentColor = getCrosshairColor();
+
+  // Predefined color options
+  const colorOptions = [
+    { name: 'Vermelho', rgb: [255, 0, 0], alpha: 180 },
+    { name: 'Azul', rgb: [64, 147, 228], alpha: 180 },
+    { name: 'Verde', rgb: [19, 230, 123], alpha: 180 },
+    { name: 'Roxo', rgb: [170, 56, 185], alpha: 180 },
+    { name: 'Amarelo', rgb: [249, 221, 59], alpha: 180 },
+    { name: 'Laranja', rgb: [255, 127, 39], alpha: 180 },
+    { name: 'Ciano', rgb: [96, 247, 242], alpha: 180 },
+    { name: 'Rosa', rgb: [236, 31, 128], alpha: 180 }
+  ];
+
+  // Create the settings overlay
+  const settingsOverlay = document.createElement('div');
+  settingsOverlay.id = 'bm-crosshair-settings-overlay';
+  settingsOverlay.style.cssText = `
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: rgba(21, 48, 99, 0.95);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    z-index: 9002;
+    max-width: 500px;
+    max-height: 70vh;
+    overflow-y: auto;
+    font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+    border: 2px solid rgba(255, 255, 255, 0.1);
+  `;
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+    padding-bottom: 10px;
+    cursor: move;
+    user-select: none;
+  `;
+
+  const title = document.createElement('h2');
+  title.textContent = 'Configurações do Crosshair';
+  title.style.cssText = `
+    margin: 0; 
+    font-size: 1.3em; 
+    font-weight: bold;
+    font-family: 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+    text-align: center;
+    flex: 1;
+    pointer-events: none;
+    letter-spacing: 0.4px;
+  `;
+
+  const closeButton = document.createElement('button');
+  closeButton.textContent = '✕';
+  closeButton.style.cssText = `
+    background: #d32f2f;
+    border: none;
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  `;
+  closeButton.onclick = () => settingsOverlay.remove();
+
+  header.appendChild(title);
+  header.appendChild(closeButton);
+
+  // Instructions
+  const instructions = document.createElement('p');
+  instructions.textContent = 'Selecione a cor do crosshair que aparece nos pixels destacados dos templates:';
+  instructions.style.cssText = 'margin: 0 0 20px 0; font-size: 0.9em; color: #ccc; text-align: center;';
+
+  // Current color preview
+  const currentColorPreview = document.createElement('div');
+  currentColorPreview.style.cssText = `
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    text-align: center;
+  `;
+
+  const previewLabel = document.createElement('div');
+  previewLabel.textContent = 'Cor Atual:';
+  previewLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 8px; color: #ccc;';
+
+  const previewColor = document.createElement('div');
+  previewColor.id = 'bm-current-color-preview';
+  previewColor.style.cssText = `
+    width: 40px;
+    height: 40px;
+    background: rgba(${currentColor.rgb[0]}, ${currentColor.rgb[1]}, ${currentColor.rgb[2]}, ${currentColor.alpha / 255});
+    border: 2px solid white;
+    border-radius: 50%;
+    margin: 0 auto 8px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  `;
+
+  const previewName = document.createElement('div');
+  previewName.id = 'bm-current-color-name';
+  previewName.textContent = currentColor.name;
+  previewName.style.cssText = 'font-weight: bold; font-size: 1em;';
+
+  currentColorPreview.appendChild(previewLabel);
+  currentColorPreview.appendChild(previewColor);
+  currentColorPreview.appendChild(previewName);
+
+  // Color grid
+  const colorGrid = document.createElement('div');
+  colorGrid.style.cssText = `
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  `;
+
+  // Create color option buttons
+  colorOptions.forEach((color) => {
+    const colorOption = document.createElement('button');
+    const isSelected = JSON.stringify(color.rgb) === JSON.stringify(currentColor.rgb);
+    
+    colorOption.style.cssText = `
+      background: rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${color.alpha / 255});
+      border: 3px solid ${isSelected ? '#fff' : 'rgba(255, 255, 255, 0.3)'};
+      border-radius: 8px;
+      padding: 15px 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      position: relative;
+      min-height: 80px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    `;
+
+    // Color name
+    const colorName = document.createElement('div');
+    colorName.textContent = color.name;
+    colorName.style.cssText = `
+      font-size: 0.9em;
+      font-weight: bold;
+      color: white;
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      text-align: center;
+    `;
+
+    // RGB values
+    const rgbText = document.createElement('div');
+    rgbText.textContent = `RGB(${color.rgb.join(', ')})`;
+    rgbText.style.cssText = `
+      font-size: 0.7em;
+      color: rgba(255, 255, 255, 0.8);
+      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+    `;
+
+    // Selection indicator
+    if (isSelected) {
+      const checkmark = document.createElement('div');
+      checkmark.textContent = '✓';
+      checkmark.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2em;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      `;
+      colorOption.appendChild(checkmark);
+    }
+
+    colorOption.appendChild(colorName);
+    colorOption.appendChild(rgbText);
+
+    // Click handler
+    colorOption.onclick = () => {
+      saveCrosshairColor(color);
+      
+      // Update preview
+      document.getElementById('bm-current-color-preview').style.background = 
+        `rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${color.alpha / 255})`;
+      document.getElementById('bm-current-color-name').textContent = color.name;
+      
+      // Remove overlay and refresh templates
+      settingsOverlay.remove();
+      overlayMain.handleDisplayStatus(`Cor do crosshair alterada para ${color.name}!`);
+      
+      // Refresh template display to apply new color
+      refreshTemplateDisplay().catch(error => {
+        consoleError('Error applying new crosshair color:', error);
+      });
+    };
+
+    // Hover effects
+    colorOption.addEventListener('mouseenter', () => {
+      if (!isSelected) {
+        colorOption.style.border = '3px solid rgba(255, 255, 255, 0.7)';
+        colorOption.style.transform = 'scale(1.05)';
+      }
+    });
+
+    colorOption.addEventListener('mouseleave', () => {
+      if (!isSelected) {
+        colorOption.style.border = '3px solid rgba(255, 255, 255, 0.3)';
+        colorOption.style.transform = 'scale(1)';
+      }
+    });
+
+    colorGrid.appendChild(colorOption);
+  });
+
+  // Alpha slider section
+  const alphaSection = document.createElement('div');
+  alphaSection.style.cssText = `
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+  `;
+
+  const alphaLabel = document.createElement('div');
+  alphaLabel.textContent = 'Transparência do Crosshair:';
+  alphaLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+
+  const alphaSlider = document.createElement('input');
+  alphaSlider.type = 'range';
+  alphaSlider.min = '50';
+  alphaSlider.max = '255';
+  alphaSlider.value = currentColor.alpha.toString();
+  alphaSlider.style.cssText = `
+    width: 100%;
+    margin: 10px 0;
+  `;
+
+  const alphaValue = document.createElement('div');
+  alphaValue.textContent = `${Math.round((currentColor.alpha / 255) * 100)}%`;
+  alphaValue.style.cssText = 'text-align: center; font-weight: bold;';
+
+  alphaSlider.oninput = () => {
+    const alpha = parseInt(alphaSlider.value);
+    alphaValue.textContent = `${Math.round((alpha / 255) * 100)}%`;
+    
+    // Update current color with new alpha
+    const updatedColor = { ...currentColor, alpha };
+    document.getElementById('bm-current-color-preview').style.background = 
+      `rgba(${updatedColor.rgb[0]}, ${updatedColor.rgb[1]}, ${updatedColor.rgb[2]}, ${alpha / 255})`;
+  };
+
+  alphaSlider.onchange = () => {
+    const alpha = parseInt(alphaSlider.value);
+    const updatedColor = { ...currentColor, alpha };
+    saveCrosshairColor(updatedColor);
+    overlayMain.handleDisplayStatus('Transparência do crosshair atualizada!');
+    
+    // Refresh template display
+    refreshTemplateDisplay().catch(error => {
+      consoleError('Error applying new crosshair alpha:', error);
+    });
+  };
+
+  alphaSection.appendChild(alphaLabel);
+  alphaSection.appendChild(alphaSlider);
+  alphaSection.appendChild(alphaValue);
+
+  // Assemble overlay
+  settingsOverlay.appendChild(header);
+  settingsOverlay.appendChild(instructions);
+  settingsOverlay.appendChild(currentColorPreview);
+  settingsOverlay.appendChild(colorGrid);
+  settingsOverlay.appendChild(alphaSection);
+
+  document.body.appendChild(settingsOverlay);
+
+  // Add drag functionality
+  let isDragging = false;
+  let dragStartX = 0;
+  let dragStartY = 0;
+  let initialLeft = 0;
+  let initialTop = 0;
+
+  header.addEventListener('mousedown', (e) => {
+    isDragging = true;
+    dragStartX = e.clientX;
+    dragStartY = e.clientY;
+    
+    const rect = settingsOverlay.getBoundingClientRect();
+    initialLeft = rect.left;
+    initialTop = rect.top;
+    
+    settingsOverlay.style.position = 'fixed';
+    settingsOverlay.style.transform = 'none';
+    settingsOverlay.style.left = initialLeft + 'px';
+    settingsOverlay.style.top = initialTop + 'px';
+    
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDragging) return;
+    
+    const deltaX = e.clientX - dragStartX;
+    const deltaY = e.clientY - dragStartY;
+    
+    const newLeft = initialLeft + deltaX;
+    const newTop = initialTop + deltaY;
+    
+    const maxLeft = window.innerWidth - settingsOverlay.offsetWidth;
+    const maxTop = window.innerHeight - settingsOverlay.offsetHeight;
+    
+    const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+    const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+    
+    settingsOverlay.style.left = clampedLeft + 'px';
+    settingsOverlay.style.top = clampedTop + 'px';
+  });
+
+  document.addEventListener('mouseup', () => {
+    isDragging = false;
+  });
 }

@@ -554,14 +554,18 @@ export default class TemplateManager {
                   
                   if (skipPainted) continue;
                   
-                  // Apply red crosshair
-                  data[i] = 255; data[i + 1] = 0; data[i + 2] = 0; data[i + 3] = 180;
+                  // Apply crosshair with user-configured color
+                  const crosshairColor = this.getCrosshairColor();
+                  data[i] = crosshairColor.rgb[0]; 
+                  data[i + 1] = crosshairColor.rgb[1]; 
+                  data[i + 2] = crosshairColor.rgb[2]; 
+                  data[i + 3] = crosshairColor.alpha;
                   crosshairCenterCount++;
                 }
               }
             }
             
-            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} red crosshairs (FAST MODE)`);
+            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} crosshairs (FAST MODE)`);
           }
         }
         
@@ -1401,5 +1405,32 @@ export default class TemplateManager {
     }
     
     return colorStats;
+  }
+
+  /** Gets the saved crosshair color from storage
+   * @returns {Object} The crosshair color configuration
+   * @since 1.0.0 
+   */
+  getCrosshairColor() {
+    try {
+      // Try TamperMonkey storage first
+      if (typeof GM_getValue !== 'undefined') {
+        const saved = GM_getValue('bmCrosshairColor', null);
+        if (saved) return JSON.parse(saved);
+      }
+      
+      // Fallback to localStorage
+      const saved = localStorage.getItem('bmCrosshairColor');
+      if (saved) return JSON.parse(saved);
+    } catch (error) {
+      console.warn('Failed to load crosshair color:', error);
+    }
+    
+    // Default red color
+    return {
+      name: 'Vermelho',
+      rgb: [255, 0, 0],
+      alpha: 180
+    };
   }
 }
