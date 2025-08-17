@@ -472,68 +472,148 @@ export default class Template {
         // Create copy of original data for reference
         const originalData = new Uint8ClampedArray(data);
         
-        // Find template pixels that are enhanced (non-transparent AND color is in enhanced set)
-        const enhancedTemplatePixels = new Set();
+        // Find ALL template pixels (non-transparent) - like the old code
+        const templatePixels = new Set();
+        let totalPixelsChecked = 0;
+        let opaquePixelsFound = 0;
+        
+        console.group(`🔍 [TEMPLATE DETECTION] Scanning ALL template pixels (old logic)`);
+        
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
             const alpha = originalData[i + 3];
+            totalPixelsChecked++;
             
             if (alpha > 0) {
-              const r = originalData[i];
-              const g = originalData[i + 1];
-              const b = originalData[i + 2];
-              const colorKey = `${r},${g},${b}`;
+              opaquePixelsFound++;
+              templatePixels.add(`${x},${y}`);
               
-              // Only add to enhanced pixels if this color is marked as enhanced
-              if (this.enhancedColors.has(colorKey)) {
-                enhancedTemplatePixels.add(`${x},${y}`);
+              if (templatePixels.size <= 5) {
+                const r = originalData[i];
+                const g = originalData[i + 1];
+                const b = originalData[i + 2];
+                console.log(`✅ Template pixel found at (${x},${y}) with color RGB(${r},${g},${b})`);
               }
             }
           }
         }
         
-        // Apply crosshair effect to transparent neighbors
+        console.log(`📊 [TEMPLATE DETECTION STATS]:`);
+        console.log(`  Total pixels checked: ${totalPixelsChecked}`);
+        console.log(`  Template pixels found: ${templatePixels.size}`);
+        console.log(`  This uses the OLD LOGIC - ALL template pixels get crosshairs`);
+        
+        console.groupEnd();
+        
+        // Second pass: create crosshair effect around template pixels (OLD LOGIC)
+        let crosshairCount = 0;
+        let borderCount = 0;
+        let transparentCount = 0;
+        const borderEnabled = this.getBorderEnabled();
+        
+        console.group(`🎯 [CROSSHAIR GENERATION] Using OLD LOGIC from templateManager.js`);
+        console.log(`Template pixels: ${templatePixels.size}`);
+        console.log(`Border enabled: ${borderEnabled}`);
+        console.log(`Image dimensions: ${width}x${height}`);
+        
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {
             const i = (y * width + x) * 4;
             const alpha = originalData[i + 3];
             
-            // Skip if pixel is not transparent
-            if (alpha > 0) continue;
-            
-            // Check if this transparent pixel is adjacent to an enhanced template pixel
-            const hasEnhancedNeighbor = (
-              enhancedTemplatePixels.has(`${x},${y-1}`) || // Top
-              enhancedTemplatePixels.has(`${x},${y+1}`) || // Bottom
-              enhancedTemplatePixels.has(`${x-1},${y}`) || // Left
-              enhancedTemplatePixels.has(`${x+1},${y}`)    // Right
-            );
-            
-            const hasEnhancedDiagonal = (
-              enhancedTemplatePixels.has(`${x-1},${y-1}`) || // Top-left
-              enhancedTemplatePixels.has(`${x+1},${y-1}`) || // Top-right
-              enhancedTemplatePixels.has(`${x-1},${y+1}`) || // Bottom-left
-              enhancedTemplatePixels.has(`${x+1},${y+1}`)    // Bottom-right
-            );
-            
-            if (hasEnhancedNeighbor) {
-              // Orthogonal neighbors: User-configured crosshair center
-              const crosshairColor = this.getCrosshairColor();
-              data[i] = crosshairColor.rgb[0];
-              data[i + 1] = crosshairColor.rgb[1];
-              data[i + 2] = crosshairColor.rgb[2];
-              data[i + 3] = crosshairColor.alpha;
-            } else if (hasEnhancedDiagonal) {
-              // Diagonal neighbors: Dimmer version of crosshair color
-              const crosshairColor = this.getCrosshairColor();
-              data[i] = Math.floor(crosshairColor.rgb[0] * 0.6);     // Dimmer
-              data[i + 1] = Math.floor(crosshairColor.rgb[1] * 0.6); // Dimmer
-              data[i + 2] = Math.floor(crosshairColor.rgb[2] * 0.6); // Dimmer
-              data[i + 3] = Math.floor(crosshairColor.alpha * 0.67); // More transparent
+            // Only modify transparent pixels (leave template pixels with original colors)
+            if (alpha === 0) {
+              transparentCount++;
+              
+              // Check for red center positions (orthogonal neighbors)
+              const centerPositions = [
+                [x, y-1], // top
+                [x, y+1], // bottom  
+                [x-1, y], // left
+                [x+1, y]  // right
+              ];
+              
+              let isCenter = false;
+              for (const [cx, cy] of centerPositions) {
+                // Skip if out of bounds
+                if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+                
+                // If there's a template pixel in orthogonal position
+                if (templatePixels.has(`${cx},${cy}`)) {
+                  isCenter = true;
+                  break;
+                }
+              }
+              
+              // Check for blue corner positions (diagonal neighbors) 
+              const cornerPositions = [
+                [x+1, y+1], // bottom-right corner
+                [x-1, y+1], // bottom-left corner  
+                [x+1, y-1], // top-right corner
+                [x-1, y-1]  // top-left corner
+              ];
+              
+              let isCorner = false;
+              if (borderEnabled) { // Only check corners if borders are enabled
+                for (const [cx, cy] of cornerPositions) {
+                  // Skip if out of bounds
+                  if (cx < 0 || cx >= width || cy < 0 || cy >= height) continue;
+                  
+                  // If there's a template pixel at diagonal position
+                  if (templatePixels.has(`${cx},${cy}`)) {
+                    isCorner = true;
+                    break;
+                  }
+                }
+              }
+              
+              if (isCenter) {
+                // Make orthogonal neighbors red (crosshair center)
+                const crosshairColor = this.getCrosshairColor();
+                data[i] = crosshairColor.rgb[0];
+                data[i + 1] = crosshairColor.rgb[1];
+                data[i + 2] = crosshairColor.rgb[2];
+                data[i + 3] = crosshairColor.alpha;
+                crosshairCount++;
+                
+                if (crosshairCount <= 5) {
+                  console.log(`🎯 Applied crosshair at (${x},${y}) using user color`);
+                }
+              } else if (isCorner) {
+                // Make diagonal neighbors blue (crosshair corners)
+                data[i] = 0;       // No red
+                data[i + 1] = 100; // Some green
+                data[i + 2] = 255; // Full blue
+                data[i + 3] = 200; // 80% opacity
+                borderCount++;
+                
+                if (borderCount <= 5) {
+                  console.log(`🔲 Applied BLUE border at (${x},${y})`);
+                }
+              }
             }
           }
         }
+        
+        console.log(`📊 [OLD LOGIC STATISTICS]:`);
+        console.log(`  Template pixels: ${templatePixels.size}`);
+        console.log(`  Transparent pixels: ${transparentCount}`);
+        console.log(`  Crosshairs applied: ${crosshairCount}`);
+        console.log(`  Blue borders applied: ${borderCount}`);
+        console.log(`  Border enabled: ${borderEnabled}`);
+        
+        if (templatePixels.size === 0) {
+          console.warn(`🚨 [CRITICAL] No template pixels found! Template might be completely transparent.`);
+        } else if (crosshairCount === 0) {
+          console.warn(`⚠️ [ISSUE] Template pixels found but no crosshairs applied! Check template structure.`);
+        } else if (borderEnabled && borderCount === 0) {
+          console.warn(`⚠️ [BORDER ISSUE] Borders enabled but none applied! Template might not have diagonal space.`);
+        } else {
+          console.log(`✅ [SUCCESS] Crosshairs and borders applied successfully!`);
+        }
+        
+        console.groupEnd();
         
         // Put processed data back
         ctx.putImageData(imageData, 0, 0);
@@ -566,24 +646,76 @@ export default class Template {
    */
   getCrosshairColor() {
     try {
+      let savedColor = null;
+      
       // Try TamperMonkey storage first
       if (typeof GM_getValue !== 'undefined') {
         const saved = GM_getValue('bmCrosshairColor', null);
-        if (saved) return JSON.parse(saved);
+        if (saved) savedColor = JSON.parse(saved);
       }
       
       // Fallback to localStorage
-      const saved = localStorage.getItem('bmCrosshairColor');
-      if (saved) return JSON.parse(saved);
+      if (!savedColor) {
+        const saved = localStorage.getItem('bmCrosshairColor');
+        if (saved) savedColor = JSON.parse(saved);
+      }
+      
+      if (savedColor) return savedColor;
     } catch (error) {
       console.warn('Failed to load crosshair color:', error);
     }
     
     // Default red color
     return {
-      name: 'Vermelho',
+      name: 'Red',
       rgb: [255, 0, 0],
-      alpha: 180
+      alpha: 255
     };
+  }
+
+  /** Gets the border enabled setting from storage
+   * @returns {boolean} Whether borders are enabled
+   * @since 1.0.0 
+   */
+  getBorderEnabled() {
+    console.group('🔲 [BORDER SETTING] Loading border configuration');
+    
+    try {
+      let borderEnabled = null;
+      let source = 'none';
+      
+      // Try TamperMonkey storage first
+      if (typeof GM_getValue !== 'undefined') {
+        const saved = GM_getValue('bmCrosshairBorder', null);
+        console.log('TamperMonkey raw value:', saved);
+        if (saved !== null) {
+          borderEnabled = JSON.parse(saved);
+          source = 'TamperMonkey';
+        }
+      }
+      
+      // Fallback to localStorage
+      if (borderEnabled === null) {
+        const saved = localStorage.getItem('bmCrosshairBorder');
+        console.log('localStorage raw value:', saved);
+        if (saved !== null) {
+          borderEnabled = JSON.parse(saved);
+          source = 'localStorage';
+        }
+      }
+      
+      if (borderEnabled !== null) {
+        console.log(`✅ Border setting loaded from ${source}:`, borderEnabled);
+        console.groupEnd();
+        return borderEnabled;
+      }
+    } catch (error) {
+      console.error('❌ Failed to load border setting:', error);
+    }
+    
+    // Default to disabled
+    console.log('🔲 Using default border setting: false (no saved value found)');
+    console.groupEnd();
+    return false;
   }
 }

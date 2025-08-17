@@ -510,6 +510,10 @@ export default class TemplateManager {
             const enhancedPixelsArray = Array.from(enhancedPixels);
             const chunkSize = isLargeTemplate ? 2000 : enhancedPixelsArray.length; // Process in chunks for large templates
             
+            // Get border setting once for the entire tile
+            const borderEnabled = this.getBorderEnabled();
+            let borderCount = 0;
+            
             for (let chunkStart = 0; chunkStart < enhancedPixelsArray.length; chunkStart += chunkSize) {
               const chunkEnd = Math.min(chunkStart + chunkSize, enhancedPixelsArray.length);
               const chunk = enhancedPixelsArray.slice(chunkStart, chunkEnd);
@@ -562,10 +566,58 @@ export default class TemplateManager {
                   data[i + 3] = crosshairColor.alpha;
                   crosshairCenterCount++;
                 }
+                
+                // Apply corner borders if enabled
+                if (borderEnabled) {
+                  const cornerOffsets = [
+                    [1, 1], [-1, 1], [1, -1], [-1, -1] // Diagonal corners
+                  ];
+                  
+                  for (const [dx, dy] of cornerOffsets) {
+                    const x = px + dx;
+                    const y = py + dy;
+                    
+                    // Quick bounds check
+                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                    
+                    const i = (y * width + x) * 4;
+                    
+                    // Only modify transparent template pixels
+                    if (originalData[i + 3] !== 0) continue;
+                    
+                    // Fast canvas collision check
+                    let skipPainted = false;
+                    if (canvasRegionData) {
+                      skipPainted = canvasRegionData[i + 3] > 0;
+                    } else {
+                      // Fallback for edge cases
+                      const canvasX = x + templateOffsetX;
+                      const canvasY = y + templateOffsetY;
+                      if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                        const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                        skipPainted = canvasData[canvasIndex + 3] > 0;
+                      }
+                    }
+                    
+                    if (skipPainted) continue;
+                    
+                    // Apply blue corner border
+                    data[i] = 0;       // No red
+                    data[i + 1] = 100; // Some green  
+                    data[i + 2] = 255; // Full blue
+                    data[i + 3] = 200; // 80% opacity
+                    borderCount++;
+                  }
+                }
               }
             }
             
-            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} crosshairs (FAST MODE)`);
+            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} crosshairs and ${borderCount} corner borders (FAST MODE)`);
+            if (borderEnabled) {
+              console.log(`🔲 [Border Debug] Corner borders enabled: ${borderCount} applied`);
+            } else {
+              console.log(`🔲 [Border Debug] Corner borders disabled`);
+            }
           }
         }
         
@@ -1413,24 +1465,63 @@ export default class TemplateManager {
    */
   getCrosshairColor() {
     try {
+      let savedColor = null;
+      
       // Try TamperMonkey storage first
       if (typeof GM_getValue !== 'undefined') {
         const saved = GM_getValue('bmCrosshairColor', null);
-        if (saved) return JSON.parse(saved);
+        if (saved) savedColor = JSON.parse(saved);
       }
       
       // Fallback to localStorage
-      const saved = localStorage.getItem('bmCrosshairColor');
-      if (saved) return JSON.parse(saved);
+      if (!savedColor) {
+        const saved = localStorage.getItem('bmCrosshairColor');
+        if (saved) savedColor = JSON.parse(saved);
+      }
+      
+      if (savedColor) return savedColor;
     } catch (error) {
       console.warn('Failed to load crosshair color:', error);
     }
     
     // Default red color
     return {
-      name: 'Vermelho',
+      name: 'Red',
       rgb: [255, 0, 0],
-      alpha: 180
+      alpha: 255
     };
+  }
+
+  /** Gets the border enabled setting from storage
+   * @returns {boolean} Whether borders are enabled
+   * @since 1.0.0 
+   */
+  getBorderEnabled() {
+    try {
+      let borderEnabled = null;
+      
+      // Try TamperMonkey storage first
+      if (typeof GM_getValue !== 'undefined') {
+        const saved = GM_getValue('bmCrosshairBorder', null);
+        if (saved !== null) borderEnabled = JSON.parse(saved);
+      }
+      
+      // Fallback to localStorage
+      if (borderEnabled === null) {
+        const saved = localStorage.getItem('bmCrosshairBorder');
+        if (saved !== null) borderEnabled = JSON.parse(saved);
+      }
+      
+      if (borderEnabled !== null) {
+        console.log('🔲 Border setting loaded:', borderEnabled);
+        return borderEnabled;
+      }
+    } catch (error) {
+      console.warn('Failed to load border setting:', error);
+    }
+    
+    // Default to disabled
+    console.log('🔲 Using default border setting: false');
+    return false;
   }
 }

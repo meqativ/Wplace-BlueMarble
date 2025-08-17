@@ -1449,7 +1449,7 @@ function buildColorFilterOverlay() {
 
     // Refresh Statistics button
     const refreshStatsButton = document.createElement('button');
-    refreshStatsButton.textContent = '🔄 Atualizar Estatísticas';
+    refreshStatsButton.textContent = '🔄 Update Stats';
     refreshStatsButton.style.cssText = `
       background: #4caf50;
       border: none;
@@ -1594,24 +1594,37 @@ async function refreshTemplateDisplay() {
  */
 function getCrosshairColor() {
   try {
+    let savedColor = null;
+    
     // Try TamperMonkey storage first
     if (typeof GM_getValue !== 'undefined') {
       const saved = GM_getValue('bmCrosshairColor', null);
-      if (saved) return JSON.parse(saved);
+      if (saved) savedColor = JSON.parse(saved);
     }
     
     // Fallback to localStorage
-    const saved = localStorage.getItem('bmCrosshairColor');
-    if (saved) return JSON.parse(saved);
+    if (!savedColor) {
+      const saved = localStorage.getItem('bmCrosshairColor');
+      if (saved) savedColor = JSON.parse(saved);
+    }
+    
+    // Auto-migrate old alpha values (180 -> 255)
+    if (savedColor && savedColor.alpha === 180) {
+      savedColor.alpha = 255;
+      saveCrosshairColor(savedColor); // Save the migrated value
+      consoleLog('Auto-migrated crosshair transparency from 71% to 100%');
+    }
+    
+    if (savedColor) return savedColor;
   } catch (error) {
     consoleWarn('Failed to load crosshair color:', error);
   }
   
   // Default red color
   return {
-    name: 'Vermelho',
+    name: 'Red',
     rgb: [255, 0, 0],
-    alpha: 180
+    alpha: 255
   };
 }
 
@@ -1637,6 +1650,65 @@ function saveCrosshairColor(colorConfig) {
   }
 }
 
+/** Gets the border enabled setting from storage
+ * @returns {boolean} Whether borders are enabled
+ * @since 1.0.0 
+ */
+function getBorderEnabled() {
+  try {
+    let borderEnabled = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairBorder', null);
+      if (saved !== null) borderEnabled = JSON.parse(saved);
+    }
+    
+    // Fallback to localStorage
+    if (borderEnabled === null) {
+      const saved = localStorage.getItem('bmCrosshairBorder');
+      if (saved !== null) borderEnabled = JSON.parse(saved);
+    }
+    
+    if (borderEnabled !== null) {
+      consoleLog('🔲 Border setting loaded:', borderEnabled);
+      return borderEnabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load border setting:', error);
+  }
+  
+  // Default to disabled
+  consoleLog('🔲 Using default border setting: false');
+  return false;
+}
+
+/** Saves the border enabled setting to storage
+ * @param {boolean} enabled - Whether borders should be enabled
+ * @since 1.0.0
+ */
+function saveBorderEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+    consoleLog('🔲 Saving border setting:', enabled, 'as string:', enabledString);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairBorder', enabledString);
+      consoleLog('🔲 Saved to TamperMonkey storage');
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairBorder', enabledString);
+    consoleLog('🔲 Saved to localStorage');
+    
+    consoleLog('✅ Border setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save border setting:', error);
+  }
+}
+
 /** Builds and displays the crosshair settings overlay
  * @since 1.0.0
  */
@@ -1649,17 +1721,22 @@ function buildCrosshairSettingsOverlay() {
 
   // Get current crosshair color
   const currentColor = getCrosshairColor();
+  
+  // Track temporary settings (before confirm)
+  let tempColor = { ...currentColor };
+  let tempBorderEnabled = getBorderEnabled();
 
   // Predefined color options
   const colorOptions = [
-    { name: 'Vermelho', rgb: [255, 0, 0], alpha: 180 },
-    { name: 'Azul', rgb: [64, 147, 228], alpha: 180 },
-    { name: 'Verde', rgb: [19, 230, 123], alpha: 180 },
-    { name: 'Roxo', rgb: [170, 56, 185], alpha: 180 },
-    { name: 'Amarelo', rgb: [249, 221, 59], alpha: 180 },
-    { name: 'Laranja', rgb: [255, 127, 39], alpha: 180 },
-    { name: 'Ciano', rgb: [96, 247, 242], alpha: 180 },
-    { name: 'Rosa', rgb: [236, 31, 128], alpha: 180 }
+    { name: 'Red', rgb: [255, 0, 0], alpha: 255 },
+    { name: 'Blue', rgb: [64, 147, 228], alpha: 255 },
+    { name: 'Green', rgb: [0, 255, 0], alpha: 255 },
+    { name: 'Purple', rgb: [170, 56, 185], alpha: 255 },
+    { name: 'Yellow', rgb: [249, 221, 59], alpha: 255 },
+    { name: 'Orange', rgb: [255, 127, 39], alpha: 255 },
+    { name: 'Cyan', rgb: [96, 247, 242], alpha: 255 },
+    { name: 'Pink', rgb: [236, 31, 128], alpha: 255 },
+    { name: 'Custom', rgb: [255, 255, 255], alpha: 255, isCustom: true }
   ];
 
   // Create the settings overlay
@@ -1697,7 +1774,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
   const title = document.createElement('h2');
-  title.textContent = 'Configurações do Crosshair';
+  title.textContent = 'Crosshair Settings';
   title.style.cssText = `
     margin: 0; 
     font-size: 1.3em; 
@@ -1731,7 +1808,7 @@ function buildCrosshairSettingsOverlay() {
 
   // Instructions
   const instructions = document.createElement('p');
-  instructions.textContent = 'Selecione a cor do crosshair que aparece nos pixels destacados dos templates:';
+  instructions.textContent = 'Select the crosshair color that appears on highlighted template pixels:';
   instructions.style.cssText = 'margin: 0 0 20px 0; font-size: 0.9em; color: #ccc; text-align: center;';
 
   // Current color preview
@@ -1745,20 +1822,59 @@ function buildCrosshairSettingsOverlay() {
   `;
 
   const previewLabel = document.createElement('div');
-  previewLabel.textContent = 'Cor Atual:';
+  previewLabel.textContent = 'Current Color:';
   previewLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 8px; color: #ccc;';
 
   const previewColor = document.createElement('div');
   previewColor.id = 'bm-current-color-preview';
   previewColor.style.cssText = `
-    width: 40px;
-    height: 40px;
-    background: rgba(${currentColor.rgb[0]}, ${currentColor.rgb[1]}, ${currentColor.rgb[2]}, ${currentColor.alpha / 255});
-    border: 2px solid white;
-    border-radius: 50%;
+    width: 50px;
+    height: 50px;
     margin: 0 auto 8px;
+    position: relative;
+    background: rgba(0, 0, 0, 0.1);
+    border: 2px solid white;
+    border-radius: 4px;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   `;
+  
+  // Create crosshair preview pattern (simple cross: center + 4 sides)
+  function updateCrosshairPreview(color, borderEnabled) {
+    const { rgb, alpha } = color;
+    const colorRgba = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha / 255})`;
+    const borderRgba = borderEnabled ? 'rgba(0, 100, 255, 0.8)' : 'transparent'; // Blue borders
+    
+    previewColor.innerHTML = `
+      <div style="
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 100%;
+        height: 100%;
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        grid-template-rows: 1fr 1fr 1fr;
+        gap: 1px;
+        background: rgba(0,0,0,0.1);
+      ">
+        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+        <div style="background: ${colorRgba};"></div>
+        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+        
+        <div style="background: ${colorRgba};"></div>
+        <div style="background: black; border: 2px solid rgba(255,255,255,0.4); box-sizing: border-box;"></div>
+        <div style="background: ${colorRgba};"></div>
+        
+        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+        <div style="background: ${colorRgba};"></div>
+        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+      </div>
+    `;
+  }
+  
+  // Initialize crosshair preview
+  updateCrosshairPreview(currentColor, tempBorderEnabled);
 
   const previewName = document.createElement('div');
   previewName.id = 'bm-current-color-name';
@@ -1773,7 +1889,7 @@ function buildCrosshairSettingsOverlay() {
   const colorGrid = document.createElement('div');
   colorGrid.style.cssText = `
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(3, 1fr);
     gap: 12px;
     margin-bottom: 20px;
   `;
@@ -1783,21 +1899,44 @@ function buildCrosshairSettingsOverlay() {
     const colorOption = document.createElement('button');
     const isSelected = JSON.stringify(color.rgb) === JSON.stringify(currentColor.rgb);
     
-    colorOption.style.cssText = `
-      background: rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${color.alpha / 255});
-      border: 3px solid ${isSelected ? '#fff' : 'rgba(255, 255, 255, 0.3)'};
-      border-radius: 8px;
-      padding: 15px 10px;
-      cursor: pointer;
-      transition: all 0.2s ease;
-      position: relative;
-      min-height: 80px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-    `;
+    // Special handling for custom color button
+    if (color.isCustom) {
+      colorOption.style.cssText = `
+        background: linear-gradient(45deg, 
+          #ff0000 0%, #ff8000 14%, #ffff00 28%, #80ff00 42%, 
+          #00ff00 56%, #00ff80 70%, #00ffff 84%, #0080ff 100%);
+        border: 3px solid ${isSelected ? '#fff' : 'rgba(255, 255, 255, 0.3)'};
+        border-radius: 8px;
+        padding: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        height: 100px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        box-sizing: border-box;
+      `;
+    } else {
+      colorOption.style.cssText = `
+        background: rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${color.alpha / 255});
+        border: 3px solid ${isSelected ? '#fff' : 'rgba(255, 255, 255, 0.3)'};
+        border-radius: 8px;
+        padding: 8px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        position: relative;
+        height: 100px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        gap: 4px;
+        box-sizing: border-box;
+      `;
+    }
 
     // Color name
     const colorName = document.createElement('div');
@@ -1810,14 +1949,98 @@ function buildCrosshairSettingsOverlay() {
       text-align: center;
     `;
 
-    // RGB values
-    const rgbText = document.createElement('div');
-    rgbText.textContent = `RGB(${color.rgb.join(', ')})`;
-    rgbText.style.cssText = `
-      font-size: 0.7em;
-      color: rgba(255, 255, 255, 0.8);
-      text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
-    `;
+    // RGB values or custom inputs
+    if (color.isCustom) {
+      // Create RGB input container
+      const rgbInputs = document.createElement('div');
+      rgbInputs.style.cssText = `
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        width: 100%;
+      `;
+      
+      // Create individual RGB inputs
+      const rInput = document.createElement('input');
+      rInput.type = 'number';
+      rInput.min = '0';
+      rInput.max = '255';
+      rInput.value = tempColor.rgb[0];
+      rInput.placeholder = 'R';
+      rInput.style.cssText = `
+        width: 100%;
+        padding: 2px 4px;
+        border: 1px solid rgba(255,255,255,0.3);
+        border-radius: 3px;
+        background: rgba(0,0,0,0.5);
+        color: white;
+        font-size: 0.7em;
+        text-align: center;
+        outline: none;
+        font-weight: bold;
+      `;
+      
+      const gInput = document.createElement('input');
+      gInput.type = 'number';
+      gInput.min = '0';
+      gInput.max = '255';
+      gInput.value = tempColor.rgb[1];
+      gInput.placeholder = 'G';
+      gInput.style.cssText = rInput.style.cssText;
+      
+      const bInput = document.createElement('input');
+      bInput.type = 'number';
+      bInput.min = '0';
+      bInput.max = '255';
+      bInput.value = tempColor.rgb[2];
+      bInput.placeholder = 'B';
+      bInput.style.cssText = rInput.style.cssText;
+      
+      // Update function for RGB inputs
+      const updateCustomColor = () => {
+        const r = Math.max(0, Math.min(255, parseInt(rInput.value) || 0));
+        const g = Math.max(0, Math.min(255, parseInt(gInput.value) || 0));
+        const b = Math.max(0, Math.min(255, parseInt(bInput.value) || 0));
+        
+        tempColor = { name: 'Custom', rgb: [r, g, b], alpha: tempColor.alpha };
+        
+        // Update the button background to show the custom color
+        colorOption.style.background = `rgba(${r}, ${g}, ${b}, 1)`;
+        
+        // Update preview
+        updateCrosshairPreview(tempColor, tempBorderEnabled);
+        document.getElementById('bm-current-color-name').textContent = `Custom RGB(${r}, ${g}, ${b})`;
+      };
+      
+      // Add event listeners
+      [rInput, gInput, bInput].forEach(input => {
+        input.addEventListener('input', updateCustomColor);
+        input.addEventListener('change', updateCustomColor);
+        
+        // Prevent clicks on inputs from bubbling to button
+        input.addEventListener('click', (e) => e.stopPropagation());
+        input.addEventListener('mousedown', (e) => e.stopPropagation());
+      });
+      
+      rgbInputs.appendChild(rInput);
+      rgbInputs.appendChild(gInput);
+      rgbInputs.appendChild(bInput);
+      
+      colorOption.appendChild(colorName);
+      colorOption.appendChild(rgbInputs);
+    } else {
+      // RGB values for predefined colors
+      const rgbText = document.createElement('div');
+      rgbText.textContent = `RGB(${color.rgb.join(', ')})`;
+      rgbText.style.cssText = `
+        font-size: 0.7em;
+        color: rgba(255, 255, 255, 0.8);
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      `;
+      
+      colorOption.appendChild(colorName);
+      colorOption.appendChild(rgbText);
+    }
 
     // Selection indicator
     if (isSelected) {
@@ -1835,42 +2058,56 @@ function buildCrosshairSettingsOverlay() {
       colorOption.appendChild(checkmark);
     }
 
-    colorOption.appendChild(colorName);
-    colorOption.appendChild(rgbText);
-
     // Click handler
     colorOption.onclick = () => {
-      saveCrosshairColor(color);
+      // For custom color, the inputs handle the color updates
+      if (!color.isCustom) {
+        // Update temporary color (don't save yet)
+        tempColor = { ...color };
+        
+        // Update crosshair preview with new color and current border setting
+        updateCrosshairPreview(tempColor, tempBorderEnabled);
+        document.getElementById('bm-current-color-name').textContent = color.name;
+      }
       
-      // Update preview
-      document.getElementById('bm-current-color-preview').style.background = 
-        `rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${color.alpha / 255})`;
-      document.getElementById('bm-current-color-name').textContent = color.name;
-      
-      // Remove overlay and refresh templates
-      settingsOverlay.remove();
-      overlayMain.handleDisplayStatus(`Cor do crosshair alterada para ${color.name}!`);
-      
-      // Refresh template display to apply new color
-      refreshTemplateDisplay().catch(error => {
-        consoleError('Error applying new crosshair color:', error);
+      // Update visual selection
+      colorGrid.querySelectorAll('button').forEach(btn => {
+        btn.style.border = '3px solid rgba(255, 255, 255, 0.3)';
+        const checkmark = btn.querySelector('div[style*="position: absolute"]');
+        if (checkmark) checkmark.remove();
       });
+      
+      colorOption.style.border = '3px solid #fff';
+      const checkmark = document.createElement('div');
+      checkmark.textContent = '✓';
+      checkmark.style.cssText = `
+        position: absolute;
+        top: 5px;
+        right: 5px;
+        color: white;
+        font-weight: bold;
+        font-size: 1.2em;
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      `;
+      colorOption.appendChild(checkmark);
     };
 
-    // Hover effects
-    colorOption.addEventListener('mouseenter', () => {
-      if (!isSelected) {
-        colorOption.style.border = '3px solid rgba(255, 255, 255, 0.7)';
-        colorOption.style.transform = 'scale(1.05)';
-      }
-    });
+    // Hover effects (only for non-custom buttons to avoid interfering with inputs)
+    if (!color.isCustom) {
+      colorOption.addEventListener('mouseenter', () => {
+        if (!isSelected) {
+          colorOption.style.border = '3px solid rgba(255, 255, 255, 0.7)';
+          colorOption.style.transform = 'scale(1.05)';
+        }
+      });
 
-    colorOption.addEventListener('mouseleave', () => {
-      if (!isSelected) {
-        colorOption.style.border = '3px solid rgba(255, 255, 255, 0.3)';
-        colorOption.style.transform = 'scale(1)';
-      }
-    });
+      colorOption.addEventListener('mouseleave', () => {
+        if (!isSelected) {
+          colorOption.style.border = '3px solid rgba(255, 255, 255, 0.3)';
+          colorOption.style.transform = 'scale(1)';
+        }
+      });
+    }
 
     colorGrid.appendChild(colorOption);
   });
@@ -1885,7 +2122,7 @@ function buildCrosshairSettingsOverlay() {
   `;
 
   const alphaLabel = document.createElement('div');
-  alphaLabel.textContent = 'Transparência do Crosshair:';
+  alphaLabel.textContent = 'Crosshair Transparency:';
   alphaLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
 
   const alphaSlider = document.createElement('input');
@@ -1906,27 +2143,136 @@ function buildCrosshairSettingsOverlay() {
     const alpha = parseInt(alphaSlider.value);
     alphaValue.textContent = `${Math.round((alpha / 255) * 100)}%`;
     
-    // Update current color with new alpha
-    const updatedColor = { ...currentColor, alpha };
-    document.getElementById('bm-current-color-preview').style.background = 
-      `rgba(${updatedColor.rgb[0]}, ${updatedColor.rgb[1]}, ${updatedColor.rgb[2]}, ${alpha / 255})`;
-  };
-
-  alphaSlider.onchange = () => {
-    const alpha = parseInt(alphaSlider.value);
-    const updatedColor = { ...currentColor, alpha };
-    saveCrosshairColor(updatedColor);
-    overlayMain.handleDisplayStatus('Transparência do crosshair atualizada!');
+    // Update temporary color with new alpha
+    tempColor.alpha = alpha;
     
-    // Refresh template display
-    refreshTemplateDisplay().catch(error => {
-      consoleError('Error applying new crosshair alpha:', error);
-    });
+    // Update crosshair preview with new alpha
+    updateCrosshairPreview(tempColor, tempBorderEnabled);
   };
 
   alphaSection.appendChild(alphaLabel);
   alphaSection.appendChild(alphaSlider);
   alphaSection.appendChild(alphaValue);
+
+  // Border options section
+  const borderSection = document.createElement('div');
+  borderSection.style.cssText = `
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+  `;
+
+  const borderLabel = document.createElement('div');
+  borderLabel.textContent = 'Corner Borders:';
+  borderLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+
+  const borderDescription = document.createElement('div');
+  borderDescription.textContent = 'Add subtle borders around corner pixels of the crosshair';
+  borderDescription.style.cssText = 'font-size: 0.8em; margin-bottom: 12px; color: #aaa;';
+
+  const borderToggle = document.createElement('label');
+  borderToggle.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    user-select: none;
+  `;
+
+  const borderCheckbox = document.createElement('input');
+  borderCheckbox.type = 'checkbox';
+  borderCheckbox.checked = tempBorderEnabled;
+  borderCheckbox.style.cssText = `
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  `;
+
+  const borderToggleText = document.createElement('span');
+  borderToggleText.textContent = 'Enable corner borders';
+  borderToggleText.style.cssText = 'color: white; font-weight: bold;';
+
+  borderCheckbox.onchange = () => {
+    tempBorderEnabled = borderCheckbox.checked;
+    
+    // Update crosshair preview to show/hide borders
+    updateCrosshairPreview(tempColor, tempBorderEnabled);
+  };
+
+  borderToggle.appendChild(borderCheckbox);
+  borderToggle.appendChild(borderToggleText);
+  borderSection.appendChild(borderLabel);
+  borderSection.appendChild(borderDescription);
+  borderSection.appendChild(borderToggle);
+
+  // Action buttons
+  const actionsContainer = document.createElement('div');
+  actionsContainer.style.cssText = `
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+  `;
+
+  const cancelButton = document.createElement('button');
+  cancelButton.textContent = 'Cancel';
+  cancelButton.style.cssText = `
+    background: #6c757d;
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    flex: 1;
+  `;
+  cancelButton.onclick = () => settingsOverlay.remove();
+
+  const applyButton = document.createElement('button');
+  applyButton.textContent = 'Apply Settings';
+  applyButton.style.cssText = `
+    background: #2196f3;
+    border: none;
+    color: white;
+    padding: 12px 24px;
+    border-radius: 8px;
+    cursor: pointer;
+    font-size: 1em;
+    flex: 2;
+    font-weight: bold;
+  `;
+
+  applyButton.onclick = async () => {
+    // Save all settings
+    consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled });
+    
+    saveCrosshairColor(tempColor);
+    saveBorderEnabled(tempBorderEnabled);
+    
+    settingsOverlay.remove();
+    overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders!`);
+    
+    // Force invalidate template caches to ensure borders are applied
+    if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+      templateManager.templatesArray.forEach(template => {
+        if (template.invalidateEnhancedCache) {
+          template.invalidateEnhancedCache();
+        }
+      });
+    }
+    
+    // Refresh template display to apply new settings
+    try {
+      await refreshTemplateDisplay();
+      consoleLog('✅ Crosshair settings successfully applied and templates refreshed');
+    } catch (error) {
+      consoleError('❌ Error applying crosshair settings:', error);
+      overlayMain.handleDisplayError('Failed to apply crosshair settings');
+    }
+  };
+
+  actionsContainer.appendChild(cancelButton);
+  actionsContainer.appendChild(applyButton);
 
   // Assemble overlay
   settingsOverlay.appendChild(header);
@@ -1934,6 +2280,8 @@ function buildCrosshairSettingsOverlay() {
   settingsOverlay.appendChild(currentColorPreview);
   settingsOverlay.appendChild(colorGrid);
   settingsOverlay.appendChild(alphaSection);
+  settingsOverlay.appendChild(borderSection);
+  settingsOverlay.appendChild(actionsContainer);
 
   document.body.appendChild(settingsOverlay);
 
