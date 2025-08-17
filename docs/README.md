@@ -1,6 +1,27 @@
 
-## THIS IS A FORK THAT ADD COLOR FILTER OPTION IN THE BLUE MARBLE, IT ALLOW THE USER TO SELECT WHICH PIXEL COLOR THEY WANT IN THE TEMPLATE
+# 🎨 Fork Changes Summary
 
+## ✨ New Features Added
+
+### 🎨 **Enhanced Color Filter, Progress Tracking Highlight & Pixel**
+- **Enabled and Disable any color.
+- **Pixel Count Statistics**: Real-time display of remaining pixels for each color in templates
+- **Overall Progress**: Shows total painted vs required pixels with percentage completion
+- **Per-Color Progress**: Individual progress bars for each template color
+- **Disable All Enhanced**: Quick button to clear all enhanced color selections
+<img width="584" height="709" alt="image" src="https://github.com/user-attachments/assets/45ae729b-2fef-4364-8aa5-ad8bb6226741" />
+
+
+*Inspired by [Issue #32](https://github.com/SwingTheVine/Wplace-BlueMarble/issues/32) - "It would be nice if while you paint, the pixels with the selected color were highlighted in the template"*
+*Based on [PR #110 - Colors and counts](https://github.com/SwingTheVine/Wplace-BlueMarble/pull/110) by @vishnuvardhan3333*
+
+## 🔧 **UI Redesign & Improvements**
+- **Modern Interface**: Complete UI overhaul with new icons, improved layout, and better visual hierarchy
+- **Enhanced Button Styling**: New gradient effects and improved visual feedback
+
+*UI redesign inspired by [PR #185](https://github.com/SwingTheVine/Wplace-BlueMarble/pull/185) by @RedsTorm*
+
+*These changes enhance the pixel art creation workflow by providing better visual feedback, accurate progress tracking, and improved color management capabilities.*
 <table>
   <tr>
     <td><a href="#blue-marble">Blue Marble</a></td>
