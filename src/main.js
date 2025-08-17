@@ -831,11 +831,22 @@ function buildColorFilterOverlay() {
       margin-bottom: 20px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.3);
       padding-bottom: 10px;
+      cursor: move;
+      user-select: none;
     `;
 
     const title = document.createElement('h2');
     title.textContent = 'Template Color Filter';
-    title.style.cssText = 'margin: 0; font-size: 1.2em;';
+    title.style.cssText = `
+      margin: 0; 
+      font-size: 1.4em; 
+      font-weight: bold;
+      font-family: 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+      text-align: center;
+      flex: 1;
+      pointer-events: none;
+      letter-spacing: 0.4px;
+    `;
 
     const closeButton = document.createElement('button');
     closeButton.textContent = '✕';
@@ -1459,6 +1470,56 @@ function buildColorFilterOverlay() {
     colorFilterOverlay.appendChild(applyButton);
 
     document.body.appendChild(colorFilterOverlay);
+
+    // Add drag functionality
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let initialLeft = 0;
+    let initialTop = 0;
+
+    header.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      
+      // Get current position
+      const rect = colorFilterOverlay.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      
+      // Change to absolute positioning for dragging
+      colorFilterOverlay.style.position = 'fixed';
+      colorFilterOverlay.style.transform = 'none';
+      colorFilterOverlay.style.left = initialLeft + 'px';
+      colorFilterOverlay.style.top = initialTop + 'px';
+      
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      
+      const newLeft = initialLeft + deltaX;
+      const newTop = initialTop + deltaY;
+      
+      // Keep within viewport bounds
+      const maxLeft = window.innerWidth - colorFilterOverlay.offsetWidth;
+      const maxTop = window.innerHeight - colorFilterOverlay.offsetHeight;
+      
+      const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+      
+      colorFilterOverlay.style.left = clampedLeft + 'px';
+      colorFilterOverlay.style.top = clampedTop + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
   }).catch(err => {
     consoleError('Failed to load color palette:', err);
     overlayMain.handleDisplayError('Failed to load color palette!');
