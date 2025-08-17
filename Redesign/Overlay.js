@@ -1,4 +1,4 @@
-import * as icons from './icons.js';
+import * as icons from "./icons.js";
 
 /** The overlay builder for the Blue Marble script.
  * @description This class handles the overlay UI for the Blue Marble script.

@@ -7,6 +7,7 @@ import Observers from './observers.js';
 import ApiManager from './apiManager.js';
 import TemplateManager from './templateManager.js';
 import { consoleLog, consoleWarn, consoleError } from './utils.js';
+import * as icons from './icons.js';
 
 const name = GM_info.script.name.toString(); // Name of userscript
 const version = GM_info.script.version.toString(); // Version of userscript
@@ -162,15 +163,26 @@ const cssOverlay = GM_getResourceText("CSS-BM-File");
 GM_addStyle(cssOverlay);
 
 // Imports the Roboto Mono font family
-var stylesheetLink = document.createElement('link');
-stylesheetLink.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap';
-stylesheetLink.rel = 'preload';
-stylesheetLink.as = 'style';
-stylesheetLink.onload = function () {
+let robotoStylesheetLink = document.createElement('link');
+robotoStylesheetLink.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap';
+robotoStylesheetLink.rel = 'preload';
+robotoStylesheetLink.as = 'style';
+robotoStylesheetLink.onload = function () {
   this.onload = null;
   this.rel = 'stylesheet';
 };
-document.head?.appendChild(stylesheetLink);
+document.head?.appendChild(robotoStylesheetLink);
+
+// Imports the Outfit font family
+let outfitStylesheetLink = document.createElement('link');
+outfitStylesheetLink.href = 'https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap';
+outfitStylesheetLink.rel = 'preload';
+outfitStylesheetLink.as = 'style';
+outfitStylesheetLink.onload = function () {
+  this.onload = null;
+  this.rel = 'stylesheet';
+};
+document.head?.appendChild(outfitStylesheetLink);
 
 // CONSTRUCTORS
 const observers = new Observers(); // Constructs a new Observers object
@@ -392,8 +404,9 @@ function buildOverlayMain() {
   overlayMain.addDiv({'id': 'bm-overlay', 'style': 'top: 10px; right: 75px;'})
     .addDiv({'id': 'bm-contain-header'})
       .addDiv({'id': 'bm-bar-drag'}).buildElement()
-      .addImg({'alt': 'Blue Marble Icon - Click to minimize/maximize', 'src': 'https://raw.githubusercontent.com/SwingTheVine/Wplace-BlueMarble/main/dist/assets/Favicon.png', 'style': 'cursor: pointer;'}, 
-        (instance, img) => {
+      .addDiv({'id': 'bm-title-container'})
+        .addImg({'alt': 'Blue Marble Icon - Click to minimize/maximize', 'src': 'https://raw.githubusercontent.com/SwingTheVine/Wplace-BlueMarble/main/dist/assets/Favicon.png', 'style': 'cursor: pointer;'}, 
+          (instance, img) => {
           /** Click event handler for overlay minimize/maximize functionality.
            * 
            * Toggles between two distinct UI states:
@@ -435,15 +448,15 @@ function buildOverlayMain() {
             
             // Define elements that should be hidden/shown during state transitions
             // Each element is documented with its purpose for maintainability
-            const elementsToToggle = [
-              '#bm-overlay h1',                    // Main title "Blue Marble"
-              '#bm-contain-userinfo',              // User information section (username, droplets, level)
-              '#bm-overlay hr',                    // Visual separator lines
-              '#bm-contain-automation > *:not(#bm-contain-coords)', // Automation section excluding coordinates
-              '#bm-input-file-template',           // Template file upload interface
-              '#bm-contain-buttons-action',        // Action buttons container
-              `#${instance.outputStatusId}`        // Status log textarea for user feedback
-            ];
+                          const elementsToToggle = [
+                '#bm-overlay h1',                    // Main title "Blue Marble"
+                '#bm-contain-userinfo',              // User information section (username, droplets, level)
+                '#bm-overlay #bm-separator',         // Visual separator lines
+                '#bm-contain-automation > *:not(#bm-contain-coords)', // Automation section excluding coordinates
+                '#bm-input-file-template',           // Template file upload interface
+                '#bm-contain-buttons-action',        // Action buttons container
+                `#${instance.outputStatusId}`        // Status log textarea for user feedback
+              ];
             
             // Apply visibility changes to all toggleable elements
             elementsToToggle.forEach(selector => {
@@ -496,9 +509,8 @@ function buildOverlayMain() {
               overlay.style.minWidth = '60px';  // Prevent shrinking
               overlay.style.padding = '8px';    // Comfortable padding around icon
               
-              // Apply icon positioning for better visual centering in minimized state
-              // The 3px offset compensates for visual weight distribution
-              img.style.marginLeft = '3px';
+                             // Apply icon positioning for better visual centering in minimized state
+               img.style.margin = '.5rem 1rem 0';
               
               // Configure header layout for minimized state
               header.style.textAlign = 'center';
@@ -591,15 +603,38 @@ function buildOverlayMain() {
       .addHeader(1, {'textContent': name}).buildElement()
     .buildElement()
 
-    .addHr().buildElement()
-
-    .addDiv({'id': 'bm-contain-userinfo'})
-      .addP({'id': 'bm-user-name', 'textContent': 'Username:'}).buildElement()
-      .addP({'id': 'bm-user-droplets', 'textContent': 'Droplets:'}).buildElement()
-      .addP({'id': 'bm-user-nextlevel', 'textContent': 'Next level in...'}).buildElement()
+    .addDiv({ id: 'bm-separator' })
+      .addHr().buildElement()
+      .addDiv({ id: 'bm-separator-text'})
+        .addDiv({ innerHTML: icons.informationIcon }).buildElement()
+        .addP({ textContent: 'Information' }).buildElement()
+        .buildElement()
+      .addHr().buildElement()
     .buildElement()
 
-    .addHr().buildElement()
+    .addDiv({'id': 'bm-contain-userinfo'})
+      .addDiv({'id': 'bm-user-name'})
+        .addDiv({'id': 'bm-user-icon', innerHTML: icons.userIcon}).buildElement()
+        .addP({'id': 'bm-user-name-content', innerHTML: '<b>Username:</b> loading...'}).buildElement()
+      .buildElement()
+      .addDiv({'id': 'bm-user-droplets'})
+        .addDiv({'id': 'bm-user-droplets-icon', innerHTML: icons.dropletIcon}).buildElement()
+        .addP({'id': 'bm-user-droplets-content', innerHTML: '<b>Droplets:</b> loading...'}).buildElement()
+      .buildElement()
+      .addDiv({'id': 'bm-user-nextlevel'})
+        .addDiv({'id': 'bm-user-nextlevel-icon', innerHTML: icons.nextLevelIcon}).buildElement()
+        .addP({'id': 'bm-user-nextlevel-content', 'textContent': 'Next level in...'}).buildElement()
+      .buildElement()
+    .buildElement()
+
+    .addDiv({ id: 'bm-separator' })
+      .addHr().buildElement()
+      .addDiv({ id: 'bm-separator-text'})
+        .addDiv({ innerHTML: icons.templateIcon }).buildElement()
+        .addP({ textContent: 'Template' }).buildElement()
+        .buildElement()
+      .addHr().buildElement()
+    .buildElement()
 
     .addDiv({'id': 'bm-contain-automation'})
       // .addCheckbox({'id': 'bm-input-stealth', 'textContent': 'Stealth', 'checked': true}).buildElement()
@@ -609,35 +644,37 @@ function buildOverlayMain() {
       // .addButtonHelp({'title': 'Controls the website as if it were possessed.'}).buildElement()
       // .addBr().buildElement()
       .addDiv({'id': 'bm-contain-coords'})
-        .addButton({'id': 'bm-button-coords', 'className': 'bm-help', 'style': 'margin-top: 0;', 'innerHTML': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 4 6"><circle cx="2" cy="2" r="2"></circle><path d="M2 6 L3.7 3 L0.3 3 Z"></path><circle cx="2" cy="2" r="0.7" fill="white"></circle></svg></svg>'},
-          (instance, button) => {
-            button.onclick = () => {
-              const coords = instance.apiManager?.coordsTilePixel; // Retrieves the coords from the API manager
-              if (!coords?.[0]) {
-                instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
-                return;
+        .addDiv({ id: 'bm-coords-title' })
+          .addDiv({ innerHTML: icons.pinIcon }).buildElement()
+          .addP({ innerHTML: 'Coordinates:' }).buildElement()
+          .addButton({'id': 'bm-button-coords', 'innerHTML': icons.pointerIcon + 'Detect', title: 'Set the location to the pixel you\'ve selected'},
+            (instance, button) => {
+              button.onclick = () => {
+                const coords = instance.apiManager?.coordsTilePixel; // Retrieves the coords from the API manager
+                if (!coords?.[0]) {
+                  instance.handleDisplayError('Coordinates are malformed! Did you try clicking on the canvas first?');
+                  return;
+                }
+                instance.updateInnerHTML('bm-input-tx', coords?.[0] || '');
+                instance.updateInnerHTML('bm-input-ty', coords?.[1] || '');
+                instance.updateInnerHTML('bm-input-px', coords?.[2] || '');
+                instance.updateInnerHTML('bm-input-py', coords?.[3] || '');
               }
-              document.querySelector('#bm-input-tx').value = coords?.[0] || '';
-              document.querySelector('#bm-input-ty').value = coords?.[1] || '';
-              document.querySelector('#bm-input-px').value = coords?.[2] || '';
-              document.querySelector('#bm-input-py').value = coords?.[3] || '';
             }
-          }
-        ).buildElement()
-        .addInput({'type': 'number', 'id': 'bm-input-tx', 'placeholder': 'Tl X', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
-        .addInput({'type': 'number', 'id': 'bm-input-ty', 'placeholder': 'Tl Y', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
-        .addInput({'type': 'number', 'id': 'bm-input-px', 'placeholder': 'Px X', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
-        .addInput({'type': 'number', 'id': 'bm-input-py', 'placeholder': 'Px Y', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+          ).buildElement()
+        .buildElement()
+        .addDiv({ id: 'bm-contain-inputs'})
+          .addP({ textContent: 'Tile: '}).buildElement()
+          .addInput({'type': 'number', 'id': 'bm-input-tx', 'placeholder': 'Tl X', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+          .addInput({'type': 'number', 'id': 'bm-input-ty', 'placeholder': 'Tl Y', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+          .addP({ textContent: 'Pixel: '}).buildElement()
+          .addInput({'type': 'number', 'id': 'bm-input-px', 'placeholder': 'Px X', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+          .addInput({'type': 'number', 'id': 'bm-input-py', 'placeholder': 'Px Y', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+        .buildElement()
       .buildElement()
-      .addInputFile({'id': 'bm-input-file-template', 'textContent': 'Upload Template', 'accept': 'image/png, image/jpeg, image/webp, image/bmp, image/gif'}).buildElement()
       .addDiv({'id': 'bm-contain-buttons-template'})
-        .addButton({'id': 'bm-button-enable', 'textContent': 'Enable'}, (instance, button) => {
-          button.onclick = () => {
-            instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(true);
-            instance.handleDisplayStatus(`Enabled templates!`);
-          }
-        }).buildElement()
-        .addButton({'id': 'bm-button-create', 'textContent': 'Create'}, (instance, button) => {
+        .addInputFile({'id': 'bm-input-file-template', 'textContent': 'Upload Template', 'accept': 'image/png, image/jpeg, image/webp, image/bmp, image/gif'})
+        .addButton({'id': 'bm-button-create', innerHTML: icons.createIcon + 'Create'}, (instance, button) => {
           button.onclick = () => {
             const input = document.querySelector('#bm-input-file-template');
 
@@ -660,20 +697,27 @@ function buildOverlayMain() {
             // console.log(`TCoords: ${apiManager.templateCoordsTilePixel}\nCoords: ${apiManager.coordsTilePixel}`);
             // templateManager.setTemplateImage(input.files[0]);
 
-            instance.handleDisplayStatus(`Drew to canvas!`);
-          }
-        }).buildElement()
-        .addButton({'id': 'bm-button-disable', 'textContent': 'Disable'}, (instance, button) => {
-          button.onclick = () => {
-            instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(false);
-            instance.handleDisplayStatus(`Disabled templates!`);
-          }
-        }).buildElement()
-        .addButton({'id': 'bm-button-color-filter', 'textContent': 'Color Filter'}, (instance, button) => {
-          button.onclick = () => {
-            buildColorFilterOverlay();
-          }
-        }).buildElement()
+                      instance.handleDisplayStatus(`Drew to canvas!`);
+        }
+      }).buildElement()
+      .addButton({'id': 'bm-button-enable', innerHTML: icons.enableIcon + 'Enable'}, (instance, button) => {
+        button.onclick = () => {
+          instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(true);
+          instance.handleDisplayStatus(`Enabled templates!`);
+        }
+      }).buildElement()
+      .addButton({'id': 'bm-button-disable', innerHTML: icons.disableIcon + 'Disable'}, (instance, button) => {
+        button.onclick = () => {
+          instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(false);
+          instance.handleDisplayStatus(`Disabled templates!`);
+        }
+      }).buildElement()
+      .buildElement()
+      .addButton({'id': 'bm-button-color-filter', innerHTML: icons.colorFilterIcon + 'Color Filter'}, (instance, button) => {
+        button.onclick = () => {
+          buildColorFilterOverlay();
+        }
+      }).buildElement()
       .buildElement()
       .addTextarea({'id': overlayMain.outputStatusId, 'placeholder': `Status: Sleeping...\nVersion: ${version}`, 'readOnly': true}).buildElement()
       .addDiv({'id': 'bm-contain-buttons-action'})
@@ -988,20 +1032,14 @@ function buildColorFilterOverlay() {
       searchInput.focus();
     });
 
-    // Controls
-    const controls = document.createElement('div');
-    controls.style.cssText = `
-      margin-bottom: 20px; 
-      display: flex; 
-      gap: 10px; 
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: nowrap;
+    // Enhanced mode info section
+    const enhancedSection = document.createElement('div');
+    enhancedSection.style.cssText = `
+      margin-bottom: 20px;
     `;
 
-    // Enhanced mode info text
     const enhancedInfo = document.createElement('div');
-    enhancedInfo.textContent = 'Enhanced Mode';
+    enhancedInfo.textContent = 'Enhanced Mode - Crosshair Highlight';
     enhancedInfo.style.cssText = `
       background: #333;
       color: white;
@@ -1010,17 +1048,15 @@ function buildColorFilterOverlay() {
       font-size: 0.9em;
       font-weight: bold;
       text-align: center;
-      flex: 1;
-      min-width: 0;
-      margin-right: auto;
+      margin-bottom: 10px;
     `;
 
-    // Buttons container to keep them together
-    const buttonsContainer = document.createElement('div');
-    buttonsContainer.style.cssText = `
+    // Main buttons container (Enable All / Disable All)
+    const mainButtonsContainer = document.createElement('div');
+    mainButtonsContainer.style.cssText = `
       display: flex;
       gap: 10px;
-      flex-shrink: 0;
+      margin-bottom: 10px;
     `;
 
     const enableAllButton = document.createElement('button');
@@ -1034,23 +1070,11 @@ function buildColorFilterOverlay() {
       cursor: pointer;
       font-size: 0.9em;
       white-space: nowrap;
+      flex: 1;
     `;
 
     const disableAllButton = document.createElement('button');
     disableAllButton.textContent = 'Disable All';
-    const disableAllEnhancedButton = document.createElement('button');
-    disableAllEnhancedButton.textContent = 'Disable all Enhanced';
-    disableAllEnhancedButton.style.cssText = `
-      background: #6c757d;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      border-radius: 6px;
-      cursor: pointer;
-      margin-left: 8px;
-    `;
-    buttonRow.appendChild(disableAllEnhancedButton);
-
     disableAllButton.style.cssText = `
       background: #f44336;
       border: none;
@@ -1060,13 +1084,29 @@ function buildColorFilterOverlay() {
       cursor: pointer;
       font-size: 0.9em;
       white-space: nowrap;
+      flex: 1;
     `;
 
-    buttonsContainer.appendChild(enableAllButton);
-    buttonsContainer.appendChild(disableAllButton);
+    // Disable Enhanced button (full width below)
+    const disableAllEnhancedButton = document.createElement('button');
+    disableAllEnhancedButton.textContent = 'Disable all Enhanced';
+    disableAllEnhancedButton.style.cssText = `
+      background: #6c757d;
+      color: white;
+      border: none;
+      padding: 8px 12px;
+      border-radius: 6px;
+      cursor: pointer;
+      width: 100%;
+      font-size: 0.9em;
+    `;
+
+    mainButtonsContainer.appendChild(enableAllButton);
+    mainButtonsContainer.appendChild(disableAllButton);
     
-    controls.appendChild(enhancedInfo);
-    controls.appendChild(buttonsContainer);
+    enhancedSection.appendChild(enhancedInfo);
+    enhancedSection.appendChild(mainButtonsContainer);
+    enhancedSection.appendChild(disableAllEnhancedButton);
 
     // Color grid
     const colorGrid = document.createElement('div');
@@ -1218,16 +1258,16 @@ function buildColorFilterOverlay() {
               ${remainingPixels.toLocaleString()} Left
             </div>
           </div>
-          <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 3px; overflow: hidden;">
-            <div style="width: ${progressPercentage}%; height: 100%; background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1); transition: width 0.3s ease;"></div>
-          </div>
+                     <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 3px; overflow: hidden;">
+             <div style="width: ${progressPercentage}%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39); transition: width 0.3s ease;"></div>
+           </div>
         `;
         
         consoleLog(`🎯 [Color Filter] Displaying stats for ${colorInfo.name} (${colorKey}): ${stats.painted}/${stats.totalRequired} (${progressPercentage}%) - ${stats.needsCrosshair} need crosshair`);
       } else {
         pixelStatsDisplay.innerHTML = `
           <div style="font-size: 0.65em; color: rgba(255,255,255,0.6); text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
-            Não usado no template
+            Not Used
           </div>
         `;
         
@@ -1351,8 +1391,7 @@ function buildColorFilterOverlay() {
         const tmpl = templateManager.templatesArray?.[0];
         if (tmpl && tmpl.enhancedColors && tmpl.enhancedColors.size > 0) {
           tmpl.enhancedColors.clear();
-          // Persist settings
-          await templateManager.saveColorFilterSettings();
+          // Trigger template refresh
           await refreshTemplateDisplay();
           buildColorFilterOverlay();
         }
@@ -1414,7 +1453,7 @@ function buildColorFilterOverlay() {
     colorFilterOverlay.appendChild(progressSummary);
     colorFilterOverlay.appendChild(instructions);
     colorFilterOverlay.appendChild(searchContainer);
-    colorFilterOverlay.appendChild(controls);
+    colorFilterOverlay.appendChild(enhancedSection);
     colorFilterOverlay.appendChild(colorGrid);
     colorFilterOverlay.appendChild(refreshStatsButton);
     colorFilterOverlay.appendChild(applyButton);
