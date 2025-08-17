@@ -328,6 +328,16 @@ div:has(> #bm-input-file-template),
   background: rgba(255, 255, 255, 0.5);
 }
 
+/* CRITICAL: Remove red borders from HTML5 validation on coordinate inputs */
+#bm-input-tx:invalid,
+#bm-input-ty:invalid, 
+#bm-input-px:invalid,
+#bm-input-py:invalid {
+  border: none !important;
+  box-shadow: none !important;
+  outline: none !important;
+}
+
 /* The icon and title */
 #bm-title-container {
   display: flex;

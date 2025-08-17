@@ -818,7 +818,8 @@ function buildColorFilterOverlay() {
       z-index: 9001;
       max-width: 600px;
       max-height: 80vh;
-      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
       font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
     `;
 
@@ -833,6 +834,7 @@ function buildColorFilterOverlay() {
       padding-bottom: 10px;
       cursor: move;
       user-select: none;
+      flex-shrink: 0;
     `;
 
     const title = document.createElement('h2');
@@ -1479,15 +1481,24 @@ function buildColorFilterOverlay() {
       }
     };
 
-    // Assemble overlay
+    // Create scrollable content container for fixed header solution
+    const contentContainer = document.createElement('div');
+    contentContainer.style.cssText = `
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
+    `;
+
+    // Assemble overlay with fixed header
     colorFilterOverlay.appendChild(header);
-    colorFilterOverlay.appendChild(progressSummary);
-    colorFilterOverlay.appendChild(instructions);
-    colorFilterOverlay.appendChild(searchContainer);
-    colorFilterOverlay.appendChild(enhancedSection);
-    colorFilterOverlay.appendChild(colorGrid);
-    colorFilterOverlay.appendChild(refreshStatsButton);
-    colorFilterOverlay.appendChild(applyButton);
+    contentContainer.appendChild(progressSummary);
+    contentContainer.appendChild(instructions);
+    contentContainer.appendChild(searchContainer);
+    contentContainer.appendChild(enhancedSection);
+    contentContainer.appendChild(colorGrid);
+    contentContainer.appendChild(refreshStatsButton);
+    contentContainer.appendChild(applyButton);
+    colorFilterOverlay.appendChild(contentContainer);
 
     document.body.appendChild(colorFilterOverlay);
 
@@ -1754,7 +1765,8 @@ function buildCrosshairSettingsOverlay() {
     z-index: 9002;
     max-width: 500px;
     max-height: 70vh;
-    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
     font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
     border: 2px solid rgba(255, 255, 255, 0.1);
@@ -1771,6 +1783,7 @@ function buildCrosshairSettingsOverlay() {
     padding-bottom: 10px;
     cursor: move;
     user-select: none;
+    flex-shrink: 0;
   `;
 
   const title = document.createElement('h2');
@@ -2274,14 +2287,23 @@ function buildCrosshairSettingsOverlay() {
   actionsContainer.appendChild(cancelButton);
   actionsContainer.appendChild(applyButton);
 
-  // Assemble overlay
+  // Create scrollable content container for fixed header solution
+  const contentContainer = document.createElement('div');
+  contentContainer.style.cssText = `
+    overflow-y: auto;
+    flex: 1;
+    min-height: 0;
+  `;
+
+  // Assemble overlay with fixed header
   settingsOverlay.appendChild(header);
-  settingsOverlay.appendChild(instructions);
-  settingsOverlay.appendChild(currentColorPreview);
-  settingsOverlay.appendChild(colorGrid);
-  settingsOverlay.appendChild(alphaSection);
-  settingsOverlay.appendChild(borderSection);
-  settingsOverlay.appendChild(actionsContainer);
+  contentContainer.appendChild(instructions);
+  contentContainer.appendChild(currentColorPreview);
+  contentContainer.appendChild(colorGrid);
+  contentContainer.appendChild(alphaSection);
+  contentContainer.appendChild(borderSection);
+  contentContainer.appendChild(actionsContainer);
+  settingsOverlay.appendChild(contentContainer);
 
   document.body.appendChild(settingsOverlay);
 
