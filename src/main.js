@@ -1223,7 +1223,7 @@ function buildColorFilterOverlay() {
     `;
 
     const enhancedInfo = document.createElement('div');
-    enhancedInfo.textContent = 'Enhanced Mode - Crosshair Highlight';
+    enhancedInfo.textContent = 'Enhanced: Highlight the Pixels.';
     enhancedInfo.style.cssText = `
       background: #333;
       color: white;
