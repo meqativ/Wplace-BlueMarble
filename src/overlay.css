@@ -338,6 +338,19 @@ div:has(> #bm-input-file-template),
   outline: none !important;
 }
 
+/* Mini progress tracker styles - matches the main progress bar */
+#bm-mini-tracker {
+  font-family: 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+  user-select: none;
+  cursor: default;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+#bm-mini-tracker:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+}
+
 /* The icon and title */
 #bm-title-container {
   display: flex;

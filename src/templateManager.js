@@ -52,6 +52,10 @@ export default class TemplateManager {
     this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
     this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong} (from Storage fork)
     
+    // Wrong Color Options
+    this.includeWrongColorsInProgress = false; // Include wrong color pixels in progress calculation
+    this.enhanceWrongColors = false; // Use crosshair enhance on wrong colors
+    
     // Template
     this.canvasTemplate = null; // Our canvas
     this.canvasTemplateZoomed = null; // The template when zoomed out
@@ -268,6 +272,11 @@ export default class TemplateManager {
     // Returns early if no templates should be drawn
     if (!this.templatesShouldBeDrawn) {return tileBlob;}
 
+    // Load wrong color settings if not already loaded
+    if (this.includeWrongColorsInProgress === undefined) {
+      this.loadWrongColorSettings();
+    }
+
     const drawSize = this.tileSize * this.drawMult; // Calculate draw multiplier for scaling
 
     // Format tile coordinates with proper padding for consistent lookup
@@ -365,8 +374,25 @@ export default class TemplateManager {
       const currentTemplate = this.templatesArray?.[0]; // Assuming single template for now
       const hasDisabledColors = currentTemplate && currentTemplate.getDisabledColors().length > 0;
       
-      // Check if any colors have enhanced mode enabled
-      const hasEnhancedColors = currentTemplate && currentTemplate.enhancedColors.size > 0;
+                     // Check if any colors have enhanced mode enabled OR if wrong colors should be enhanced
+       const hasEnhancedColors = currentTemplate && (currentTemplate.enhancedColors.size > 0 || this.enhanceWrongColors);
+       
+       // Debug wrong colors enhance setting
+       if (this.enhanceWrongColors) {
+         console.log(`🎯 [Debug] Enhance Wrong Colors is ENABLED`);
+         console.log(`🎯 [Debug] Current tile: ${tileCoords}`);
+         console.log(`🎯 [Debug] Tile progress data available: ${this.tileProgress.has(tileCoords)}`);
+         if (this.tileProgress.has(tileCoords)) {
+           const tileData = this.tileProgress.get(tileCoords);
+           console.log(`🎯 [Debug] Tile has color breakdown: ${!!tileData.colorBreakdown}`);
+           if (tileData.colorBreakdown) {
+             const wrongColors = Object.entries(tileData.colorBreakdown)
+               .filter(([color, data]) => data.wrong > 0)
+               .map(([color, data]) => `${color}(${data.wrong} wrong)`);
+             console.log(`🎯 [Debug] Wrong colors in this tile: ${wrongColors.join(', ')}`);
+           }
+         }
+       }
       
       // Debug logs
       console.log(`🔍 [Enhanced Debug] Template: ${currentTemplate?.displayName}`);
@@ -413,213 +439,291 @@ export default class TemplateManager {
           canvasData = canvasImageData.data;
         }
         
-        // First pass: Apply color filtering to center pixels
-        if (hasDisabledColors) {
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              // Only process center pixels of 3x3 blocks (same as template creation)
-              if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
-                continue;
-              }
-              
-              const i = (y * width + x) * 4;
-              const r = data[i];
-              const g = data[i + 1];
-              const b = data[i + 2];
-              const alpha = data[i + 3];
-              
-              // Skip transparent pixels
-              if (alpha === 0) continue;
-              
-              // Check if this color is disabled
-              const isDisabled = currentTemplate.isColorDisabled([r, g, b]);
-              
-              if (isDisabled) {
-                // Hide disabled colors by making them transparent
-                data[i + 3] = 0;
-              } else if (hasEnhancedColors && currentTemplate.isColorEnhanced([r, g, b])) {
-                // Track enhanced pixels for border detection
-                enhancedPixels.add(`${x},${y}`);
-              }
-            }
-          }
-        } else if (hasEnhancedColors) {
-          // If only enhanced mode (no color filtering), identify enhanced template pixels
-          // IMPORTANT: Only process center pixels of 3x3 blocks (template pixels) to avoid affecting painted pixels
-          console.log(`🎯 [Enhanced Debug] Scanning for enhanced template pixels...`);
-          let enhancedPixelCount = 0;
-          
-          for (let y = 0; y < height; y++) {
-            for (let x = 0; x < width; x++) {
-              // Only process center pixels of 3x3 blocks (same as template creation)
-              if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
-                continue;
-              }
-              
-              const i = (y * width + x) * 4;
-              const alpha = originalData[i + 3];
-              
-              if (alpha > 0) {
-                const r = originalData[i];
-                const g = originalData[i + 1];
-                const b = originalData[i + 2];
-                
-                if (currentTemplate.isColorEnhanced([r, g, b])) {
-                  enhancedPixels.add(`${x},${y}`);
-                  enhancedPixelCount++;
-                }
-              }
-            }
-          }
-          
-          console.log(`🎯 [Enhanced Debug] Found ${enhancedPixelCount} enhanced template pixels`);
-        }
+                 // First pass: Apply color filtering to center pixels
+         if (hasDisabledColors) {
+           for (let y = 0; y < height; y++) {
+             for (let x = 0; x < width; x++) {
+               // Only process center pixels of 3x3 blocks (same as template creation)
+               if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
+                 continue;
+               }
+               
+               const i = (y * width + x) * 4;
+               const r = data[i];
+               const g = data[i + 1];
+               const b = data[i + 2];
+               const alpha = data[i + 3];
+               
+               // Skip transparent pixels
+               if (alpha === 0) continue;
+               
+               // Check if this color is disabled
+               const isDisabled = currentTemplate.isColorDisabled([r, g, b]);
+               
+               if (isDisabled) {
+                 // Hide disabled colors by making them transparent
+                 data[i + 3] = 0;
+               } else if (hasEnhancedColors && currentTemplate.isColorEnhanced([r, g, b])) {
+                 // Track enhanced pixels for border detection
+                 enhancedPixels.add(`${x},${y}`);
+               }
+             }
+           }
+         } else if (hasEnhancedColors) {
+           // If only enhanced mode (no color filtering), identify enhanced template pixels
+           // IMPORTANT: Only process center pixels of 3x3 blocks (template pixels) to avoid affecting painted pixels
+           console.log(`🎯 [Enhanced Debug] Scanning for enhanced template pixels...`);
+           let enhancedPixelCount = 0;
+           
+           for (let y = 0; y < height; y++) {
+             for (let x = 0; x < width; x++) {
+               // Only process center pixels of 3x3 blocks (same as template creation)
+               if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
+                 continue;
+               }
+               
+               const i = (y * width + x) * 4;
+               const alpha = originalData[i + 3];
+               
+               if (alpha > 0) {
+                 const r = originalData[i];
+                 const g = originalData[i + 1];
+                 const b = originalData[i + 2];
+                 
+                                                                                       // Check if this color should be enhanced (normal enhanced OR wrong colors enhanced)
+                 const isNormalEnhanced = currentTemplate.isColorEnhanced([r, g, b]);
+                 // For wrong colors enhancement, we'll detect wrong colors separately and add them to enhanced pixels
+                 const shouldBeEnhanced = isNormalEnhanced;
+                 
+                 if (shouldBeEnhanced) {
+                   enhancedPixels.add(`${x},${y}`);
+                   enhancedPixelCount++;
+                 }
+               }
+             }
+           }
+           
+                        console.log(`🎯 [Enhanced Debug] Found ${enhancedPixelCount} enhanced template pixels`);
+           }
         
-        // Second pass: Apply enhanced mode crosshair effect if enabled (REALLY OPTIMIZED NOW!)
-        if (hasEnhancedColors && enhancedPixels && enhancedPixels.size > 0) {
-          console.log(`✨ [Enhanced Debug] Applying crosshair effects (FAST MODE) to ${enhancedPixels.size} enhanced pixels...`);
-          
-          // REAL OPTIMIZATION: Use chunked processing for very large templates
-          if (enhancedPixels.size > 23000) {
-            console.log(`⚠️ [Enhanced Debug] Too many enhanced pixels (${enhancedPixels.size}), skipping enhanced mode for performance`);
-          } else {
-            // For large templates, process in smaller chunks to maintain responsiveness
-            const isLargeTemplate = enhancedPixels.size > 12000;
-            if (isLargeTemplate) {
-              console.log(`📦 [Enhanced Debug] Large template detected, using chunked processing...`);
-            }
-            let crosshairCenterCount = 0;
-            
-            // Get canvas region data only once and only for the template area
-            const templateOffsetX = Number(template.pixelCoords[0]) * this.drawMult;
-            const templateOffsetY = Number(template.pixelCoords[1]) * this.drawMult;
-            
-            let canvasRegionData = null;
-            try {
-              if (templateOffsetX >= 0 && templateOffsetY >= 0 && 
-                  templateOffsetX + width <= canvas.width && 
-                  templateOffsetY + height <= canvas.height) {
-                const canvasRegion = context.getImageData(templateOffsetX, templateOffsetY, width, height);
-                canvasRegionData = canvasRegion.data;
+                                   // Second pass: Apply enhanced mode crosshair effect if enabled
+         if (hasEnhancedColors && enhancedPixels && enhancedPixels.size > 0) {
+           console.log(`✨ [Enhanced Debug] Applying crosshair effects to ${enhancedPixels.size} enhanced pixels...`);
+           
+           // Standard enhanced mode logic (simplified)
+           if (enhancedPixels.size > 23000) {
+             console.log(`⚠️ [Enhanced Debug] Too many enhanced pixels (${enhancedPixels.size}), skipping enhanced mode for performance`);
+           } else {
+             let crosshairCenterCount = 0;
+             
+             // Get canvas region data only once and only for the template area
+             const templateOffsetX = Number(template.pixelCoords[0]) * this.drawMult;
+             const templateOffsetY = Number(template.pixelCoords[1]) * this.drawMult;
+             
+             let canvasRegionData = null;
+             try {
+               if (templateOffsetX >= 0 && templateOffsetY >= 0 && 
+                   templateOffsetX + width <= canvas.width && 
+                   templateOffsetY + height <= canvas.height) {
+                 const canvasRegion = context.getImageData(templateOffsetX, templateOffsetY, width, height);
+                 canvasRegionData = canvasRegion.data;
+               }
+             } catch (error) {
+               console.warn('⚠️ [Enhanced Debug] Could not get canvas region, enhanced mode will be simplified');
+             }
+             
+             // Process enhanced pixels efficiently 
+             const enhancedPixelsArray = Array.from(enhancedPixels);
+             const isLargeTemplate = enhancedPixelsArray.length > 12000; // Consider large if more than 1200 pixels
+             const chunkSize = isLargeTemplate ? 2000 : enhancedPixelsArray.length; // Process in chunks for large templates
+             
+             // NEW: Separate tracking for wrong color pixels
+             const wrongColorPixels = new Set();
+             let wrongColorCount = 0;
+             
+             // NEW: Detect wrong color pixels first
+             if (this.enhanceWrongColors) {
+               console.log(`🎯 [Wrong Colors] Scanning for wrong color pixels...`);
+               console.log(`🎯 [Wrong Colors] Enhanced pixels to check: ${enhancedPixelsArray.length}`);
+               console.log(`🎯 [Wrong Colors] Canvas region data available: ${!!canvasRegionData}`);
+               
+               for (const pixelCoord of enhancedPixelsArray) {
+                 const [px, py] = pixelCoord.split(',').map(Number);
+                 
+                 // Get template color at this position
+                 const templateIndex = (py * width + px) * 4;
+                 const templateR = originalData[templateIndex];
+                 const templateG = originalData[templateIndex + 1];
+                 const templateB = originalData[templateIndex + 2];
+                 
+                 // Check canvas color at same position
+                 let canvasR = 0, canvasG = 0, canvasB = 0, canvasA = 0;
+                 if (canvasRegionData) {
+                   canvasR = canvasRegionData[templateIndex];
+                   canvasG = canvasRegionData[templateIndex + 1];
+                   canvasB = canvasRegionData[templateIndex + 2];
+                   canvasA = canvasRegionData[templateIndex + 3];
+                 } else {
+                   // Fallback for edge cases
+                   const canvasX = px + templateOffsetX;
+                   const canvasY = py + templateOffsetY;
+                   if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                     const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                     canvasR = canvasData[canvasIndex];
+                     canvasG = canvasData[canvasIndex + 1];
+                     canvasB = canvasData[canvasIndex + 2];
+                     canvasA = canvasData[canvasIndex + 3];
+                   }
+                 }
+                 
+                 // Check if pixel is painted but wrong color
+                 if (canvasA > 0 && (canvasR !== templateR || canvasG !== templateG || canvasB !== templateB)) {
+                   wrongColorPixels.add(pixelCoord);
+                   wrongColorCount++;
+                   
+                   if (wrongColorCount <= 5) { // Log first 5 wrong colors for debugging
+                     console.log(`🎯 [Wrong Colors] Found wrong color at (${px},${py}): template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB}`);
+                   }
+                 } else if (wrongColorCount <= 5) {
+                   // Log first few pixels that are NOT wrong for debugging
+                   console.log(`🎯 [Wrong Colors] Pixel at (${px},${py}) is NOT wrong: template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB} (alpha: ${canvasA})`);
+                 }
+               }
+               
+               console.log(`🎯 [Wrong Colors] Found ${wrongColorCount} wrong color pixels out of ${enhancedPixelsArray.length} enhanced pixels`);
+               
+               // Add wrong color pixels to enhanced pixels set for crosshair processing
+               for (const pixelCoord of wrongColorPixels) {
+                 enhancedPixels.add(pixelCoord);
+               }
+               
+               // Update the array with the new pixels
+               const updatedEnhancedPixelsArray = Array.from(enhancedPixels);
+               console.log(`🎯 [Wrong Colors] Total enhanced pixels after adding wrong colors: ${updatedEnhancedPixelsArray.length}`);
+             }
+             
+             // Get border setting once for the entire tile
+             const borderEnabled = this.getBorderEnabled();
+             let borderCount = 0;
+             
+             // Use updated array if wrong colors were detected, otherwise use original
+             const finalEnhancedPixelsArray = (this.enhanceWrongColors && wrongColorCount > 0 && typeof updatedEnhancedPixelsArray !== 'undefined') ? updatedEnhancedPixelsArray : enhancedPixelsArray;
+             
+             for (let chunkStart = 0; chunkStart < finalEnhancedPixelsArray.length; chunkStart += chunkSize) {
+               const chunkEnd = Math.min(chunkStart + chunkSize, finalEnhancedPixelsArray.length);
+               const chunk = finalEnhancedPixelsArray.slice(chunkStart, chunkEnd);
+               
+               if (isLargeTemplate && chunkStart > 0) {
+                 console.log(`📦 [Enhanced Debug] Processing chunk ${Math.floor(chunkStart/chunkSize) + 1}/${Math.ceil(finalEnhancedPixelsArray.length/chunkSize)}`);
+               }
+               
+               for (const pixelCoord of chunk) {
+                 const [px, py] = pixelCoord.split(',').map(Number);
+                 
+                 // Determine if this is a wrong color pixel
+                 const isWrongColor = wrongColorPixels.has(pixelCoord);
+                 
+                 // Apply crosshairs only around enhanced pixels (red centers only)
+                 const crosshairOffsets = [
+                   [0, -1, 'center'], [0, 1, 'center'], [-1, 0, 'center'], [1, 0, 'center'] // Orthogonal only
+                 ];
+                 
+                 for (const [dx, dy, type] of crosshairOffsets) {
+                   const x = px + dx;
+                   const y = py + dy;
+                   
+                   // Quick bounds check
+                   if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                   
+                   const i = (y * width + x) * 4;
+                   
+                   // Only modify transparent template pixels
+                   if (originalData[i + 3] !== 0) continue;
+                   
+                   // Standard logic: skip if already painted (but allow wrong color crosshairs)
+                   let skipPainted = false;
+                   if (canvasRegionData) {
+                     skipPainted = canvasRegionData[i + 3] > 0;
+                   } else {
+                     // Fallback for edge cases
+                     const canvasX = x + templateOffsetX;
+                     const canvasY = y + templateOffsetY;
+                     if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                       const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                       skipPainted = canvasData[canvasIndex + 3] > 0;
+                     }
+                   }
+                   
+                   // For wrong colors, we want to show crosshair even if pixel is painted (to highlight the wrong color)
+                   if (skipPainted && !isWrongColor) continue;
+                   
+                   // Apply crosshair with same color system for both normal and wrong colors
+                   const crosshairColor = this.getCrosshairColor();
+                   
+                   data[i] = crosshairColor.rgb[0]; 
+                   data[i + 1] = crosshairColor.rgb[1]; 
+                   data[i + 2] = crosshairColor.rgb[2]; 
+                   data[i + 3] = crosshairColor.alpha;
+                   crosshairCenterCount++;
+                 }
+               
+                 // Apply corner borders if enabled
+                 if (borderEnabled) {
+                   const cornerOffsets = [
+                     [1, 1], [-1, 1], [1, -1], [-1, -1] // Diagonal corners
+                   ];
+                   
+                   for (const [dx, dy] of cornerOffsets) {
+                     const x = px + dx;
+                     const y = py + dy;
+                     
+                     // Quick bounds check
+                     if (x < 0 || x >= width || y < 0 || y >= height) continue;
+                     
+                     const i = (y * width + x) * 4;
+                     
+                     // Only modify transparent template pixels
+                     if (originalData[i + 3] !== 0) continue;
+                     
+                     // Fast canvas collision check
+                     let skipPainted = false;
+                     if (canvasRegionData) {
+                       skipPainted = canvasRegionData[i + 3] > 0;
+                     } else {
+                       // Fallback for edge cases
+                       const canvasX = x + templateOffsetX;
+                       const canvasY = y + templateOffsetY;
+                       if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                         const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                         skipPainted = canvasData[canvasIndex + 3] > 0;
+                       }
+                     }
+                     
+                     if (skipPainted) continue;
+                     
+                     // Apply blue corner border
+                     data[i] = 0;       // No red
+                     data[i + 1] = 100; // Some green  
+                     data[i + 2] = 255; // Full blue
+                     data[i + 3] = 200; // 80% opacity
+                     borderCount++;
+                   }
+                 }
+               }
+             }
+             
+                           console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} crosshairs and ${borderCount} corner borders`);
+              if (this.enhanceWrongColors && wrongColorCount > 0) {
+                const crosshairConfig = this.getCrosshairColor();
+                console.log(`🎯 [Wrong Colors] Applied crosshairs to ${wrongColorCount} wrong color pixels (${crosshairConfig.name} crosshairs)`);
               }
-            } catch (error) {
-              console.warn('⚠️ [Enhanced Debug] Could not get canvas region, enhanced mode will be simplified');
-            }
-            
-            // Process enhanced pixels efficiently 
-            const enhancedPixelsArray = Array.from(enhancedPixels);
-            const chunkSize = isLargeTemplate ? 2000 : enhancedPixelsArray.length; // Process in chunks for large templates
-            
-            // Get border setting once for the entire tile
-            const borderEnabled = this.getBorderEnabled();
-            let borderCount = 0;
-            
-            for (let chunkStart = 0; chunkStart < enhancedPixelsArray.length; chunkStart += chunkSize) {
-              const chunkEnd = Math.min(chunkStart + chunkSize, enhancedPixelsArray.length);
-              const chunk = enhancedPixelsArray.slice(chunkStart, chunkEnd);
-              
-              if (isLargeTemplate && chunkStart > 0) {
-                console.log(`📦 [Enhanced Debug] Processing chunk ${Math.floor(chunkStart/chunkSize) + 1}/${Math.ceil(enhancedPixelsArray.length/chunkSize)}`);
+              if (borderEnabled) {
+                console.log(`🔲 [Border Debug] Corner borders enabled: ${borderCount} applied`);
+              } else {
+                console.log(`🔲 [Border Debug] Corner borders disabled`);
               }
-              
-              for (const pixelCoord of chunk) {
-                const [px, py] = pixelCoord.split(',').map(Number);
-                
-                // Apply crosshairs only around enhanced pixels (red centers only)
-                const crosshairOffsets = [
-                  [0, -1, 'center'], [0, 1, 'center'], [-1, 0, 'center'], [1, 0, 'center'] // Orthogonal only
-                ];
-                
-                for (const [dx, dy, type] of crosshairOffsets) {
-                  const x = px + dx;
-                  const y = py + dy;
-                  
-                  // Quick bounds check
-                  if (x < 0 || x >= width || y < 0 || y >= height) continue;
-                  
-                  const i = (y * width + x) * 4;
-                  
-                  // Only modify transparent template pixels
-                  if (originalData[i + 3] !== 0) continue;
-                  
-                  // Fast canvas collision check
-                  let skipPainted = false;
-                  if (canvasRegionData) {
-                    skipPainted = canvasRegionData[i + 3] > 0;
-                  } else {
-                    // Fallback for edge cases
-                    const canvasX = x + templateOffsetX;
-                    const canvasY = y + templateOffsetY;
-                    if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
-                      const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
-                      skipPainted = canvasData[canvasIndex + 3] > 0;
-                    }
-                  }
-                  
-                  if (skipPainted) continue;
-                  
-                  // Apply crosshair with user-configured color
-                  const crosshairColor = this.getCrosshairColor();
-                  data[i] = crosshairColor.rgb[0]; 
-                  data[i + 1] = crosshairColor.rgb[1]; 
-                  data[i + 2] = crosshairColor.rgb[2]; 
-                  data[i + 3] = crosshairColor.alpha;
-                  crosshairCenterCount++;
-                }
-                
-                // Apply corner borders if enabled
-                if (borderEnabled) {
-                  const cornerOffsets = [
-                    [1, 1], [-1, 1], [1, -1], [-1, -1] // Diagonal corners
-                  ];
-                  
-                  for (const [dx, dy] of cornerOffsets) {
-                    const x = px + dx;
-                    const y = py + dy;
-                    
-                    // Quick bounds check
-                    if (x < 0 || x >= width || y < 0 || y >= height) continue;
-                    
-                    const i = (y * width + x) * 4;
-                    
-                    // Only modify transparent template pixels
-                    if (originalData[i + 3] !== 0) continue;
-                    
-                    // Fast canvas collision check
-                    let skipPainted = false;
-                    if (canvasRegionData) {
-                      skipPainted = canvasRegionData[i + 3] > 0;
-                    } else {
-                      // Fallback for edge cases
-                      const canvasX = x + templateOffsetX;
-                      const canvasY = y + templateOffsetY;
-                      if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
-                        const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
-                        skipPainted = canvasData[canvasIndex + 3] > 0;
-                      }
-                    }
-                    
-                    if (skipPainted) continue;
-                    
-                    // Apply blue corner border
-                    data[i] = 0;       // No red
-                    data[i + 1] = 100; // Some green  
-                    data[i + 2] = 255; // Full blue
-                    data[i + 3] = 200; // 80% opacity
-                    borderCount++;
-                  }
-                }
-              }
-            }
-            
-            console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} crosshairs and ${borderCount} corner borders (FAST MODE)`);
-            if (borderEnabled) {
-              console.log(`🔲 [Border Debug] Corner borders enabled: ${borderCount} applied`);
-            } else {
-              console.log(`🔲 [Border Debug] Corner borders disabled`);
-            }
-          }
-        }
+           }
+         }
         
         // Put the processed image data back
         tempCtx.putImageData(imageData, 0, 0);
@@ -924,6 +1028,16 @@ export default class TemplateManager {
             template.setEnhancedColors(enhancedColors);
           }
           
+          // Load wrong color settings if they exist
+          if (templateValue.includeWrongColorsInProgress !== undefined) {
+            this.includeWrongColorsInProgress = templateValue.includeWrongColorsInProgress;
+            console.log(`🎯 [Template Load] Restored includeWrongColorsInProgress: ${this.includeWrongColorsInProgress}`);
+          }
+          if (templateValue.enhanceWrongColors !== undefined) {
+            this.enhanceWrongColors = templateValue.enhanceWrongColors;
+            console.log(`🎯 [Template Load] Restored enhanceWrongColors: ${this.enhanceWrongColors}`);
+          }
+          
           this.templatesArray.push(template);
           console.log(this.templatesArray);
           console.log(`^^^ This ^^^`);
@@ -971,6 +1085,9 @@ export default class TemplateManager {
           // ONLY save the color settings, keep original tiles unchanged
           this.templatesJSON.templates[templateKey].disabledColors = template.getDisabledColors();
           this.templatesJSON.templates[templateKey].enhancedColors = template.getEnhancedColors();
+          // Also save wrong color settings as part of template data
+          this.templatesJSON.templates[templateKey].includeWrongColorsInProgress = this.includeWrongColorsInProgress;
+          this.templatesJSON.templates[templateKey].enhanceWrongColors = this.enhanceWrongColors;
           consoleLog('JSON updated with new filter settings (settings only, tiles unchanged)');
         }
       }
@@ -1094,24 +1211,50 @@ export default class TemplateManager {
             // Use REAL color data if available, otherwise fall back to proportional
             let paintedForColor, wrongForColor, needsCrosshair, percentage;
             
-            if (realColorStats[colorKey]) {
-              // Use PRECISE data from per-color tile analysis
-              paintedForColor = realColorStats[colorKey].painted;
-              wrongForColor = realColorStats[colorKey].wrong;
-              needsCrosshair = realColorStats[colorKey].required - paintedForColor;
-              percentage = realColorStats[colorKey].required > 0 ? 
-                Math.round((paintedForColor / realColorStats[colorKey].required) * 100) : 0;
-              
-              consoleLog(`🎯 [REAL DATA] ${colorKey}: ${paintedForColor}/${realColorStats[colorKey].required} (${percentage}%) - ${needsCrosshair} need crosshair`);
+                         if (realColorStats[colorKey]) {
+               // Use PRECISE data from per-color tile analysis
+               paintedForColor = realColorStats[colorKey].painted;
+               wrongForColor = realColorStats[colorKey].wrong;
+               
+               // Apply wrong color logic based on settings
+               if (this.includeWrongColorsInProgress) {
+                 // Include wrong colors in progress calculation (wrong pixels count as "painted")
+                 const effectivePainted = paintedForColor + wrongForColor;
+                 const effectiveRequired = realColorStats[colorKey].required; // Keep original required, wrong pixels are already part of it
+                 needsCrosshair = effectiveRequired - effectivePainted;
+                 percentage = effectiveRequired > 0 ? 
+                   Math.round((effectivePainted / effectiveRequired) * 100) : 0;
+                 
+                 consoleLog(`🎯 [REAL DATA + WRONG] ${colorKey}: ${effectivePainted}/${effectiveRequired} (${percentage}%) - ${needsCrosshair} need crosshair (includes ${wrongForColor} wrong)`);
+               } else {
+                 // Standard calculation (exclude wrong colors)
+                 needsCrosshair = realColorStats[colorKey].required - paintedForColor;
+                 percentage = realColorStats[colorKey].required > 0 ? 
+                   Math.round((paintedForColor / realColorStats[colorKey].required) * 100) : 0;
+                 
+                 consoleLog(`🎯 [REAL DATA] ${colorKey}: ${paintedForColor}/${realColorStats[colorKey].required} (${percentage}%) - ${needsCrosshair} need crosshair`);
+               }
             } else {
               // Fall back to proportional estimation for colors without real data
               const proportionOfTemplate = totalRequired > 0 ? colorCount / totalRequired : 0;
               paintedForColor = Math.round(totalPainted * proportionOfTemplate);
               wrongForColor = Math.round(totalWrong * proportionOfTemplate);
-              needsCrosshair = colorCount - paintedForColor;
-              percentage = colorCount > 0 ? Math.round((paintedForColor / colorCount) * 100) : 0;
               
-              consoleLog(`📊 [ESTIMATED] ${colorKey}: ${paintedForColor}/${colorCount} (${percentage}%) - ${needsCrosshair} need crosshair`);
+                             if (this.includeWrongColorsInProgress) {
+                 // Include wrong colors in progress calculation (wrong pixels count as "painted")
+                 const effectivePainted = paintedForColor + wrongForColor;
+                 const effectiveRequired = colorCount; // Keep original required, wrong pixels are already part of it
+                 needsCrosshair = effectiveRequired - effectivePainted;
+                 percentage = effectiveRequired > 0 ? Math.round((effectivePainted / effectiveRequired) * 100) : 0;
+                 
+                 consoleLog(`📊 [ESTIMATED + WRONG] ${colorKey}: ${effectivePainted}/${effectiveRequired} (${percentage}%) - ${needsCrosshair} need crosshair (includes ${wrongForColor} wrong)`);
+               } else {
+                // Standard calculation (exclude wrong colors)
+                needsCrosshair = colorCount - paintedForColor;
+                percentage = colorCount > 0 ? Math.round((paintedForColor / colorCount) * 100) : 0;
+                
+                consoleLog(`📊 [ESTIMATED] ${colorKey}: ${paintedForColor}/${colorCount} (${percentage}%) - ${needsCrosshair} need crosshair`);
+              }
             }
             
             colorStats[colorKey] = {
@@ -1125,8 +1268,18 @@ export default class TemplateManager {
         }
         
         consoleLog('✅ [Enhanced Pixel Analysis] SUMMARY (from tileProgress):');
-        consoleLog(`   Total painted: ${totalPainted}/${totalRequired} (${totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0}%)`);
-        consoleLog(`   Wrong pixels: ${totalWrong}`);
+        
+                 // Apply wrong color logic to overall progress
+         if (this.includeWrongColorsInProgress) {
+           const effectivePainted = totalPainted + totalWrong;
+           const effectiveRequired = totalRequired; // Keep original required, wrong pixels are already part of it
+           const effectivePercentage = effectiveRequired > 0 ? Math.round((effectivePainted / effectiveRequired) * 100) : 0;
+           consoleLog(`   Total painted (including wrong): ${effectivePainted}/${effectiveRequired} (${effectivePercentage}%)`);
+           consoleLog(`   Wrong pixels included in progress: ${totalWrong}`);
+         } else {
+          consoleLog(`   Total painted: ${totalPainted}/${totalRequired} (${totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0}%)`);
+          consoleLog(`   Wrong pixels: ${totalWrong}`);
+        }
         
         return colorStats;
         
@@ -1218,8 +1371,9 @@ export default class TemplateManager {
             firstPixelsByColor[colorKey] = `(${x},${y})`;
           }
           
-          // Enhanced mode logic: only include if color is enhanced OR no enhanced colors defined
-          const shouldBeEnhanced = !hasEnhancedColors || template.enhancedColors.has(colorKey);
+                     // Enhanced mode logic: include if color is enhanced OR no enhanced colors defined OR wrong colors should be enhanced
+           const shouldBeEnhanced = !hasEnhancedColors || template.enhancedColors.has(colorKey) || 
+             (this.enhanceWrongColors && this.isColorWrongInTile(colorKey, tileCoords));
           
           if (shouldBeEnhanced) {
             enhancedTemplatePixels.add(`${x},${y}`);
@@ -1459,38 +1613,40 @@ export default class TemplateManager {
     return colorStats;
   }
 
-  /** Gets the saved crosshair color from storage
-   * @returns {Object} The crosshair color configuration
-   * @since 1.0.0 
-   */
-  getCrosshairColor() {
-    try {
-      let savedColor = null;
-      
-      // Try TamperMonkey storage first
-      if (typeof GM_getValue !== 'undefined') {
-        const saved = GM_getValue('bmCrosshairColor', null);
-        if (saved) savedColor = JSON.parse(saved);
-      }
-      
-      // Fallback to localStorage
-      if (!savedColor) {
-        const saved = localStorage.getItem('bmCrosshairColor');
-        if (saved) savedColor = JSON.parse(saved);
-      }
-      
-      if (savedColor) return savedColor;
-    } catch (error) {
-      console.warn('Failed to load crosshair color:', error);
-    }
-    
-    // Default red color
-    return {
-      name: 'Red',
-      rgb: [255, 0, 0],
-      alpha: 255
-    };
-  }
+     /** Gets the saved crosshair color from storage
+    * @returns {Object} The crosshair color configuration
+    * @since 1.0.0 
+    */
+   getCrosshairColor() {
+     try {
+       let savedColor = null;
+       
+       // Try TamperMonkey storage first
+       if (typeof GM_getValue !== 'undefined') {
+         const saved = GM_getValue('bmCrosshairColor', null);
+         if (saved) savedColor = JSON.parse(saved);
+       }
+       
+       // Fallback to localStorage
+       if (!savedColor) {
+         const saved = localStorage.getItem('bmCrosshairColor');
+         if (saved) savedColor = JSON.parse(saved);
+       }
+       
+       if (savedColor) return savedColor;
+     } catch (error) {
+       console.warn('Failed to load crosshair color:', error);
+     }
+     
+     // Default red color
+     return {
+       name: 'Red',
+       rgb: [255, 0, 0],
+       alpha: 255
+     };
+   }
+
+
 
   /** Gets the border enabled setting from storage
    * @returns {boolean} Whether borders are enabled
@@ -1523,5 +1679,430 @@ export default class TemplateManager {
     // Default to disabled
     console.log('🔲 Using default border setting: false');
     return false;
+  }
+
+  /** Sets whether wrong colors should be included in progress calculation
+   * @param {boolean} include - Whether to include wrong colors
+   * @since 1.0.0
+   */
+  async setIncludeWrongColorsInProgress(include) {
+    this.includeWrongColorsInProgress = include;
+    console.log(`🎯 [Wrong Colors] Include wrong colors in progress: ${include}`);
+    
+    // Save to template data (same way as enhanced colors)
+    try {
+      await this.updateTemplateWithColorFilter();
+      console.log(`🎯 [Wrong Colors] Settings saved to template data`);
+    } catch (error) {
+      console.warn(`🎯 [Wrong Colors] Failed to save to template data, using fallback:`, error);
+      this.saveWrongColorSettings(); // Fallback
+    }
+  }
+
+  /** Gets whether wrong colors should be included in progress calculation
+   * @returns {boolean} Whether wrong colors are included
+   * @since 1.0.0
+   */
+  getIncludeWrongColorsInProgress() {
+    console.log(`🎯 [Debug] getIncludeWrongColorsInProgress returning: ${this.includeWrongColorsInProgress}`);
+    return this.includeWrongColorsInProgress;
+  }
+
+  /** Sets whether wrong colors should be enhanced with crosshair
+   * @param {boolean} enhance - Whether to enhance wrong colors
+   * @since 1.0.0
+   */
+  async setEnhanceWrongColors(enhance) {
+    this.enhanceWrongColors = enhance;
+    console.log(`🎯 [Wrong Colors] Enhance wrong colors: ${enhance}`);
+    
+    // Save to template data (same way as enhanced colors)
+    try {
+      await this.updateTemplateWithColorFilter();
+      console.log(`🎯 [Wrong Colors] Settings saved to template data`);
+    } catch (error) {
+      console.warn(`🎯 [Wrong Colors] Failed to save to template data, using fallback:`, error);
+      this.saveWrongColorSettings(); // Fallback
+    }
+    
+         // Clear debug logs when toggling
+     this._loggedWrongColors = new Set();
+     this._loggedEnhancedPixels = new Set();
+     this._wrongPixelsToEnhance = null;
+     this._loggedWrongEnhanced = false;
+    
+    // Force template redraw to apply enhanced mode changes
+    if (this.templatesArray && this.templatesArray.length > 0) {
+      consoleLog(`🎯 [Wrong Colors] Forcing template redraw to apply enhanced mode changes`);
+      this.setTemplatesShouldBeDrawn(false);
+      setTimeout(() => {
+        this.setTemplatesShouldBeDrawn(true);
+      }, 50);
+    }
+  }
+
+  /** Gets whether wrong colors should be enhanced with crosshair
+   * @returns {boolean} Whether wrong colors are enhanced
+   * @since 1.0.0
+   */
+  getEnhanceWrongColors() {
+    return this.enhanceWrongColors;
+  }
+
+  /** Loads wrong color settings from storage
+   * @since 1.0.0
+   */
+  loadWrongColorSettings() {
+    try {
+      console.log(`🎯 [Debug] Loading wrong color settings...`);
+      console.log(`🎯 [Debug] Before loading - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+      
+      // Try TamperMonkey storage first
+      if (typeof GM_getValue !== 'undefined') {
+        const includeWrong = GM_getValue('bmIncludeWrongColors', false);
+        const enhanceWrong = GM_getValue('bmEnhanceWrongColors', false);
+        console.log(`🎯 [Debug] TamperMonkey values - Include: ${includeWrong}, Enhance: ${enhanceWrong}`);
+        this.includeWrongColorsInProgress = includeWrong;
+        this.enhanceWrongColors = enhanceWrong;
+        console.log(`🎯 [Wrong Colors] Loaded settings from TamperMonkey - Include: ${includeWrong}, Enhance: ${enhanceWrong}`);
+        return;
+      }
+      
+      // Fallback to localStorage
+      const includeWrongRaw = localStorage.getItem('bmIncludeWrongColors');
+      const enhanceWrongRaw = localStorage.getItem('bmEnhanceWrongColors');
+      console.log(`🎯 [Debug] localStorage raw values - Include: '${includeWrongRaw}', Enhance: '${enhanceWrongRaw}'`);
+      
+      const includeWrong = includeWrongRaw === 'true';
+      const enhanceWrong = enhanceWrongRaw === 'true';
+      this.includeWrongColorsInProgress = includeWrong;
+      this.enhanceWrongColors = enhanceWrong;
+      console.log(`🎯 [Wrong Colors] Loaded settings from localStorage - Include: ${includeWrong}, Enhance: ${enhanceWrong}`);
+      console.log(`🎯 [Debug] After loading - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+    } catch (error) {
+      console.warn('Failed to load wrong color settings:', error);
+    }
+  }
+
+  /** Saves wrong color settings to storage
+   * @since 1.0.0
+   */
+  saveWrongColorSettings() {
+    try {
+      console.log(`🎯 [Debug] Saving wrong color settings - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+      
+      // Try TamperMonkey storage first
+      if (typeof GM_setValue !== 'undefined') {
+        GM_setValue('bmIncludeWrongColors', this.includeWrongColorsInProgress);
+        GM_setValue('bmEnhanceWrongColors', this.enhanceWrongColors);
+        console.log(`🎯 [Wrong Colors] Settings saved to TamperMonkey storage - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+        return;
+      }
+      
+      // Fallback to localStorage
+      localStorage.setItem('bmIncludeWrongColors', this.includeWrongColorsInProgress.toString());
+      localStorage.setItem('bmEnhanceWrongColors', this.enhanceWrongColors.toString());
+      console.log(`🎯 [Wrong Colors] Settings saved to localStorage - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+    } catch (error) {
+      console.error('Failed to save wrong color settings:', error);
+    }
+  }
+
+  /** Checks if a color has wrong pixels in a specific tile
+   * @param {string} colorKey - Color key in format "r,g,b"
+   * @param {string} tileKey - Tile key in format "x,y"
+   * @returns {boolean} Whether the color has wrong pixels in this tile
+   * @since 1.0.0
+   */
+  isColorWrongInTile(colorKey, tileKey) {
+    const tileProgress = this.tileProgress.get(tileKey);
+    if (!tileProgress || !tileProgress.colorBreakdown) {
+      return false;
+    }
+    
+    const colorData = tileProgress.colorBreakdown[colorKey];
+    const hasWrongPixels = colorData && colorData.wrong > 0;
+    
+    // Only log once per color per tile to avoid spam
+    if (this.enhanceWrongColors && hasWrongPixels && !this._loggedWrongColors) {
+      this._loggedWrongColors = this._loggedWrongColors || new Set();
+      const logKey = `${colorKey}-${tileKey}`;
+      if (!this._loggedWrongColors.has(logKey)) {
+        console.log(`🎯 [Wrong Color Detection] Color ${colorKey} has ${colorData.wrong} wrong pixels in tile ${tileKey}`);
+        this._loggedWrongColors.add(logKey);
+      }
+    }
+    
+    return hasWrongPixels;
+  }
+
+     /** Gets wrong pixels for selected colors in a specific tile
+    * @param {string} tileCoords - Tile coordinates "x,y"
+    * @param {Template} template - Template object
+    * @returns {Set<string>} Set of pixel coordinates that are wrong for selected colors
+    * @since 1.0.0
+    */
+   getWrongPixelsForSelectedColors(tileCoords, template) {
+     const wrongPixels = new Set();
+     
+     try {
+       const tileProgress = this.tileProgress.get(tileCoords);
+       if (!tileProgress || !tileProgress.colorBreakdown) {
+         return wrongPixels;
+       }
+       
+       // Get selected colors (enhanced colors)
+       const selectedColors = Array.from(template.enhancedColors);
+       
+       if (selectedColors.length === 0) {
+         console.log(`🎯 [Wrong Color Enhancement] No colors selected for enhancement`);
+         return wrongPixels;
+       }
+       
+       console.log(`🎯 [Wrong Color Enhancement] Checking wrong pixels for selected colors: ${selectedColors.join(', ')}`);
+       
+       // For each selected color, find wrong pixels
+       for (const colorKey of selectedColors) {
+         const colorData = tileProgress.colorBreakdown[colorKey];
+         if (colorData && colorData.wrong > 0) {
+           console.log(`🎯 [Wrong Color Enhancement] Color ${colorKey} has ${colorData.wrong} wrong pixels`);
+           
+           // Find the actual wrong pixel coordinates for this color
+           const wrongCoords = this.findWrongPixelCoordinates(tileCoords, colorKey, template);
+           wrongCoords.forEach(coord => wrongPixels.add(coord));
+         }
+       }
+       
+       console.log(`🎯 [Wrong Color Enhancement] Total wrong pixels to enhance: ${wrongPixels.size}`);
+       
+     } catch (error) {
+       console.warn('Failed to get wrong pixels for selected colors:', error);
+     }
+     
+     return wrongPixels;
+   }
+   
+   /** Finds wrong pixel coordinates for a specific color in a tile
+    * @param {string} tileCoords - Tile coordinates "x,y"
+    * @param {string} colorKey - Color key "r,g,b"
+    * @param {Template} template - Template object
+    * @returns {Set<string>} Set of pixel coordinates that are wrong for this color
+    * @since 1.0.0
+    */
+   findWrongPixelCoordinates(tileCoords, colorKey, template) {
+     const wrongCoords = new Set();
+     
+     try {
+       // Parse color
+       const [targetR, targetG, targetB] = colorKey.split(',').map(Number);
+       
+       // Find template tiles for this tile coordinate
+       const matchingTiles = Object.keys(template.chunked).filter(tile =>
+         tile.startsWith(tileCoords)
+       );
+       
+       for (const tileKey of matchingTiles) {
+         const tileBitmap = template.chunked[tileKey];
+         const coords = tileKey.split(',');
+         const pixelCoords = [coords[2], coords[3]];
+         
+         // Get template bitmap data
+         const tempCanvas = document.createElement('canvas');
+         tempCanvas.width = tileBitmap.width;
+         tempCanvas.height = tileBitmap.height;
+         const tempCtx = tempCanvas.getContext('2d');
+         tempCtx.imageSmoothingEnabled = false;
+         tempCtx.drawImage(tileBitmap, 0, 0);
+         const templateImageData = tempCtx.getImageData(0, 0, tileBitmap.width, tileBitmap.height);
+         const templateData = templateImageData.data;
+         
+         // Check each pixel for this color
+         for (let y = 0; y < tileBitmap.height; y++) {
+           for (let x = 0; x < tileBitmap.width; x++) {
+             // Only check center pixels of 3x3 blocks
+             if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
+               continue;
+             }
+             
+             const i = (y * tileBitmap.width + x) * 4;
+             const r = templateData[i];
+             const g = templateData[i + 1];
+             const b = templateData[i + 2];
+             const a = templateData[i + 3];
+             
+             // Skip transparent pixels
+             if (a < 64) continue;
+             
+             // Check if this is the color we're looking for
+             if (r === targetR && g === targetG && b === targetB) {
+               // Calculate global coordinates
+               const globalX = Number(pixelCoords[0]) * this.drawMult + x;
+               const globalY = Number(pixelCoords[1]) * this.drawMult + y;
+               
+               // Add to wrong pixels set (we'll verify against canvas later)
+               wrongCoords.add(`${globalX},${globalY}`);
+             }
+           }
+         }
+       }
+       
+     } catch (error) {
+       console.warn('Failed to find wrong pixel coordinates:', error);
+     }
+     
+     return wrongCoords;
+   }
+   
+   /** Applies crosshair to wrong pixels
+    * @param {Uint8ClampedArray} data - Image data to modify
+    * @param {Uint8ClampedArray} originalData - Original template data
+    * @param {Set<string>} wrongPixels - Set of wrong pixel coordinates
+    * @param {number} width - Image width
+    * @param {number} height - Image height
+    * @param {Object} template - Template object
+    * @param {CanvasRenderingContext2D} context - Canvas context
+    * @param {Uint8ClampedArray} canvasData - Current canvas data
+    * @since 1.0.0
+    */
+   applyCrosshairToWrongPixels(data, originalData, wrongPixels, width, height, template, context, canvasData) {
+     let crosshairCount = 0;
+     const crosshairColor = this.getCrosshairColor();
+     
+     console.log(`🎯 [Wrong Color Enhancement] Applying crosshair to ${wrongPixels.size} wrong pixels`);
+     
+     for (const pixelCoord of wrongPixels) {
+       const [px, py] = pixelCoord.split(',').map(Number);
+       
+       // Convert global coordinates to local template coordinates
+       const templateOffsetX = Number(template.pixelCoords[0]) * this.drawMult;
+       const templateOffsetY = Number(template.pixelCoords[1]) * this.drawMult;
+       const localX = px - templateOffsetX;
+       const localY = py - templateOffsetY;
+       
+       // Check bounds
+       if (localX < 0 || localX >= width || localY < 0 || localY >= height) {
+         continue;
+       }
+       
+       // Apply crosshair around the wrong pixel
+       const crosshairOffsets = [
+         [0, -1], [0, 1], [-1, 0], [1, 0] // Orthogonal only
+       ];
+       
+       for (const [dx, dy] of crosshairOffsets) {
+         const x = localX + dx;
+         const y = localY + dy;
+         
+         // Quick bounds check
+         if (x < 0 || x >= width || y < 0 || y >= height) continue;
+         
+         const i = (y * width + x) * 4;
+         
+         // Only modify transparent template pixels
+         if (originalData[i + 3] !== 0) continue;
+         
+         // Check if pixel is already painted on canvas
+         const canvasX = x + templateOffsetX;
+         const canvasY = y + templateOffsetY;
+         if (canvasX >= 0 && canvasX < context.canvas.width && canvasY >= 0 && canvasY < context.canvas.height) {
+           const canvasIndex = (canvasY * context.canvas.width + canvasX) * 4;
+           if (canvasData[canvasIndex + 3] > 0) continue; // Skip if already painted
+         }
+         
+         // Apply crosshair
+         data[i] = crosshairColor.rgb[0];
+         data[i + 1] = crosshairColor.rgb[1];
+         data[i + 2] = crosshairColor.rgb[2];
+         data[i + 3] = crosshairColor.alpha;
+         crosshairCount++;
+       }
+     }
+     
+     console.log(`🎯 [Wrong Color Enhancement] Applied ${crosshairCount} crosshair pixels`);
+   }
+   
+   /** Detects wrong pixels by comparing template with current canvas state
+    * @param {string} colorKey - Color key in format "r,g,b"
+    * @param {string} tileKey - Tile key in format "x,y"
+    * @param {HTMLCanvasElement} canvas - Current canvas element
+    * @param {ImageBitmap} templateBitmap - Template bitmap for this tile
+    * @param {Array<number>} templateOffset - Template offset [x, y]
+    * @returns {Set<string>} Set of pixel coordinates that are wrong
+    * @since 1.0.0
+    */
+   detectWrongPixelsInTile(colorKey, tileKey, canvas, templateBitmap, templateOffset) {
+    const wrongPixels = new Set();
+    
+    try {
+      // Parse color key
+      const [targetR, targetG, targetB] = colorKey.split(',').map(Number);
+      
+      // Get template bitmap data
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = templateBitmap.width;
+      tempCanvas.height = templateBitmap.height;
+      const tempCtx = tempCanvas.getContext('2d');
+      tempCtx.imageSmoothingEnabled = false;
+      tempCtx.drawImage(templateBitmap, 0, 0);
+      const templateImageData = tempCtx.getImageData(0, 0, templateBitmap.width, templateBitmap.height);
+      const templateData = templateImageData.data;
+      
+      // Get canvas data for comparison
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      const canvasImageData = ctx.getImageData(templateOffset[0], templateOffset[1], templateBitmap.width, templateBitmap.height);
+      const canvasData = canvasImageData.data;
+      
+      let wrongPixelCount = 0;
+      
+      // Compare each pixel
+      for (let y = 0; y < templateBitmap.height; y++) {
+        for (let x = 0; x < templateBitmap.width; x++) {
+          // Only check center pixels of 3x3 blocks
+          if (x % this.drawMult !== 1 || y % this.drawMult !== 1) {
+            continue;
+          }
+          
+          const i = (y * templateBitmap.width + x) * 4;
+          
+          // Get template color
+          const templateR = templateData[i];
+          const templateG = templateData[i + 1];
+          const templateB = templateData[i + 2];
+          const templateA = templateData[i + 3];
+          
+          // Skip transparent template pixels
+          if (templateA < 64) continue;
+          
+          // Check if this is the color we're looking for
+          if (templateR === targetR && templateG === targetG && templateB === targetB) {
+            // Get canvas color at same position
+            const canvasR = canvasData[i];
+            const canvasG = canvasData[i + 1];
+            const canvasB = canvasData[i + 2];
+            const canvasA = canvasData[i + 3];
+            
+            // Check if pixel is wrong (different color or unpainted)
+            if (canvasA < 64 || canvasR !== targetR || canvasG !== targetG || canvasB !== targetB) {
+              wrongPixels.add(`${x},${y}`);
+              wrongPixelCount++;
+              
+              // Debug log first few wrong pixels
+              if (wrongPixelCount <= 5) {
+                console.log(`🎯 [Wrong Pixel Detection] Pixel (${x},${y}) - Template: ${targetR},${targetG},${targetB} vs Canvas: ${canvasR},${canvasG},${canvasB} (alpha: ${canvasA})`);
+              }
+            }
+          }
+        }
+      }
+      
+      if (wrongPixelCount > 0) {
+        console.log(`🎯 [Wrong Pixel Detection] Found ${wrongPixelCount} wrong pixels for color ${colorKey} in tile ${tileKey}`);
+      }
+      
+    } catch (error) {
+      console.warn('Failed to detect wrong pixels:', error);
+    }
+    
+    return wrongPixels;
   }
 }

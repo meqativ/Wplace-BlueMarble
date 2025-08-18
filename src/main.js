@@ -193,6 +193,9 @@ const apiManager = new ApiManager(templateManager); // Constructs a new ApiManag
 
 overlayMain.setApiManager(apiManager); // Sets the API manager
 
+// Load wrong color settings
+templateManager.loadWrongColorSettings();
+
 // Load templates with fallback system
 async function loadTemplates() {
   let storageTemplates = {};
@@ -344,6 +347,11 @@ async function migrateAndValidateStorage() {
 Promise.resolve(migrateAndValidateStorage()).then(() => loadTemplates());
 
 buildOverlayMain(); // Builds the main overlay
+
+// Initialize mini tracker after a short delay to ensure DOM is ready
+setTimeout(() => {
+  updateMiniTracker();
+}, 100);
 
 overlayMain.handleDrag('#bm-overlay', '#bm-bar-drag'); // Creates dragging capability on the drag bar for dragging the overlay
 
@@ -588,6 +596,9 @@ function buildOverlayMain() {
               overlay.style.height = '';
             }
             
+            // Update mini tracker visibility based on collapse setting
+            updateMiniTracker();
+            
             // ==================== ACCESSIBILITY AND USER FEEDBACK ====================
             // Update accessibility information for screen readers and tooltips
             
@@ -692,6 +703,9 @@ function buildOverlayMain() {
 
             templateManager.createTemplate(input.files[0], input.files[0]?.name.replace(/\.[^/.]+$/, ''), [Number(coordTlX.value), Number(coordTlY.value), Number(coordPxX.value), Number(coordPxY.value)]);
 
+            // Update mini tracker after template creation
+            setTimeout(() => updateMiniTracker(), 500);
+
             // console.log(`TCoords: ${apiManager.templateCoordsTilePixel}\nCoords: ${apiManager.coordsTilePixel}`);
             // apiManager.templateCoordsTilePixel = apiManager.coordsTilePixel; // Update template coords
             // console.log(`TCoords: ${apiManager.templateCoordsTilePixel}\nCoords: ${apiManager.coordsTilePixel}`);
@@ -793,6 +807,18 @@ function buildColorFilterOverlay() {
     let totalRequired = 0;
     let totalPainted = 0;
     let totalNeedCrosshair = 0;
+    let totalWrong = 0;
+    
+    // Get wrong pixels from tile progress data (only once)
+    if (templateManager.tileProgress && templateManager.tileProgress.size > 0) {
+      for (const tileStats of templateManager.tileProgress.values()) {
+        if (tileStats.colorBreakdown) {
+          for (const colorStats of Object.values(tileStats.colorBreakdown)) {
+            totalWrong += colorStats.wrong || 0;
+          }
+        }
+      }
+    }
     
     for (const stats of Object.values(pixelStats)) {
       totalRequired += stats.totalRequired || 0;
@@ -800,8 +826,22 @@ function buildColorFilterOverlay() {
       totalNeedCrosshair += stats.needsCrosshair || 0;
     }
     
-    const overallProgress = totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0;
-    consoleLog(`🎯 [Color Filter] Overall progress: ${totalPainted}/${totalRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair`);
+    // Apply wrong color logic based on settings
+    let overallProgress, displayPainted, displayRequired;
+    
+    if (templateManager.getIncludeWrongColorsInProgress()) {
+      // Include wrong colors in progress calculation (wrong pixels count as "painted")
+      displayPainted = totalPainted + totalWrong;
+      displayRequired = totalRequired; // Keep original required, wrong pixels are already part of it
+      overallProgress = displayRequired > 0 ? Math.round((displayPainted / displayRequired) * 100) : 0;
+      consoleLog(`🎯 [Color Filter] Overall progress (including wrong): ${displayPainted}/${displayRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair, ${totalWrong} wrong included`);
+    } else {
+      // Standard calculation (exclude wrong colors)
+      displayPainted = totalPainted;
+      displayRequired = totalRequired;
+      overallProgress = displayRequired > 0 ? Math.round((displayPainted / displayRequired) * 100) : 0;
+      consoleLog(`🎯 [Color Filter] Overall progress: ${displayPainted}/${displayRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair, ${totalWrong} wrong excluded`);
+    }
     
     // Create the color filter overlay
     const colorFilterOverlay = document.createElement('div');
@@ -907,7 +947,8 @@ function buildColorFilterOverlay() {
         📊 Template Progress: ${overallProgress}%
       </div>
       <div style="font-size: 0.9em; color: #ccc; margin-bottom: 10px;">
-        ${totalPainted.toLocaleString()} / ${totalRequired.toLocaleString()} pixels painted
+        ${displayPainted.toLocaleString()} / ${displayRequired.toLocaleString()} pixels painted
+        ${templateManager.getIncludeWrongColorsInProgress() ? ` (includes ${totalWrong.toLocaleString()} wrong)` : ''}
       </div>
       <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
         <div style="width: ${overallProgress}%; height: 100%; background: linear-gradient(90deg, #2196f3, #4caf50); transition: width 0.3s ease;"></div>
@@ -1141,6 +1182,132 @@ function buildColorFilterOverlay() {
     enhancedSection.appendChild(mainButtonsContainer);
     enhancedSection.appendChild(disableAllEnhancedButton);
 
+    // Wrong Colors Options Section
+    const wrongColorsSection = document.createElement('div');
+    wrongColorsSection.style.cssText = `
+      margin-bottom: 20px;
+    `;
+
+    const wrongColorsInfo = document.createElement('div');
+    wrongColorsInfo.textContent = 'Wrong Colors Options';
+    wrongColorsInfo.style.cssText = `
+      background: #333;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 6px;
+      font-size: 0.9em;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 10px;
+    `;
+
+    // Wrong Colors Controls Container
+    const wrongColorsControlsContainer = document.createElement('div');
+    wrongColorsControlsContainer.style.cssText = `
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    `;
+
+    // Include Wrong Colors in Progress Checkbox
+    const includeWrongCheckboxContainer = document.createElement('div');
+    includeWrongCheckboxContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    `;
+
+    const includeWrongCheckbox = document.createElement('input');
+    includeWrongCheckbox.type = 'checkbox';
+    includeWrongCheckbox.id = 'bm-include-wrong-colors';
+    includeWrongCheckbox.checked = templateManager.getIncludeWrongColorsInProgress();
+    includeWrongCheckbox.style.cssText = `
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    `;
+
+    const includeWrongLabel = document.createElement('label');
+    includeWrongLabel.htmlFor = 'bm-include-wrong-colors';
+    includeWrongLabel.textContent = 'Include Wrong Color Pixels in Progress';
+    includeWrongLabel.style.cssText = `
+      color: white;
+      font-size: 0.9em;
+      cursor: pointer;
+      user-select: none;
+      flex: 1;
+    `;
+
+    includeWrongCheckboxContainer.appendChild(includeWrongCheckbox);
+    includeWrongCheckboxContainer.appendChild(includeWrongLabel);
+
+    // Enhance Wrong Colors Checkbox
+    const enhanceWrongCheckboxContainer = document.createElement('div');
+    enhanceWrongCheckboxContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    `;
+
+    const enhanceWrongCheckbox = document.createElement('input');
+    enhanceWrongCheckbox.type = 'checkbox';
+    enhanceWrongCheckbox.id = 'bm-enhance-wrong-colors';
+    enhanceWrongCheckbox.checked = templateManager.getEnhanceWrongColors();
+    enhanceWrongCheckbox.style.cssText = `
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    `;
+
+    const enhanceWrongLabel = document.createElement('label');
+    enhanceWrongLabel.htmlFor = 'bm-enhance-wrong-colors';
+    enhanceWrongLabel.textContent = 'Enhance Wrong Colors (Crosshair)';
+    enhanceWrongLabel.style.cssText = `
+      color: white;
+      font-size: 0.9em;
+      cursor: pointer;
+      user-select: none;
+      flex: 1;
+    `;
+
+    enhanceWrongCheckboxContainer.appendChild(enhanceWrongCheckbox);
+    enhanceWrongCheckboxContainer.appendChild(enhanceWrongLabel);
+
+    // Event listeners for wrong colors options
+    includeWrongCheckbox.addEventListener('change', async (e) => {
+      await templateManager.setIncludeWrongColorsInProgress(e.target.checked);
+      consoleLog(`🎯 [Wrong Colors] Include wrong colors in progress: ${e.target.checked}`);
+      
+      // Refresh the color filter overlay to update progress calculations
+      if (window.refreshColorFilterOverlay) {
+        window.refreshColorFilterOverlay();
+      }
+    });
+
+    enhanceWrongCheckbox.addEventListener('change', async (e) => {
+      await templateManager.setEnhanceWrongColors(e.target.checked);
+      consoleLog(`🎯 [Wrong Colors] Enhance wrong colors: ${e.target.checked}`);
+      
+      // Force template redraw to apply enhanced mode changes
+      if (window.forceTemplateRedraw) {
+        window.forceTemplateRedraw();
+      }
+    });
+
+    wrongColorsControlsContainer.appendChild(includeWrongCheckboxContainer);
+    wrongColorsControlsContainer.appendChild(enhanceWrongCheckboxContainer);
+
+    wrongColorsSection.appendChild(wrongColorsInfo);
+    wrongColorsSection.appendChild(wrongColorsControlsContainer);
+
     // Color grid
     const colorGrid = document.createElement('div');
     colorGrid.style.cssText = `
@@ -1279,24 +1446,54 @@ function buildColorFilterOverlay() {
       const pixelStatsDisplay = document.createElement('div');
       
       if (stats && stats.totalRequired > 0) {
-        const progressPercentage = stats.percentage || 0;
-        const remainingPixels = stats.totalRequired - stats.painted;
+        // Get wrong pixels for this specific color from tile progress data
+        let wrongPixelsForColor = 0;
+        if (templateManager.tileProgress && templateManager.tileProgress.size > 0) {
+          for (const tileStats of templateManager.tileProgress.values()) {
+            if (tileStats.colorBreakdown && tileStats.colorBreakdown[colorKey]) {
+              wrongPixelsForColor += tileStats.colorBreakdown[colorKey].wrong || 0;
+            }
+          }
+        }
+
+        // Apply wrong color logic to individual color progress
+        let displayPainted, displayRequired, displayPercentage, displayRemaining;
+        
+        if (templateManager.getIncludeWrongColorsInProgress()) {
+          // Include wrong colors in progress calculation for this specific color
+          displayPainted = stats.painted + wrongPixelsForColor;
+          displayRequired = stats.totalRequired; // Keep original required, wrong pixels are already part of it
+          displayPercentage = displayRequired > 0 ? Math.round((displayPainted / displayRequired) * 100) : 0;
+          displayRemaining = stats.needsCrosshair;
+        } else {
+          // Standard calculation (exclude wrong colors)
+          displayPainted = stats.painted;
+          displayRequired = stats.totalRequired;
+          displayPercentage = stats.percentage || 0;
+          displayRemaining = stats.totalRequired - stats.painted;
+        }
+        
+        // Create display text based on wrong color setting
+        let displayText = `${displayPainted.toLocaleString()}/${displayRequired.toLocaleString()} (${displayPercentage}%)`;
+        if (templateManager.getIncludeWrongColorsInProgress() && wrongPixelsForColor > 0) {
+          displayText += `\n+${wrongPixelsForColor.toLocaleString()} wrong`;
+        }
         
         pixelStatsDisplay.innerHTML = `
           <div style="font-size: 0.65em; color: rgba(255,255,255,0.9); text-shadow: 1px 1px 2px rgba(0,0,0,0.8); line-height: 1.2;">
             <div style="margin-bottom: 1px;">
-              ${stats.painted.toLocaleString()}/${stats.totalRequired.toLocaleString()} (${progressPercentage}%)
+              ${displayText}
             </div>
             <div style="color: rgba(255,255,255,0.7); font-size: 0.9em;">
-              ${remainingPixels.toLocaleString()} Left
+              ${displayRemaining.toLocaleString()} Left
             </div>
           </div>
-                     <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 3px; overflow: hidden;">
-             <div style="width: ${progressPercentage}%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39); transition: width 0.3s ease;"></div>
-           </div>
+          <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 3px; overflow: hidden;">
+            <div style="width: ${displayPercentage}%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39); transition: width 0.3s ease;"></div>
+          </div>
         `;
         
-        consoleLog(`🎯 [Color Filter] Displaying stats for ${colorInfo.name} (${colorKey}): ${stats.painted}/${stats.totalRequired} (${progressPercentage}%) - ${stats.needsCrosshair} need crosshair`);
+        consoleLog(`🎯 [Color Filter] Displaying stats for ${colorInfo.name} (${colorKey}): ${displayPainted}/${displayRequired} (${displayPercentage}%) - ${displayRemaining} need crosshair${wrongPixelsForColor > 0 ? ` - includes ${wrongPixelsForColor} wrong` : ''}`);
       } else {
         pixelStatsDisplay.innerHTML = `
           <div style="font-size: 0.65em; color: rgba(255,255,255,0.6); text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
@@ -1495,6 +1692,7 @@ function buildColorFilterOverlay() {
     contentContainer.appendChild(instructions);
     contentContainer.appendChild(searchContainer);
     contentContainer.appendChild(enhancedSection);
+    contentContainer.appendChild(wrongColorsSection);
     contentContainer.appendChild(colorGrid);
     contentContainer.appendChild(refreshStatsButton);
     contentContainer.appendChild(applyButton);
@@ -1557,6 +1755,39 @@ function buildColorFilterOverlay() {
   });
 }
 
+/** Refreshes the color filter overlay to update progress calculations
+ * @since 1.0.0
+ */
+function refreshColorFilterOverlay() {
+  // Close and reopen the color filter overlay to refresh stats
+  const existingOverlay = document.getElementById('bm-color-filter-overlay');
+  if (existingOverlay) {
+    existingOverlay.remove();
+    setTimeout(() => {
+      buildColorFilterOverlay();
+    }, 100);
+  }
+}
+
+/** Forces template redraw to apply enhanced mode changes
+ * @since 1.0.0
+ */
+function forceTemplateRedraw() {
+  // Force a complete redraw of templates
+  if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+    templateManager.setTemplatesShouldBeDrawn(false);
+    setTimeout(() => {
+      templateManager.setTemplatesShouldBeDrawn(true);
+      // Update mini tracker after template redraw
+      updateMiniTracker();
+    }, 100); // Slightly longer delay to ensure redraw is complete
+  }
+}
+
+// Make functions globally available
+window.refreshColorFilterOverlay = refreshColorFilterOverlay;
+window.forceTemplateRedraw = forceTemplateRedraw;
+
 /** Refreshes the template display to show color filter changes
  * @since 1.0.0
  */
@@ -1597,6 +1828,9 @@ async function refreshTemplateDisplay() {
   } else {
     consoleWarn('No templates available to refresh');
   }
+  
+  // Update mini tracker after template refresh
+  updateMiniTracker();
 }
 
 /** Gets the saved crosshair color from storage
@@ -1720,6 +1954,291 @@ function saveBorderEnabled(enabled) {
   }
 }
 
+/** Gets the mini tracker enabled setting from storage
+ * @returns {boolean} Whether mini tracker is enabled
+ * @since 1.0.0 
+ */
+function getMiniTrackerEnabled() {
+  try {
+    let trackerEnabled = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmMiniTracker', null);
+      if (saved !== null) trackerEnabled = JSON.parse(saved);
+    }
+    
+    // Fallback to localStorage
+    if (trackerEnabled === null) {
+      const saved = localStorage.getItem('bmMiniTracker');
+      if (saved !== null) trackerEnabled = JSON.parse(saved);
+    }
+    
+    if (trackerEnabled !== null) {
+      consoleLog('📊 Mini tracker setting loaded:', trackerEnabled);
+      return trackerEnabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load mini tracker setting:', error);
+  }
+  
+  // Default to disabled
+  return false;
+}
+
+/** Saves the mini tracker enabled setting to storage
+ * @param {boolean} enabled - Whether mini tracker should be enabled
+ * @since 1.0.0
+ */
+function saveMiniTrackerEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+    consoleLog('📊 Saving mini tracker setting:', enabled, 'as string:', enabledString);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmMiniTracker', enabledString);
+      consoleLog('📊 Saved to TamperMonkey storage');
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmMiniTracker', enabledString);
+    consoleLog('📊 Saved to localStorage');
+    
+    consoleLog('✅ Mini tracker setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save mini tracker setting:', error);
+  }
+}
+
+/** Gets the collapse mini template setting from storage
+ * @returns {boolean} Whether collapse mini template should be enabled
+ * @since 1.0.0
+ */
+function getCollapseMinEnabled() {
+  try {
+    let collapseEnabled = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCollapseMin', null);
+      if (saved !== null) collapseEnabled = JSON.parse(saved);
+    }
+    
+    // Fallback to localStorage
+    if (collapseEnabled === null) {
+      const saved = localStorage.getItem('bmCollapseMin');
+      if (saved !== null) collapseEnabled = JSON.parse(saved);
+    }
+    
+    if (collapseEnabled !== null) {
+      consoleLog('📊 Collapse mini template setting loaded:', collapseEnabled);
+      return collapseEnabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load collapse mini template setting:', error);
+  }
+  
+  // Default to enabled
+  return true;
+}
+
+/** Saves the collapse mini template setting to storage
+ * @param {boolean} enabled - Whether collapse mini template should be enabled
+ * @since 1.0.0
+ */
+function saveCollapseMinEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+    consoleLog('📊 Saving collapse mini template setting:', enabled, 'as string:', enabledString);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCollapseMin', enabledString);
+      consoleLog('📊 Saved to TamperMonkey storage');
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCollapseMin', enabledString);
+    consoleLog('📊 Saved to localStorage');
+    
+    consoleLog('✅ Collapse mini template setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save collapse mini template setting:', error);
+  }
+}
+
+/** Updates the mini progress tracker visibility and content
+ * @since 1.0.0
+ */
+function updateMiniTracker() {
+  const trackerEnabled = getMiniTrackerEnabled();
+  const collapseEnabled = getCollapseMinEnabled();
+  const existingTracker = document.getElementById('bm-mini-tracker');
+  
+  // Check if main overlay is minimized
+  const mainOverlay = document.getElementById('bm-overlay');
+  const isMainMinimized = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px');
+  
+  // Hide tracker if disabled OR if collapse is enabled and main is minimized
+  if (!trackerEnabled || (collapseEnabled && isMainMinimized)) {
+    if (existingTracker) {
+      existingTracker.remove();
+      consoleLog(`📊 Mini tracker hidden - ${!trackerEnabled ? 'disabled' : 'collapsed with main overlay'}`);
+    }
+    return;
+  }
+  
+  // Calculate progress data using the SAME method as the main progress bar
+  let totalRequired = 0;
+  let totalPainted = 0;
+  let totalNeedCrosshair = 0;
+  
+  if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+    // Use templateManager.calculateRemainingPixelsByColor() like the main progress bar does
+    const pixelStats = templateManager.calculateRemainingPixelsByColor();
+    for (const stats of Object.values(pixelStats)) {
+      totalRequired += stats.totalRequired || 0;
+      totalPainted += stats.painted || 0;
+      totalNeedCrosshair += stats.needsCrosshair || 0;
+    }
+  }
+  
+  const progressPercentage = totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0;
+  const remaining = totalRequired - totalPainted;
+  
+  // Create or update tracker
+  let tracker = existingTracker;
+  if (!tracker) {
+    tracker = document.createElement('div');
+    tracker.id = 'bm-mini-tracker';
+    
+    // Find the Color Filter button to position tracker below it
+    const colorFilterButton = document.getElementById('bm-button-color-filter');
+    if (colorFilterButton && colorFilterButton.parentNode) {
+      colorFilterButton.parentNode.insertBefore(tracker, colorFilterButton.nextSibling);
+    }
+  }
+  
+  // Style the tracker - CSS GRID LAYOUT LARGO
+  tracker.style.cssText = `
+    background: linear-gradient(135deg, #2d3748, #4a5568);
+    border: 1px solid rgba(255,255,255,0.15);
+    border-radius: 6px;
+    padding: 8px 12px;
+    margin-top: 6px;
+    color: white;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
+    width: 280px;
+    font-size: 0.75em;
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: auto auto auto auto;
+    grid-gap: 3px;
+  `;
+  
+  // LAYOUT CSS GRID - HTML LIMPO
+  if (totalRequired === 0) {
+    tracker.innerHTML = `
+      <div class="tracker-title">📊 Template Progress: 0%</div>
+      <div class="tracker-pixels">0 / 0 pixels painted</div>
+      <div class="tracker-progress">
+        <div class="tracker-bar" style="width: 0%;"></div>
+      </div>
+      <div class="tracker-left">0 Pixels Left</div>
+    `;
+  } else {
+    tracker.innerHTML = `
+      <div class="tracker-title">📊 Template Progress: ${progressPercentage}%</div>
+      <div class="tracker-pixels">${totalPainted.toLocaleString()} / ${totalRequired.toLocaleString()} pixels painted</div>
+      <div class="tracker-progress">
+        <div class="tracker-bar" style="width: ${progressPercentage}%;"></div>
+      </div>
+      <div class="tracker-left">${totalNeedCrosshair.toLocaleString()} Pixels Left</div>
+    `;
+  }
+  
+  // Aplicar estilos CSS às classes
+  const style = document.createElement('style');
+  style.textContent = `
+    .tracker-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      grid-row: 1;
+      width: 100%;
+      text-align: left;
+    }
+    .tracker-pixels {
+      font-size: 0.9em;
+      color: #ccc;
+      grid-row: 2;
+      width: 100%;
+      text-align: left;
+    }
+    .tracker-progress {
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+      grid-row: 3;
+      width: 100%;
+    }
+    .tracker-bar {
+      height: 100%;
+      background: linear-gradient(90deg, #2196f3, #4caf50);
+    }
+    .tracker-left {
+      font-size: 0.9em;
+      color: #ffab00;
+      grid-row: 4;
+      width: 100%;
+      text-align: left;
+    }
+  `;
+  if (!document.getElementById('tracker-styles')) {
+    style.id = 'tracker-styles';
+    document.head.appendChild(style);
+  }
+  
+  consoleLog(`📊 Mini tracker updated: ${totalPainted}/${totalRequired} (${progressPercentage}%) - ${totalNeedCrosshair} need crosshair`);
+}
+
+// Auto-update mini tracker every 5 seconds if enabled
+let miniTrackerAutoUpdateInterval = null;
+
+function startMiniTrackerAutoUpdate() {
+  // Clear existing interval if any
+  if (miniTrackerAutoUpdateInterval) {
+    clearInterval(miniTrackerAutoUpdateInterval);
+  }
+  
+  // Only start auto-update if mini tracker is enabled
+  if (getMiniTrackerEnabled()) {
+    miniTrackerAutoUpdateInterval = setInterval(() => {
+      const isStillEnabled = getMiniTrackerEnabled();
+      if (isStillEnabled) {
+        updateMiniTracker();
+        consoleLog('📊 Mini tracker auto-updated');
+      } else {
+        // Stop auto-update if disabled
+        clearInterval(miniTrackerAutoUpdateInterval);
+        miniTrackerAutoUpdateInterval = null;
+        consoleLog('📊 Mini tracker auto-update stopped (disabled)');
+      }
+    }, 5000); // Update every 5 seconds
+    
+    consoleLog('📊 Mini tracker auto-update started (every 5 seconds)');
+  }
+}
+
+// Start auto-update when page loads
+setTimeout(() => {
+  startMiniTrackerAutoUpdate();
+}, 2000); // Start after 2 seconds to let everything initialize
+
 /** Builds and displays the crosshair settings overlay
  * @since 1.0.0
  */
@@ -1736,6 +2255,7 @@ function buildCrosshairSettingsOverlay() {
   // Track temporary settings (before confirm)
   let tempColor = { ...currentColor };
   let tempBorderEnabled = getBorderEnabled();
+  let tempMiniTrackerEnabled = getMiniTrackerEnabled();
 
   // Predefined color options
   const colorOptions = [
@@ -2219,6 +2739,151 @@ function buildCrosshairSettingsOverlay() {
   borderSection.appendChild(borderDescription);
   borderSection.appendChild(borderToggle);
 
+  // Mini tracker section
+  const trackerSection = document.createElement('div');
+  trackerSection.style.cssText = `
+    background: rgba(0, 0, 0, 0.3);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+  `;
+
+  const trackerLabel = document.createElement('div');
+  trackerLabel.textContent = 'Mini Progress Tracker:';
+  trackerLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+
+  const trackerDescription = document.createElement('div');
+  trackerDescription.textContent = 'Show a compact progress tracker below the Color Filter button.';
+  trackerDescription.style.cssText = 'font-size: 0.8em; color: #aaa; margin-bottom: 12px; line-height: 1.3;';
+
+  const trackerToggle = document.createElement('div');
+  trackerToggle.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `;
+
+  const trackerCheckbox = document.createElement('input');
+  trackerCheckbox.type = 'checkbox';
+  trackerCheckbox.checked = tempMiniTrackerEnabled;
+  trackerCheckbox.style.cssText = `
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  `;
+
+  const trackerToggleText = document.createElement('span');
+  trackerToggleText.textContent = tempMiniTrackerEnabled ? 'Enabled' : 'Disabled';
+  trackerToggleText.style.cssText = `
+    color: ${tempMiniTrackerEnabled ? '#4caf50' : '#f44336'};
+    font-weight: bold;
+    cursor: pointer;
+  `;
+
+  // Function to update tracker state
+  const updateTrackerState = () => {
+    tempMiniTrackerEnabled = trackerCheckbox.checked;
+    trackerToggleText.textContent = tempMiniTrackerEnabled ? 'Enabled' : 'Disabled';
+    trackerToggleText.style.color = tempMiniTrackerEnabled ? '#4caf50' : '#f44336';
+    
+    // IMMEDIATE UPDATE: Save and apply the mini tracker setting immediately
+    saveMiniTrackerEnabled(tempMiniTrackerEnabled);
+    updateMiniTracker();
+    
+    // Restart auto-update system
+    startMiniTrackerAutoUpdate();
+    
+    consoleLog(`📊 Mini tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'} immediately`);
+  };
+
+  trackerCheckbox.addEventListener('change', updateTrackerState);
+
+  // Only make the TEXT clickable, not the whole container
+  trackerToggleText.onclick = (e) => {
+    e.stopPropagation(); // Prevent event bubbling
+    trackerCheckbox.checked = !trackerCheckbox.checked;
+    updateTrackerState();
+  };
+
+  // Remove cursor pointer from the container since only text should be clickable
+  trackerToggle.style.cursor = 'default';
+
+  trackerToggle.appendChild(trackerCheckbox);
+  trackerToggle.appendChild(trackerToggleText);
+  trackerSection.appendChild(trackerLabel);
+  trackerSection.appendChild(trackerDescription);
+  trackerSection.appendChild(trackerToggle);
+
+  // Collapse Mini Template Section
+  const collapseSection = document.createElement('div');
+  collapseSection.style.cssText = `
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+  `;
+
+  const collapseLabel = document.createElement('div');
+  collapseLabel.textContent = 'Collapse Mini Template:';
+  collapseLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+
+  const collapseDescription = document.createElement('div');
+  collapseDescription.textContent = 'Hide mini tracker when template section is collapsed.';
+  collapseDescription.style.cssText = 'font-size: 0.8em; color: #aaa; margin-bottom: 12px; line-height: 1.3;';
+
+  let tempCollapseMinEnabled = getCollapseMinEnabled();
+
+  const collapseToggle = document.createElement('div');
+  collapseToggle.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `;
+
+  const collapseCheckbox = document.createElement('input');
+  collapseCheckbox.type = 'checkbox';
+  collapseCheckbox.checked = tempCollapseMinEnabled;
+  collapseCheckbox.style.cssText = `
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  `;
+
+  const collapseToggleText = document.createElement('span');
+  collapseToggleText.textContent = tempCollapseMinEnabled ? 'Enabled' : 'Disabled';
+  collapseToggleText.style.cssText = `
+    color: ${tempCollapseMinEnabled ? '#4caf50' : '#f44336'};
+    font-weight: bold;
+    cursor: pointer;
+  `;
+
+  // Function to update collapse state
+  const updateCollapseState = () => {
+    tempCollapseMinEnabled = collapseCheckbox.checked;
+    collapseToggleText.textContent = tempCollapseMinEnabled ? 'Enabled' : 'Disabled';
+    collapseToggleText.style.color = tempCollapseMinEnabled ? '#4caf50' : '#f44336';
+    
+    consoleLog(`📊 Collapse mini template ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}`);
+  };
+
+  collapseCheckbox.addEventListener('change', updateCollapseState);
+
+  // Only make the TEXT clickable, not the whole container
+  collapseToggleText.onclick = (e) => {
+    e.stopPropagation(); // Prevent event bubbling
+    collapseCheckbox.checked = !collapseCheckbox.checked;
+    updateCollapseState();
+  };
+
+  // Remove cursor pointer from the container since only text should be clickable
+  collapseToggle.style.cursor = 'default';
+
+  collapseToggle.appendChild(collapseCheckbox);
+  collapseToggle.appendChild(collapseToggleText);
+  collapseSection.appendChild(collapseLabel);
+  collapseSection.appendChild(collapseDescription);
+  collapseSection.appendChild(collapseToggle);
+
   // Action buttons
   const actionsContainer = document.createElement('div');
   actionsContainer.style.cssText = `
@@ -2257,13 +2922,18 @@ function buildCrosshairSettingsOverlay() {
 
   applyButton.onclick = async () => {
     // Save all settings
-    consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled });
+    consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled });
     
     saveCrosshairColor(tempColor);
     saveBorderEnabled(tempBorderEnabled);
+    saveMiniTrackerEnabled(tempMiniTrackerEnabled);
+    saveCollapseMinEnabled(tempCollapseMinEnabled);
     
     settingsOverlay.remove();
-    overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders!`);
+    overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}!`);
+    
+    // Update mini tracker visibility
+    updateMiniTracker();
     
     // Force invalidate template caches to ensure borders are applied
     if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
@@ -2302,6 +2972,8 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(colorGrid);
   contentContainer.appendChild(alphaSection);
   contentContainer.appendChild(borderSection);
+  contentContainer.appendChild(trackerSection);
+  contentContainer.appendChild(collapseSection);
   contentContainer.appendChild(actionsContainer);
   settingsOverlay.appendChild(contentContainer);
 
