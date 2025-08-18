@@ -210,13 +210,7 @@ div:has(> #bm-button-teleport) {
   gap: 1ch;
 }
 
-/* The template file upload button */
-div:has(> #bm-input-file-template) > button {
-  width: 100%;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
+/* Old upload button styles - REMOVED - now handled by grid layout below */
 
 /* Force complete invisibility of file input to prevent native browser text */
 #bm-input-file-template,
@@ -266,7 +260,6 @@ input[type="file"][id*="template"] {
 #bm-contain-automation,
 #bm-contain-coords,
 #bm-contain-buttons-template,
-div:has(> #bm-input-file-template),
 #bm-output-status {
   margin-top: 0.5em;
 }
@@ -493,14 +486,21 @@ div:has(> #bm-input-file-template) {
 
 div:has(> #bm-input-file-template) > button {
   width: 100%;
+  height: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 #bm-button-delete-templates {
   grid-column: 3;
   grid-row: 1;
+  height: 100%;
+  box-sizing: border-box;
+  min-height: 0; /* prevent content from expanding height */
+  max-height: none; /* allow grid to control height */
+  line-height: 1; /* tight line height */
   background: linear-gradient(135deg, #ef4444, #dc2626) !important;
   border: 1px solid #dc2626 !important;
 }
@@ -521,6 +521,9 @@ div:has(> #bm-input-file-template) > button {
   width: 16px;
   height: 16px;
   stroke: white;
+  display: block;
+  flex-shrink: 0;
+  line-height: 1;
 }
 
 /* Row 2: Create, Enable, Disable buttons */
