@@ -958,6 +958,53 @@ function buildColorFilterOverlay() {
       </div>
     `;
 
+    // Include Wrong Color Pixels in Progress - moved below progress bar
+    const includeWrongProgressContainer = document.createElement('div');
+    includeWrongProgressContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-bottom: 15px;
+    `;
+
+    const includeWrongProgressCheckbox = document.createElement('input');
+    includeWrongProgressCheckbox.type = 'checkbox';
+    includeWrongProgressCheckbox.id = 'bm-include-wrong-progress';
+    includeWrongProgressCheckbox.checked = templateManager.getIncludeWrongColorsInProgress();
+    includeWrongProgressCheckbox.style.cssText = `
+      width: 16px;
+      height: 16px;
+      cursor: pointer;
+    `;
+
+    const includeWrongProgressLabel = document.createElement('label');
+    includeWrongProgressLabel.htmlFor = 'bm-include-wrong-progress';
+    includeWrongProgressLabel.textContent = 'Include Wrong Color Pixels in Progress';
+    includeWrongProgressLabel.style.cssText = `
+      color: white;
+      font-size: 0.9em;
+      cursor: pointer;
+      user-select: none;
+      flex: 1;
+    `;
+
+    // Event listener for include wrong colors in progress
+    includeWrongProgressCheckbox.addEventListener('change', async () => {
+      const enabled = includeWrongProgressCheckbox.checked;
+      await templateManager.setIncludeWrongColorsInProgress(enabled);
+      overlayMain.handleDisplayStatus(`Include wrong colors in progress ${enabled ? 'enabled' : 'disabled'}!`);
+      
+      // Force refresh color filter overlay to update progress calculations immediately
+      buildColorFilterOverlay();
+    });
+
+    includeWrongProgressContainer.appendChild(includeWrongProgressCheckbox);
+    includeWrongProgressContainer.appendChild(includeWrongProgressLabel);
+
     // Instructions
     const instructions = document.createElement('p');
     instructions.textContent = 'Click on colors to toggle their visibility in the template. Disabled colors will be hidden.';
@@ -1182,36 +1229,9 @@ function buildColorFilterOverlay() {
     enhancedSection.appendChild(mainButtonsContainer);
     enhancedSection.appendChild(disableAllEnhancedButton);
 
-    // Wrong Colors Options Section
-    const wrongColorsSection = document.createElement('div');
-    wrongColorsSection.style.cssText = `
-      margin-bottom: 20px;
-    `;
-
-    const wrongColorsInfo = document.createElement('div');
-    wrongColorsInfo.textContent = 'Wrong Colors Options';
-    wrongColorsInfo.style.cssText = `
-      background: #333;
-      color: white;
-      padding: 8px 12px;
-      border-radius: 6px;
-      font-size: 0.9em;
-      font-weight: bold;
-      text-align: center;
-      margin-bottom: 10px;
-    `;
-
-    // Wrong Colors Controls Container
-    const wrongColorsControlsContainer = document.createElement('div');
-    wrongColorsControlsContainer.style.cssText = `
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    `;
-
-    // Include Wrong Colors in Progress Checkbox
-    const includeWrongCheckboxContainer = document.createElement('div');
-    includeWrongCheckboxContainer.style.cssText = `
+    // Enhance Wrong Colors - moved below Disable All Enhanced
+    const enhanceWrongContainer = document.createElement('div');
+    enhanceWrongContainer.style.cssText = `
       display: flex;
       align-items: center;
       gap: 8px;
@@ -1219,47 +1239,12 @@ function buildColorFilterOverlay() {
       background: rgba(255, 255, 255, 0.1);
       border-radius: 6px;
       border: 1px solid rgba(255, 255, 255, 0.2);
-    `;
-
-    const includeWrongCheckbox = document.createElement('input');
-    includeWrongCheckbox.type = 'checkbox';
-    includeWrongCheckbox.id = 'bm-include-wrong-colors';
-    includeWrongCheckbox.checked = templateManager.getIncludeWrongColorsInProgress();
-    includeWrongCheckbox.style.cssText = `
-      width: 16px;
-      height: 16px;
-      cursor: pointer;
-    `;
-
-    const includeWrongLabel = document.createElement('label');
-    includeWrongLabel.htmlFor = 'bm-include-wrong-colors';
-    includeWrongLabel.textContent = 'Include Wrong Color Pixels in Progress';
-    includeWrongLabel.style.cssText = `
-      color: white;
-      font-size: 0.9em;
-      cursor: pointer;
-      user-select: none;
-      flex: 1;
-    `;
-
-    includeWrongCheckboxContainer.appendChild(includeWrongCheckbox);
-    includeWrongCheckboxContainer.appendChild(includeWrongLabel);
-
-    // Enhance Wrong Colors Checkbox
-    const enhanceWrongCheckboxContainer = document.createElement('div');
-    enhanceWrongCheckboxContainer.style.cssText = `
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 8px 12px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
+      margin-top: 10px;
     `;
 
     const enhanceWrongCheckbox = document.createElement('input');
     enhanceWrongCheckbox.type = 'checkbox';
-    enhanceWrongCheckbox.id = 'bm-enhance-wrong-colors';
+    enhanceWrongCheckbox.id = 'bm-enhance-wrong-enhanced';
     enhanceWrongCheckbox.checked = templateManager.getEnhanceWrongColors();
     enhanceWrongCheckbox.style.cssText = `
       width: 16px;
@@ -1268,7 +1253,7 @@ function buildColorFilterOverlay() {
     `;
 
     const enhanceWrongLabel = document.createElement('label');
-    enhanceWrongLabel.htmlFor = 'bm-enhance-wrong-colors';
+    enhanceWrongLabel.htmlFor = 'bm-enhance-wrong-enhanced';
     enhanceWrongLabel.textContent = 'Enhance Wrong Colors (Crosshair)';
     enhanceWrongLabel.style.cssText = `
       color: white;
@@ -1278,23 +1263,11 @@ function buildColorFilterOverlay() {
       flex: 1;
     `;
 
-    enhanceWrongCheckboxContainer.appendChild(enhanceWrongCheckbox);
-    enhanceWrongCheckboxContainer.appendChild(enhanceWrongLabel);
-
-    // Event listeners for wrong colors options
-    includeWrongCheckbox.addEventListener('change', async (e) => {
-      await templateManager.setIncludeWrongColorsInProgress(e.target.checked);
-      consoleLog(`🎯 [Wrong Colors] Include wrong colors in progress: ${e.target.checked}`);
-      
-      // Refresh the color filter overlay to update progress calculations
-      if (window.refreshColorFilterOverlay) {
-        window.refreshColorFilterOverlay();
-      }
-    });
-
-    enhanceWrongCheckbox.addEventListener('change', async (e) => {
-      await templateManager.setEnhanceWrongColors(e.target.checked);
-      consoleLog(`🎯 [Wrong Colors] Enhance wrong colors: ${e.target.checked}`);
+    // Event listener for enhance wrong colors
+    enhanceWrongCheckbox.addEventListener('change', async () => {
+      const enabled = enhanceWrongCheckbox.checked;
+      await templateManager.setEnhanceWrongColors(enabled);
+      overlayMain.handleDisplayStatus(`Wrong colors crosshair ${enabled ? 'enabled' : 'disabled'}!`);
       
       // Force template redraw to apply enhanced mode changes
       if (window.forceTemplateRedraw) {
@@ -1302,11 +1275,15 @@ function buildColorFilterOverlay() {
       }
     });
 
-    wrongColorsControlsContainer.appendChild(includeWrongCheckboxContainer);
-    wrongColorsControlsContainer.appendChild(enhanceWrongCheckboxContainer);
+    enhanceWrongContainer.appendChild(enhanceWrongCheckbox);
+    enhanceWrongContainer.appendChild(enhanceWrongLabel);
+    enhancedSection.appendChild(enhanceWrongContainer);
 
-    wrongColorsSection.appendChild(wrongColorsInfo);
-    wrongColorsSection.appendChild(wrongColorsControlsContainer);
+
+
+
+
+
 
     // Color grid
     const colorGrid = document.createElement('div');
@@ -1617,15 +1594,57 @@ function buildColorFilterOverlay() {
 
     // Disable all Enhanced: clears enhancedColors set and rebuilds
     disableAllEnhancedButton.onclick = async () => {
+      // Visual feedback - button click animation
+      const originalBg = disableAllEnhancedButton.style.background;
+      const originalText = disableAllEnhancedButton.textContent;
+      
+      // Immediate click feedback
+      disableAllEnhancedButton.style.background = '#dc3545'; // Red
+      disableAllEnhancedButton.textContent = 'Disabling...';
+      disableAllEnhancedButton.style.transform = 'scale(0.95)';
+      disableAllEnhancedButton.style.transition = 'all 0.1s ease';
+      
       try {
         const tmpl = templateManager.templatesArray?.[0];
         if (tmpl && tmpl.enhancedColors && tmpl.enhancedColors.size > 0) {
           tmpl.enhancedColors.clear();
+          
+          // Success feedback
+          disableAllEnhancedButton.style.background = '#28a745'; // Green
+          disableAllEnhancedButton.textContent = 'Disabled! ✓';
+          
           // Trigger template refresh
           await refreshTemplateDisplay();
           buildColorFilterOverlay();
+          
+          // Reset button after 100ms
+          setTimeout(() => {
+            disableAllEnhancedButton.style.background = originalBg;
+            disableAllEnhancedButton.textContent = originalText;
+            disableAllEnhancedButton.style.transform = 'scale(1)';
+          }, 100);
+        } else {
+          // No enhanced colors to disable
+          disableAllEnhancedButton.style.background = '#ffc107'; // Yellow
+          disableAllEnhancedButton.textContent = 'No Enhanced Colors';
+          
+          setTimeout(() => {
+            disableAllEnhancedButton.style.background = originalBg;
+            disableAllEnhancedButton.textContent = originalText;
+            disableAllEnhancedButton.style.transform = 'scale(1)';
+          }, 100);
         }
       } catch (error) {
+        // Error feedback
+        disableAllEnhancedButton.style.background = '#dc3545'; // Red
+        disableAllEnhancedButton.textContent = 'Error! ✗';
+        
+        setTimeout(() => {
+          disableAllEnhancedButton.style.background = originalBg;
+          disableAllEnhancedButton.textContent = originalText;
+          disableAllEnhancedButton.style.transform = 'scale(1)';
+        }, 100);
+        
         consoleError('Error disabling all enhanced colors:', error);
         overlayMain.handleDisplayError('Failed to disable all enhanced colors');
       }
@@ -1689,10 +1708,11 @@ function buildColorFilterOverlay() {
     // Assemble overlay with fixed header
     colorFilterOverlay.appendChild(header);
     contentContainer.appendChild(progressSummary);
+    contentContainer.appendChild(includeWrongProgressContainer);
     contentContainer.appendChild(instructions);
     contentContainer.appendChild(searchContainer);
     contentContainer.appendChild(enhancedSection);
-    contentContainer.appendChild(wrongColorsSection);
+
     contentContainer.appendChild(colorGrid);
     contentContainer.appendChild(refreshStatsButton);
     contentContainer.appendChild(applyButton);
