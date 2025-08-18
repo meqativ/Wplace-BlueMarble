@@ -444,6 +444,7 @@ function buildOverlayMain() {
             const enableButton = document.querySelector('#bm-button-enable');
             const disableButton = document.querySelector('#bm-button-disable');
             const coordInputs = document.querySelectorAll('#bm-contain-coords input');
+            const colorFilterButton = document.getElementById('bm-button-color-filter');
             
             // Pre-restore original dimensions when switching to maximized state
             // This ensures smooth transition and prevents layout issues
@@ -503,6 +504,64 @@ function buildOverlayMain() {
               if (disableButton) {
                 disableButton.style.display = 'none';
               }
+
+              // Keep Color Filter button visible but compact in minimized state
+              if (colorFilterButton) {
+                // Ensure the container chain is visible
+                let parent = colorFilterButton.parentElement;
+                for (let i = 0; i < 3 && parent; i++) {
+                  parent.style.display = '';
+                  parent = parent.parentElement;
+                }
+
+                // Normalize the immediate container to center the compact button
+                const btnContainer = colorFilterButton.parentElement;
+                if (btnContainer) {
+                  btnContainer.style.display = 'flex';
+                  btnContainer.style.justifyContent = 'center';
+                  btnContainer.style.alignItems = 'center';
+                  btnContainer.style.gap = '0';
+                  // clear grid constraints if any
+                  btnContainer.style.gridTemplateColumns = 'unset';
+                }
+
+                // Save original innerHTML once
+                if (!colorFilterButton.dataset.originalHtml) {
+                  colorFilterButton.dataset.originalHtml = colorFilterButton.innerHTML;
+                }
+                // Reduce to icon-only
+                const svg = colorFilterButton.querySelector('svg');
+                if (svg) {
+                  colorFilterButton.innerHTML = svg.outerHTML;
+                }
+
+                // Compact styling to fit the 60px overlay (inner content width = 60 - 2*8 padding = 44px)
+                colorFilterButton.style.width = '56px';
+                colorFilterButton.style.height = '38px';
+                colorFilterButton.style.padding = '0';
+                colorFilterButton.style.gap = '0';
+                colorFilterButton.style.fontSize = '0';
+                colorFilterButton.style.overflow = 'hidden';
+                colorFilterButton.style.borderRadius = '8px';
+                colorFilterButton.style.animation = 'none';
+                colorFilterButton.style.gridColumn = 'auto';
+                colorFilterButton.style.margin = '6px 0 0';
+                colorFilterButton.style.display = 'flex';
+                colorFilterButton.style.alignItems = 'center';
+                colorFilterButton.style.justifyContent = 'center';
+                colorFilterButton.style.alignSelf = 'center';
+                colorFilterButton.style.position = 'relative';
+                colorFilterButton.style.left = '50%';
+                colorFilterButton.style.transform = 'translateX(-50%)';
+                // Tweak SVG size
+                const icon = colorFilterButton.querySelector('svg');
+                if (icon) {
+                  icon.style.width = '18px';
+                  icon.style.height = '18px';
+                  icon.style.display = 'block';
+                  icon.style.margin = '0 auto';
+                }
+              }
               
               // Hide all coordinate input fields individually (failsafe)
               coordInputs.forEach(input => {
@@ -511,10 +570,11 @@ function buildOverlayMain() {
               
               // Apply fixed dimensions for consistent minimized appearance
               // These dimensions were chosen to accommodate the icon while remaining compact
-              overlay.style.width = '60px';    // Fixed width for consistency
-              overlay.style.height = '76px';   // Fixed height (60px + 16px for better proportions)
-              overlay.style.maxWidth = '60px';  // Prevent expansion
-              overlay.style.minWidth = '60px';  // Prevent shrinking
+              // Increase width to accommodate compact Color Filter button (56px) + padding
+              overlay.style.width = '72px';    // 56px button + 8px*2 padding
+              overlay.style.height = '76px';   // Keep height consistent
+              overlay.style.maxWidth = '72px';  // Prevent expansion
+              overlay.style.minWidth = '72px';  // Prevent shrinking
               overlay.style.padding = '8px';    // Comfortable padding around icon
               
                              // Apply icon positioning for better visual centering in minimized state
@@ -568,6 +628,41 @@ function buildOverlayMain() {
                 disableButton.style.display = '';
                 disableButton.style.marginTop = '';
               }
+
+              // Restore Color Filter button to normal size/state
+              if (colorFilterButton) {
+                // Restore content
+                if (colorFilterButton.dataset.originalHtml) {
+                  colorFilterButton.innerHTML = colorFilterButton.dataset.originalHtml;
+                }
+                // Clear compact styles
+                colorFilterButton.style.width = '';
+                colorFilterButton.style.height = '';
+                colorFilterButton.style.padding = '';
+                colorFilterButton.style.gap = '';
+                colorFilterButton.style.fontSize = '';
+                colorFilterButton.style.overflow = '';
+                colorFilterButton.style.borderRadius = '';
+                colorFilterButton.style.animation = '';
+                colorFilterButton.style.transform = '';
+                colorFilterButton.style.gridColumn = '';
+                colorFilterButton.style.margin = '';
+                colorFilterButton.style.display = '';
+                colorFilterButton.style.alignItems = '';
+                colorFilterButton.style.justifyContent = '';
+                colorFilterButton.style.position = '';
+                colorFilterButton.style.left = '';
+
+                // Reset parent container layout
+                const btnContainer = colorFilterButton.parentElement;
+                if (btnContainer) {
+                  btnContainer.style.display = '';
+                  btnContainer.style.justifyContent = '';
+                  btnContainer.style.alignItems = '';
+                  btnContainer.style.gap = '';
+                  btnContainer.style.gridTemplateColumns = '';
+                }
+              }
               
               // Restore all coordinate input fields
               coordInputs.forEach(input => {
@@ -611,7 +706,7 @@ function buildOverlayMain() {
           });
         }
       ).buildElement()
-      .addHeader(1, {'textContent': name}).buildElement()
+      .addHeader(1, {'textContent': 'Blue Marble'}).buildElement()
     .buildElement()
 
     .addDiv({ id: 'bm-separator' })
