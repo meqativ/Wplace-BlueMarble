@@ -2473,22 +2473,23 @@ function updateMiniTracker() {
     }
   }
   
-  // Style the tracker - CSS GRID LAYOUT LARGO
+  // Style the tracker - COMPACT SLATE THEME
   tracker.style.cssText = `
-    background: linear-gradient(135deg, #2d3748, #4a5568);
-    border: 1px solid rgba(255,255,255,0.15);
-    border-radius: 6px;
-    padding: 8px 12px;
-    margin-top: 6px;
-    color: white;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    box-shadow: 0 1px 4px rgba(0,0,0,0.2);
-    width: 280px;
-    font-size: 0.75em;
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border: 1px solid #475569;
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-top: 8px;
+    color: #f1f5f9;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    width: 100%;
+    font-size: 0.85rem;
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
-    grid-gap: 3px;
+    grid-gap: 6px;
+    letter-spacing: -0.01em;
   `;
   
   // LAYOUT CSS GRID - HTML LIMPO
@@ -2512,41 +2513,48 @@ function updateMiniTracker() {
     `;
   }
   
-  // Aplicar estilos CSS às classes
+  // Aplicar estilos CSS às classes - SLATE THEME COMPACT
   const style = document.createElement('style');
   style.textContent = `
     .tracker-title {
-      font-size: 1.1em;
-      font-weight: bold;
+      font-size: 1rem;
+      font-weight: 700;
       grid-row: 1;
       width: 100%;
       text-align: left;
+      color: #f1f5f9;
+      letter-spacing: -0.02em;
     }
     .tracker-pixels {
-      font-size: 0.9em;
-      color: #ccc;
+      font-size: 0.8rem;
+      color: #cbd5e1;
       grid-row: 2;
       width: 100%;
       text-align: left;
+      font-weight: 500;
     }
     .tracker-progress {
-      height: 6px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 3px;
+      height: 8px;
+      background: #475569;
+      border-radius: 6px;
       overflow: hidden;
       grid-row: 3;
       width: 100%;
+      border: 1px solid #64748b;
     }
     .tracker-bar {
       height: 100%;
-      background: linear-gradient(90deg, #2196f3, #4caf50);
+      background: linear-gradient(90deg, #3b82f6, #10b981);
+      border-radius: 4px;
+      transition: width 0.3s ease;
     }
     .tracker-left {
-      font-size: 0.9em;
-      color: #ffab00;
+      font-size: 0.8rem;
+      color: #fbbf24;
       grid-row: 4;
       width: 100%;
       text-align: left;
+      font-weight: 600;
     }
   `;
   if (!document.getElementById('tracker-styles')) {

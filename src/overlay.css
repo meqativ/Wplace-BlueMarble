@@ -244,7 +244,9 @@ input[type="file"][id*="template"] {
   width: 100%;
   border-radius: 8px;
   font-family: inherit;
-  resize: none;
+  resize: vertical;
+  min-height: 3.75em;
+  max-height: 15em;
 }
 
 /* The action buttons below the status textarea */
@@ -347,17 +349,35 @@ div:has(> #bm-input-file-template),
   outline: none !important;
 }
 
-/* Mini progress tracker styles - matches the main progress bar */
+/* Mini progress tracker styles - Slate theme */
 #bm-mini-tracker {
-  font-family: 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
   user-select: none;
   cursor: default;
-  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  position: relative;
+  overflow: hidden;
 }
 
 #bm-mini-tracker:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.4);
+}
+
+#bm-mini-tracker:before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.1));
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+#bm-mini-tracker:hover:before {
+  opacity: 1;
 }
 
 /* The icon and title */
