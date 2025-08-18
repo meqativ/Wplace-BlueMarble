@@ -1647,6 +1647,12 @@ function buildOverlayMain() {
       .buildElement()
       .addDiv({'id': 'bm-contain-buttons-template'})
         .addInputFile({'id': 'bm-input-file-template', 'textContent': 'Upload Template', 'accept': 'image/png, image/jpeg, image/webp, image/bmp, image/gif'})
+        // Compact delete button placed next to Upload Template
+        .addButton({'id': 'bm-button-delete-templates', innerHTML: icons.deleteIcon, 'title': 'Delete Template'}, (instance, button) => {
+          button.onclick = () => {
+            deleteSelectedTemplate(instance);
+          }
+        }).buildElement()
         .addButton({'id': 'bm-button-create', innerHTML: icons.createIcon + 'Create'}, (instance, button) => {
           button.onclick = () => {
             const input = document.querySelector('#bm-input-file-template');
