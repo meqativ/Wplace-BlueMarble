@@ -1586,6 +1586,7 @@ function buildColorFilterOverlay() {
     colorPalette.forEach((colorInfo, index) => {
       const colorItem = document.createElement('div');
       const rgb = colorInfo.rgb;
+      const isFreeColor = colorInfo.free;
       const isDisabled = currentTemplate.isColorDisabled(rgb);
       const isEnhanced = currentTemplate.isColorEnhanced ? currentTemplate.isColorEnhanced(rgb) : false;
       
@@ -1702,6 +1703,15 @@ function buildColorFilterOverlay() {
         margin-bottom: 2px;
       `;
 
+      const dropletIcon = document.createElement('div');
+      dropletIcon.textContent = "💧";
+      dropletIcon.style.cssText = `
+        font-size: 0.7em;
+        position: absolute;
+        bottom: 2px;
+        right: 4px;
+      `;
+
       // Add pixel statistics display
       const colorKey = `${rgb[0]},${rgb[1]},${rgb[2]}`;
       const stats = pixelStats[colorKey];
@@ -1781,6 +1791,9 @@ function buildColorFilterOverlay() {
 
       colorItem.appendChild(colorName);
       colorItem.appendChild(pixelStatsDisplay);
+      if (!isFreeColor){
+        colorItem.appendChild(dropletIcon);
+      }
 
       // Color enable/disable click handler (only on click area, not checkbox)
       colorClickArea.onclick = (e) => {
