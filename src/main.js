@@ -1574,7 +1574,7 @@ function buildOverlayMain() {
           });
         }
       ).buildElement()
-      .addHeader(1, {'textContent': 'Blue Marble'}).buildElement()
+      .addHeader(1, {'textContent': 'Skirk Marble'}).buildElement()
     .buildElement()
 
     .addDiv({ id: 'bm-separator' })
