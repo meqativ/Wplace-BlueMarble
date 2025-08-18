@@ -1,0 +1,108 @@
+name: Create Release (Modern)
+
+on:
+  push:
+    tags:
+      - 'V*'  # Triggers on tags that start with 'V' (e.g., V1.0.0, V2.1.3)
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    
+    permissions:
+      contents: write  # Required to create releases and upload assets
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Get tag name and version
+        id: tag
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#V}  # Remove 'V' prefix for version
+          echo "TAG_NAME=$TAG_NAME" >> $GITHUB_OUTPUT
+          echo "VERSION=$VERSION" >> $GITHUB_OUTPUT
+          echo "📌 Tag: $TAG_NAME"
+          echo "🔢 Version: $VERSION"
+        
+      - name: Verify userscript file exists
+        run: |
+          if [ ! -f "dist/BlueMarble.user.js" ]; then
+            echo "❌ Error: dist/BlueMarble.user.js not found!"
+            echo "📁 Available files in dist/:"
+            ls -la dist/ || echo "dist/ directory not found"
+            exit 1
+          fi
+          echo "✅ BlueMarble.user.js found"
+          
+          # Show file info
+          echo "📦 File details:"
+          ls -lh "dist/BlueMarble.user.js"
+          echo "📄 First few lines:"
+          head -n 10 "dist/BlueMarble.user.js"
+          
+      - name: Create Release with GitHub CLI
+        run: |
+          # Generate release notes
+          cat > release_notes.md << 'EOF'
+          ## 🎉 Blue Marble ${{ steps.tag.outputs.TAG_NAME }}
+          
+          ### 📦 Installation
+          1. **Download**: Click on `BlueMarble.user.js` below
+          2. **Install**: Your userscript manager (Tampermonkey/Greasemonkey) will prompt to install
+          3. **Enjoy**: Start using Blue Marble on your pixel art site!
+          
+          ### ✨ Features
+          - 🎨 **Template Overlay**: Advanced template system for pixel art
+          - 📊 **Progress Tracking**: Real-time progress with mini tracker
+          - 🎯 **Enhanced Mode**: Crosshair highlighting for better accuracy
+          - 🌈 **Color Management**: Advanced color filtering tools
+          - 📱 **Mobile Support**: Optimized for mobile devices
+          - 🔧 **Customizable**: Extensive settings and preferences
+          
+          ### 🔄 What's New in ${{ steps.tag.outputs.TAG_NAME }}
+          - Bug fixes and improvements
+          - Enhanced pixel counting accuracy
+          - Better synchronization between progress displays
+          
+          ### 🆘 Support
+          - 📖 [Documentation](https://github.com/${{ github.repository }}/blob/main/docs/README.md)
+          - 🐛 [Report Issues](https://github.com/${{ github.repository }}/issues)
+          - 💬 [Discussions](https://github.com/${{ github.repository }}/discussions)
+          
+          ---
+          **Installation Size**: $(du -h "dist/BlueMarble.user.js" | cut -f1)  
+          **Release Date**: $(date -u +"%Y-%m-%d %H:%M:%S UTC")  
+          **Commit**: ${{ github.sha }}
+          EOF
+          
+          # Create release using GitHub CLI
+          gh release create ${{ steps.tag.outputs.TAG_NAME }} \
+            --title "🎨 Blue Marble ${{ steps.tag.outputs.TAG_NAME }}" \
+            --notes-file release_notes.md \
+            --latest \
+            "dist/BlueMarble.user.js#🎨 Blue Marble Userscript"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          
+      - name: Post-release actions
+        run: |
+          # Get release info
+          RELEASE_URL=$(gh release view ${{ steps.tag.outputs.TAG_NAME }} --json url -q .url)
+          FILE_SIZE=$(du -h "dist/BlueMarble.user.js" | cut -f1)
+          
+          echo "🎉 Release created successfully!"
+          echo "🏷️  Tag: ${{ steps.tag.outputs.TAG_NAME }}"
+          echo "🔢 Version: ${{ steps.tag.outputs.VERSION }}"
+          echo "📦 File Size: $FILE_SIZE"
+          echo "🔗 Release URL: $RELEASE_URL"
+          echo ""
+          echo "📋 Release includes:"
+          echo "  ✅ BlueMarble.user.js (main userscript)"
+          echo "  ✅ Automatic release notes"
+          echo "  ✅ Installation instructions"
+          echo ""
+          echo "🚀 Users can now install this version!"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
