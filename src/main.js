@@ -793,6 +793,10 @@ function buildColorFilterOverlay() {
 
   consoleLog('🎯 [Color Filter] Starting color filter overlay build...');
 
+  // Check if mobile mode is enabled
+  const isMobileMode = getMobileMode();
+  consoleLog(`📱 [Color Filter] Mobile mode: ${isMobileMode ? 'enabled' : 'disabled'}`);
+
   // Import the color palette from utils
   import('./utils.js').then(utils => {
     const colorPalette = utils.colorpalette;
@@ -922,6 +926,28 @@ function buildColorFilterOverlay() {
           box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(59, 130, 246, 0.15); 
         }
         @media (max-width: 520px) { .bmcf-btn { min-width: 100px; height: 36px; font-size: 0.85em; } }
+        
+        /* Mobile Mode Compact Styles */
+        ${isMobileMode ? `
+          .bmcf-overlay { 
+            width: min(95vw, 400px) !important; max-height: 85vh !important; 
+            border-radius: 12px !important; padding: 8px !important;
+          }
+          .bmcf-header { padding: 12px 16px !important; }
+          .bmcf-title { font-size: 1.2em !important; }
+          .bmcf-close { width: 24px !important; height: 24px !important; }
+          .bmcf-search { height: 32px !important; padding: 8px 12px !important; font-size: 0.8em !important; }
+          .bmcf-select { height: 32px !important; padding: 6px 10px !important; font-size: 0.8em !important; }
+          .bmcf-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important; gap: 8px !important; }
+          .bmcf-card { padding: 8px 10px !important; border-radius: 8px !important; }
+          .bmcf-color-box { width: 20px !important; height: 20px !important; border-radius: 4px !important; }
+          .bmcf-color-name { font-size: 0.8em !important; }
+          .bmcf-stats { font-size: 0.7em !important; gap: 4px !important; }
+          .bmcf-btn { height: 32px !important; padding: 0 12px !important; min-width: 80px !important; font-size: 0.8em !important; }
+          .bmcf-footer { padding: 8px 12px !important; gap: 8px !important; }
+          .bmcf-progress-container { padding: 8px 12px !important; }
+          .bmcf-instructions { font-size: 0.75em !important; padding: 8px 12px !important; }
+        ` : ''}
       `;
       document.head.appendChild(s);
     }
@@ -935,6 +961,7 @@ function buildColorFilterOverlay() {
       left: 50%;
       transform: translate(-50%, -50%);
       z-index: 9001;
+      ${isMobileMode ? 'max-width: 95vw; max-height: 90vh;' : ''}
     `;
     colorFilterOverlay.className = 'bmcf-overlay';
 
@@ -2421,6 +2448,62 @@ function saveCollapseMinEnabled(enabled) {
   }
 }
 
+/** Gets the mobile mode setting
+ * @returns {boolean} Mobile mode enabled state
+ * @since 1.0.0
+ */
+function getMobileMode() {
+  try {
+    consoleLog('📱 Loading mobile mode setting...');
+    
+    let mobileMode = false;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const storedValue = GM_getValue('bmMobileMode', 'false');
+      mobileMode = JSON.parse(storedValue);
+      consoleLog('📱 Loaded from TamperMonkey storage:', mobileMode);
+    } else {
+      // Fallback to localStorage
+      const storedValue = localStorage.getItem('bmMobileMode') || 'false';
+      mobileMode = JSON.parse(storedValue);
+      consoleLog('📱 Loaded from localStorage:', mobileMode);
+    }
+    
+    consoleLog('✅ Mobile mode setting loaded:', mobileMode);
+    return mobileMode;
+  } catch (error) {
+    consoleError('❌ Failed to load mobile mode setting:', error);
+    return false;
+  }
+}
+
+/** Saves the mobile mode setting
+ * @param {boolean} enabled - Whether mobile mode is enabled
+ * @since 1.0.0
+ */
+function saveMobileMode(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+    consoleLog('📱 Saving mobile mode setting:', enabled, 'as string:', enabledString);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmMobileMode', enabledString);
+      consoleLog('📱 Saved to TamperMonkey storage');
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmMobileMode', enabledString);
+    consoleLog('📱 Saved to localStorage');
+    
+    consoleLog('✅ Mobile mode setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save mobile mode setting:', error);
+  }
+}
+
 /** Updates the mini progress tracker visibility and content
  * @since 1.0.0
  */
@@ -2688,6 +2771,7 @@ function buildCrosshairSettingsOverlay() {
     }
     let tempBorderEnabled = getBorderEnabled();
     let tempMiniTrackerEnabled = getMiniTrackerEnabled();
+    let tempMobileMode = getMobileMode();
 
     // Create the settings overlay
     const settingsOverlay = document.createElement('div');
@@ -3375,6 +3459,92 @@ function buildCrosshairSettingsOverlay() {
   trackerSection.appendChild(trackerDescription);
   trackerSection.appendChild(trackerToggle);
 
+  // Mobile Mode Section
+  const mobileSection = document.createElement('div');
+  mobileSection.style.cssText = `
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  `;
+
+  const mobileLabel = document.createElement('div');
+  mobileLabel.textContent = '📱 Mobile Mode:';
+  mobileLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
+
+  const mobileDescription = document.createElement('div');
+  mobileDescription.textContent = 'Enable ultra-compact UI for mobile devices. Makes Color Filter extremely compact for better mobile experience.';
+  mobileDescription.style.cssText = `
+    font-size: 0.9em; 
+    color: var(--slate-300); 
+    margin-bottom: 16px; 
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  `;
+
+  const mobileToggle = document.createElement('div');
+  mobileToggle.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `;
+
+  // Use global mobile mode setting
+
+  const mobileCheckbox = document.createElement('input');
+  mobileCheckbox.type = 'checkbox';
+  mobileCheckbox.checked = tempMobileMode;
+  mobileCheckbox.style.cssText = `
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  `;
+
+  const mobileToggleText = document.createElement('span');
+  mobileToggleText.textContent = tempMobileMode ? 'Enabled' : 'Disabled';
+  mobileToggleText.style.cssText = `
+    color: ${tempMobileMode ? '#4caf50' : '#f44336'};
+    font-weight: bold;
+    cursor: pointer;
+  `;
+
+  // Function to update mobile mode state (visual only, no saving)
+  const updateMobileState = () => {
+    tempMobileMode = mobileCheckbox.checked;
+    mobileToggleText.textContent = tempMobileMode ? 'Enabled' : 'Disabled';
+    mobileToggleText.style.color = tempMobileMode ? '#4caf50' : '#f44336';
+    
+    // Only update visual state, actual saving happens on Apply
+    consoleLog(`📱 Mobile mode ${tempMobileMode ? 'enabled' : 'disabled'} (preview only)`);
+  };
+
+  mobileCheckbox.addEventListener('change', updateMobileState);
+
+  // Only make the TEXT clickable, not the whole container
+  mobileToggleText.onclick = (e) => {
+    e.stopPropagation(); // Prevent event bubbling
+    mobileCheckbox.checked = !mobileCheckbox.checked;
+    updateMobileState();
+  };
+
+  // Remove cursor pointer from the container since only text should be clickable
+  mobileToggle.style.cursor = 'default';
+
+  mobileToggle.appendChild(mobileCheckbox);
+  mobileToggle.appendChild(mobileToggleText);
+  mobileSection.appendChild(mobileLabel);
+  mobileSection.appendChild(mobileDescription);
+  mobileSection.appendChild(mobileToggle);
+
   // Collapse Mini Template Section
   const collapseSection = document.createElement('div');
   collapseSection.style.cssText = `
@@ -3516,12 +3686,14 @@ function buildCrosshairSettingsOverlay() {
     const currentBorderSaved = getBorderEnabled();
     const currentTrackerSaved = getMiniTrackerEnabled();
     const currentCollapseSaved = getCollapseMinEnabled();
+    const currentMobileSaved = getMobileMode();
     
     const hasChanges = 
       JSON.stringify(tempColor) !== JSON.stringify(currentColorSaved) ||
       tempBorderEnabled !== currentBorderSaved ||
       tempMiniTrackerEnabled !== currentTrackerSaved ||
-      tempCollapseMinEnabled !== currentCollapseSaved;
+      tempCollapseMinEnabled !== currentCollapseSaved ||
+      tempMobileMode !== currentMobileSaved;
     
     if (hasChanges) {
       if (confirm('Discard changes? Any unsaved settings will be lost.')) {
@@ -3573,12 +3745,13 @@ function buildCrosshairSettingsOverlay() {
     
     try {
       // Save all settings
-      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled });
+      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled, mobile: tempMobileMode });
       
       saveCrosshairColor(tempColor);
       saveBorderEnabled(tempBorderEnabled);
       saveMiniTrackerEnabled(tempMiniTrackerEnabled);
       saveCollapseMinEnabled(tempCollapseMinEnabled);
+      saveMobileMode(tempMobileMode);
       
       // Success feedback
       applyButton.style.background = 'linear-gradient(135deg, var(--emerald-600), var(--emerald-700))';
@@ -3603,7 +3776,7 @@ function buildCrosshairSettingsOverlay() {
       // Close overlay after short delay
       setTimeout(() => {
         settingsOverlay.remove();
-        overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}!`);
+        overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}, mobile ${tempMobileMode ? 'enabled' : 'disabled'}!`);
       }, 800);
       
       consoleLog('✅ Crosshair settings successfully applied and templates refreshed');
@@ -3647,6 +3820,7 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(alphaSection);
   contentContainer.appendChild(borderSection);
   contentContainer.appendChild(trackerSection);
+  contentContainer.appendChild(mobileSection);
   contentContainer.appendChild(collapseSection);
   settingsOverlay.appendChild(contentContainer);
   settingsOverlay.appendChild(footerContainer);
