@@ -1007,8 +1007,8 @@ function buildColorFilterOverlay() {
 
     // Instructions
     const instructions = document.createElement('p');
-    instructions.textContent = 'Click on colors to toggle their visibility in the template. Disabled colors will be hidden.';
-    instructions.style.cssText = 'margin: 0 0 15px 0; font-size: 0.9em; color: #ccc;';
+    instructions.textContent = 'Click on colors to toggle their visibility in the template.';
+    instructions.style.cssText = 'margin: 0 0 15px 0; font-size: 0.9em; color: #ccc; text-align: center; font-weight: bold;';
 
     // Search box
     const searchContainer = document.createElement('div');
@@ -1025,7 +1025,7 @@ function buildColorFilterOverlay() {
     searchInput.spellcheck = false;
     searchInput.style.cssText = `
       width: 100%;
-      padding: 12px 45px 12px 15px;
+      padding: 8px 40px 8px 12px;
       border: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 8px;
       background: rgba(0, 0, 0, 0.3);
@@ -1152,6 +1152,69 @@ function buildColorFilterOverlay() {
       performSearch('');
       searchInput.focus();
     });
+
+    // Color Filter/Sort Section
+    const filterContainer = document.createElement('div');
+    filterContainer.style.cssText = `
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    `;
+
+    const filterLabel = document.createElement('label');
+    filterLabel.textContent = 'Sort by:';
+    filterLabel.style.cssText = `
+      color: white;
+      font-size: 0.9em;
+      font-weight: bold;
+      min-width: 60px;
+    `;
+
+    const filterSelect = document.createElement('select');
+    filterSelect.style.cssText = `
+      flex: 1;
+      padding: 8px 12px;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
+      font-size: 0.9em;
+      outline: none;
+      cursor: pointer;
+    `;
+
+    // Filter options
+    const filterOptions = [
+      { value: 'default', text: 'Default Order' },
+      { value: 'wrong-desc', text: 'Most Wrong Colors' },
+      { value: 'wrong-asc', text: 'Least Wrong Colors' },
+      { value: 'missing-desc', text: 'Most Pixels Missing' },
+      { value: 'missing-asc', text: 'Least Pixels Missing' },
+      { value: 'total-desc', text: 'Most Total Pixels' },
+      { value: 'total-asc', text: 'Least Total Pixels' },
+      { value: 'percentage-desc', text: 'Highest Completion %' },
+      { value: 'percentage-asc', text: 'Lowest Completion %' },
+      { value: 'name-asc', text: 'Name A-Z' },
+      { value: 'name-desc', text: 'Name Z-A' }
+    ];
+
+    filterOptions.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option.value;
+      optionElement.textContent = option.text;
+      optionElement.style.cssText = `
+        background: #2a2a2a;
+        color: white;
+      `;
+      filterSelect.appendChild(optionElement);
+    });
+
+    // Store original order when color items are created
+    let originalOrder = [];
+
+    filterContainer.appendChild(filterLabel);
+    filterContainer.appendChild(filterSelect);
 
     // Enhanced mode info section
     const enhancedSection = document.createElement('div');
@@ -1450,6 +1513,12 @@ function buildColorFilterOverlay() {
           displayRemaining = stats.totalRequired - stats.painted;
         }
         
+        // Add data attributes for filtering/sorting
+        colorItem.setAttribute('data-wrong-count', wrongPixelsForColor.toString());
+        colorItem.setAttribute('data-missing-count', displayRemaining.toString());
+        colorItem.setAttribute('data-total-count', displayRequired.toString());
+        colorItem.setAttribute('data-painted-count', displayPainted.toString());
+        
         // Create display text based on wrong color setting
         let displayText = `${displayPainted.toLocaleString()}/${displayRequired.toLocaleString()} (${displayPercentage}%)`;
         if (templateManager.getIncludeWrongColorsInProgress() && wrongPixelsForColor > 0) {
@@ -1557,6 +1626,61 @@ function buildColorFilterOverlay() {
       };
 
       colorGrid.appendChild(colorItem);
+    });
+
+    // Filter functionality - defined after color items are created
+    const applyFilter = (filterType) => {
+      const colorItems = Array.from(colorGrid.querySelectorAll('[data-color-item]'));
+      
+      // Save original order on first filter (if not already saved)
+      if (originalOrder.length === 0) {
+        originalOrder = [...colorItems];
+      }
+      
+      if (filterType === 'default') {
+        // Restore original order
+        originalOrder.forEach(item => {
+          colorGrid.appendChild(item);
+        });
+        return;
+      }
+      
+      colorItems.sort((a, b) => {
+        const aWrong = parseInt(a.getAttribute('data-wrong-count') || '0');
+        const bWrong = parseInt(b.getAttribute('data-wrong-count') || '0');
+        const aMissing = parseInt(a.getAttribute('data-missing-count') || '0');
+        const bMissing = parseInt(b.getAttribute('data-missing-count') || '0');
+        const aTotal = parseInt(a.getAttribute('data-total-count') || '0');
+        const bTotal = parseInt(b.getAttribute('data-total-count') || '0');
+        const aName = a.getAttribute('data-color-name') || '';
+        const bName = b.getAttribute('data-color-name') || '';
+        const aPercentage = aTotal > 0 ? ((aTotal - aMissing) / aTotal) * 100 : 0;
+        const bPercentage = bTotal > 0 ? ((bTotal - bMissing) / bTotal) * 100 : 0;
+
+        switch (filterType) {
+          case 'wrong-desc': return bWrong - aWrong;
+          case 'wrong-asc': return aWrong - bWrong;
+          case 'missing-desc': return bMissing - aMissing;
+          case 'missing-asc': return aMissing - bMissing;
+          case 'total-desc': return bTotal - aTotal;
+          case 'total-asc': return aTotal - bTotal;
+          case 'percentage-desc': return bPercentage - aPercentage;
+          case 'percentage-asc': return aPercentage - bPercentage;
+          case 'name-asc': return aName.localeCompare(bName);
+          case 'name-desc': return bName.localeCompare(aName);
+          default: return 0;
+        }
+      });
+
+      // Reorder the DOM elements
+      colorItems.forEach(item => {
+        colorGrid.appendChild(item);
+      });
+    };
+
+    // Add event listener for filter select
+    filterSelect.addEventListener('change', () => {
+      applyFilter(filterSelect.value);
     });
 
     // Enable/Disable all functionality
@@ -1712,6 +1836,7 @@ function buildColorFilterOverlay() {
     contentContainer.appendChild(instructions);
     contentContainer.appendChild(searchContainer);
     contentContainer.appendChild(enhancedSection);
+    contentContainer.appendChild(filterContainer);
 
     contentContainer.appendChild(colorGrid);
     contentContainer.appendChild(refreshStatsButton);
