@@ -874,7 +874,7 @@ function buildColorFilterOverlay() {
           pointer-events: none;
         }
         .bmcf-header { 
-          display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; 
+          display: flex; flex-direction: column; padding: 16px 20px 12px 20px; 
           border-bottom: 1px solid var(--bmcf-border); 
           background: linear-gradient(135deg, var(--slate-800), var(--slate-750)); 
           position: relative; z-index: 1;
@@ -927,27 +927,7 @@ function buildColorFilterOverlay() {
         }
         @media (max-width: 520px) { .bmcf-btn { min-width: 100px; height: 36px; font-size: 0.85em; } }
         
-        /* Mobile Mode Compact Styles */
-        ${isMobileMode ? `
-          .bmcf-overlay { 
-            width: min(95vw, 400px) !important; max-height: 85vh !important; 
-            border-radius: 12px !important; padding: 8px !important;
-          }
-          .bmcf-header { padding: 12px 16px !important; }
-          .bmcf-title { font-size: 1.2em !important; }
-          .bmcf-close { width: 24px !important; height: 24px !important; }
-          .bmcf-search { height: 32px !important; padding: 8px 12px !important; font-size: 0.8em !important; }
-          .bmcf-select { height: 32px !important; padding: 6px 10px !important; font-size: 0.8em !important; }
-          .bmcf-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)) !important; gap: 8px !important; }
-          .bmcf-card { padding: 8px 10px !important; border-radius: 8px !important; }
-          .bmcf-color-box { width: 20px !important; height: 20px !important; border-radius: 4px !important; }
-          .bmcf-color-name { font-size: 0.8em !important; }
-          .bmcf-stats { font-size: 0.7em !important; gap: 4px !important; }
-          .bmcf-btn { height: 32px !important; padding: 0 12px !important; min-width: 80px !important; font-size: 0.8em !important; }
-          .bmcf-footer { padding: 8px 12px !important; gap: 8px !important; }
-          .bmcf-progress-container { padding: 8px 12px !important; }
-          .bmcf-instructions { font-size: 0.75em !important; padding: 8px 12px !important; }
-        ` : ''}
+        /* Mobile Mode will be applied dynamically via applyMobileModeToColorFilter() */
       `;
       document.head.appendChild(s);
     }
@@ -968,7 +948,38 @@ function buildColorFilterOverlay() {
     // Header
     const header = document.createElement('div');
     header.className = 'bmcf-header';
-    header.style.cssText = `cursor: move; user-select:none; flex-shrink:0;`;
+    header.style.cssText = `cursor: move; user-select:none; flex-shrink:0; flex-direction: column;`;
+
+    // Drag bar (similar to main overlay)
+    const dragBar = document.createElement('div');
+    dragBar.className = 'bmcf-drag-bar';
+    dragBar.style.cssText = `
+      background: linear-gradient(90deg, #475569 0%, #64748b 50%, #475569 100%);
+      border-radius: 4px;
+      cursor: grab;
+      width: 100%;
+      height: 6px;
+      margin-bottom: 8px;
+      opacity: 0.8;
+      transition: opacity 0.2s ease;
+    `;
+
+    // Drag bar hover effect
+    dragBar.addEventListener('mouseenter', () => {
+      dragBar.style.opacity = '1';
+    });
+    dragBar.addEventListener('mouseleave', () => {
+      dragBar.style.opacity = '0.8';
+    });
+
+    // Container for title and close button
+    const titleContainer = document.createElement('div');
+    titleContainer.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+    `;
 
     const title = document.createElement('h2');
     title.textContent = 'Template Color Filter';
@@ -1048,9 +1059,14 @@ function buildColorFilterOverlay() {
     };
     settingsButton.onclick = () => buildCrosshairSettingsOverlay();
 
-    header.appendChild(title);
-    header.appendChild(settingsButton);
-    header.appendChild(closeButton);
+    // Add elements to titleContainer
+    titleContainer.appendChild(title);
+    titleContainer.appendChild(settingsButton);
+    titleContainer.appendChild(closeButton);
+
+    // Add drag bar and titleContainer to header
+    header.appendChild(dragBar);
+    header.appendChild(titleContainer);
 
     // Progress Summary
     const progressSummary = document.createElement('div');
@@ -2078,6 +2094,12 @@ function buildColorFilterOverlay() {
 
     document.body.appendChild(colorFilterOverlay);
 
+    // Apply mobile mode immediately if enabled
+    if (isMobileMode) {
+      applyMobileModeToColorFilter(true);
+      consoleLog('📱 [Initial Build] Mobile mode applied immediately');
+    }
+
     // Add drag functionality
     let isDragging = false;
     let dragStartX = 0;
@@ -2100,6 +2122,12 @@ function buildColorFilterOverlay() {
       colorFilterOverlay.style.transform = 'none';
       colorFilterOverlay.style.left = initialLeft + 'px';
       colorFilterOverlay.style.top = initialTop + 'px';
+      
+      // Change cursor and drag bar style
+      header.style.cursor = 'grabbing';
+      dragBar.style.cursor = 'grabbing';
+      dragBar.style.opacity = '1';
+      colorFilterOverlay.style.userSelect = 'none';
       
       e.preventDefault();
     });
@@ -2125,7 +2153,14 @@ function buildColorFilterOverlay() {
     });
 
     document.addEventListener('mouseup', () => {
-      isDragging = false;
+      if (isDragging) {
+        isDragging = false;
+        // Restore cursor and drag bar style
+        header.style.cursor = 'move';
+        dragBar.style.cursor = 'grab';
+        dragBar.style.opacity = '0.8';
+        colorFilterOverlay.style.userSelect = '';
+      }
     });
   }).catch(err => {
     consoleError('Failed to load color palette:', err);
@@ -2455,21 +2490,8 @@ function saveCollapseMinEnabled(enabled) {
 function getMobileMode() {
   try {
     consoleLog('📱 Loading mobile mode setting...');
-    
-    let mobileMode = false;
-    
-    // Try TamperMonkey storage first
-    if (typeof GM_getValue !== 'undefined') {
-      const storedValue = GM_getValue('bmMobileMode', 'false');
-      mobileMode = JSON.parse(storedValue);
-      consoleLog('📱 Loaded from TamperMonkey storage:', mobileMode);
-    } else {
-      // Fallback to localStorage
-      const storedValue = localStorage.getItem('bmMobileMode') || 'false';
-      mobileMode = JSON.parse(storedValue);
-      consoleLog('📱 Loaded from localStorage:', mobileMode);
-    }
-    
+    const storedValue = localStorage.getItem('bmMobileMode') || 'false';
+    const mobileMode = JSON.parse(storedValue);
     consoleLog('✅ Mobile mode setting loaded:', mobileMode);
     return mobileMode;
   } catch (error) {
@@ -2485,22 +2507,112 @@ function getMobileMode() {
 function saveMobileMode(enabled) {
   try {
     const enabledString = JSON.stringify(enabled);
-    
-    consoleLog('📱 Saving mobile mode setting:', enabled, 'as string:', enabledString);
-    
-    // Save to TamperMonkey storage
-    if (typeof GM_setValue !== 'undefined') {
-      GM_setValue('bmMobileMode', enabledString);
-      consoleLog('📱 Saved to TamperMonkey storage');
-    }
-    
-    // Also save to localStorage as backup
+    consoleLog('📱 Saving mobile mode setting:', enabled);
     localStorage.setItem('bmMobileMode', enabledString);
-    consoleLog('📱 Saved to localStorage');
-    
     consoleLog('✅ Mobile mode setting saved successfully:', enabled);
   } catch (error) {
     consoleError('❌ Failed to save mobile mode setting:', error);
+  }
+}
+
+/**
+ * Apply mobile mode styles to existing Color Filter overlay dynamically
+ * @param {boolean} enableMobile - Whether to enable mobile mode
+ * @since 1.0.0
+ */
+function applyMobileModeToColorFilter(enableMobile) {
+  const existingOverlay = document.getElementById('bm-color-filter-overlay');
+  if (!existingOverlay) {
+    consoleLog('📱 [Dynamic Mobile] No Color Filter overlay found');
+    return;
+  }
+
+  // ALWAYS remove existing mobile styles first to prevent accumulation
+  let mobileStyleElement = document.getElementById('bmcf-mobile-styles');
+  if (mobileStyleElement) {
+    mobileStyleElement.remove();
+    consoleLog('📱 [Dynamic Mobile] Removed existing mobile styles');
+  }
+  
+  if (enableMobile) {
+    // Create fresh mobile style element
+    mobileStyleElement = document.createElement('style');
+    mobileStyleElement.id = 'bmcf-mobile-styles';
+    document.head.appendChild(mobileStyleElement);
+    
+    mobileStyleElement.textContent = `
+      /* Dynamic Mobile Mode Styles - Applied Fresh */
+      .bmcf-overlay { 
+        width: min(95vw, 400px) !important; 
+        max-height: 75vh !important; 
+        border-radius: 12px !important; 
+        padding: 6px !important;
+      }
+      .bmcf-header { 
+        padding: 10px 14px 8px 14px !important; 
+      }
+      .bmcf-drag-bar { 
+        height: 4px !important; 
+        margin-bottom: 6px !important; 
+      }
+      .bmcf-title { 
+        font-size: 1.1em !important; 
+      }
+      .bmcf-close { 
+        width: 22px !important; 
+        height: 22px !important; 
+      }
+      .bmcf-search { 
+        height: 28px !important; 
+        padding: 6px 10px !important; 
+        font-size: 0.75em !important; 
+      }
+      .bmcf-select { 
+        height: 28px !important; 
+        padding: 4px 8px !important; 
+        font-size: 0.75em !important; 
+      }
+      .bmcf-grid { 
+        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important; 
+        gap: 6px !important; 
+      }
+      .bmcf-card { 
+        padding: 6px 8px !important; 
+        border-radius: 6px !important; 
+      }
+      .bmcf-color-box { 
+        width: 18px !important; 
+        height: 18px !important; 
+        border-radius: 3px !important; 
+      }
+      .bmcf-color-name { 
+        font-size: 0.75em !important; 
+      }
+      .bmcf-stats { 
+        font-size: 0.65em !important; 
+        gap: 3px !important; 
+      }
+      .bmcf-btn { 
+        height: 28px !important; 
+        padding: 0 10px !important; 
+        min-width: 70px !important; 
+        font-size: 0.75em !important; 
+      }
+      .bmcf-footer { 
+        padding: 6px 10px !important; 
+        gap: 6px !important; 
+      }
+      .bmcf-progress-container { 
+        padding: 6px 10px !important; 
+      }
+      .bmcf-instructions { 
+        font-size: 0.7em !important; 
+        padding: 6px 10px !important; 
+      }
+    `;
+    consoleLog('📱 [Dynamic Mobile] Mobile mode styles applied FRESH to Color Filter');
+  } else {
+    consoleLog('📱 [Dynamic Mobile] Mobile mode disabled - styles removed');
   }
 }
 
@@ -3502,7 +3614,9 @@ function buildCrosshairSettingsOverlay() {
 
   const mobileCheckbox = document.createElement('input');
   mobileCheckbox.type = 'checkbox';
-  mobileCheckbox.checked = tempMobileMode;
+  const currentMobileMode = getMobileMode(); // Get fresh value from storage
+  mobileCheckbox.checked = currentMobileMode;
+  tempMobileMode = currentMobileMode; // Synchronize temp variable
   mobileCheckbox.style.cssText = `
     width: 16px;
     height: 16px;
@@ -3510,9 +3624,9 @@ function buildCrosshairSettingsOverlay() {
   `;
 
   const mobileToggleText = document.createElement('span');
-  mobileToggleText.textContent = tempMobileMode ? 'Enabled' : 'Disabled';
+  mobileToggleText.textContent = currentMobileMode ? 'Enabled' : 'Disabled';
   mobileToggleText.style.cssText = `
-    color: ${tempMobileMode ? '#4caf50' : '#f44336'};
+    color: ${currentMobileMode ? '#4caf50' : '#f44336'};
     font-weight: bold;
     cursor: pointer;
   `;
@@ -3752,6 +3866,9 @@ function buildCrosshairSettingsOverlay() {
       saveMiniTrackerEnabled(tempMiniTrackerEnabled);
       saveCollapseMinEnabled(tempCollapseMinEnabled);
       saveMobileMode(tempMobileMode);
+      
+      // Apply mobile mode to existing Color Filter overlay dynamically
+      applyMobileModeToColorFilter(tempMobileMode);
       
       // Success feedback
       applyButton.style.background = 'linear-gradient(135deg, var(--emerald-600), var(--emerald-700))';

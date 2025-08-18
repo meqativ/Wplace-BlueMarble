@@ -1232,7 +1232,7 @@ export default class TemplateManager {
                  percentage = realColorStats[colorKey].required > 0 ? 
                    Math.round((paintedForColor / realColorStats[colorKey].required) * 100) : 0;
                  
-                 consoleLog(`🎯 [REAL DATA] ${colorKey}: ${paintedForColor}/${realColorStats[colorKey].required} (${percentage}%) - ${needsCrosshair} need crosshair`);
+                //  consoleLog(`🎯 [REAL DATA] ${colorKey}: ${paintedForColor}/${realColorStats[colorKey].required} (${percentage}%) - ${needsCrosshair} need crosshair`);
                }
             } else {
               // Fall back to proportional estimation for colors without real data
