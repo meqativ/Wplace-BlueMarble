@@ -853,14 +853,16 @@ function buildColorFilterOverlay() {
       transform: translate(-50%, -50%);
       background: rgba(21, 48, 99, 0.95);
       color: white;
-      padding: 20px;
       border-radius: 12px;
       z-index: 9001;
-      max-width: 600px;
-      max-height: 80vh;
+      max-width: 650px;
+      max-height: 85vh;
+      width: 90vw;
       display: flex;
       flex-direction: column;
       font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+      overflow: hidden;
     `;
 
     // Header
@@ -869,12 +871,12 @@ function buildColorFilterOverlay() {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: 20px;
+      padding: 20px 20px 15px 20px;
       border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-      padding-bottom: 10px;
       cursor: move;
       user-select: none;
       flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.05);
     `;
 
     const title = document.createElement('h2');
@@ -937,7 +939,7 @@ function buildColorFilterOverlay() {
       border: 1px solid rgba(255,255,255,0.2);
       border-radius: 8px;
       padding: 15px;
-      margin: 15px 0;
+      margin-bottom: 20px;
       color: white;
       text-align: center;
     `;
@@ -964,11 +966,11 @@ function buildColorFilterOverlay() {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 12px;
+      padding: 6px 14px;
       background: rgba(255, 255, 255, 0.1);
       border-radius: 6px;
       border: 1px solid rgba(255, 255, 255, 0.2);
-      margin-bottom: 15px;
+      margin-bottom: 20px;
     `;
 
     const includeWrongProgressCheckbox = document.createElement('input');
@@ -1008,7 +1010,7 @@ function buildColorFilterOverlay() {
     // Instructions
     const instructions = document.createElement('p');
     instructions.textContent = 'Click on colors to toggle their visibility in the template.';
-    instructions.style.cssText = 'margin: 0 0 15px 0; font-size: 0.9em; color: #ccc; text-align: center; font-weight: bold;';
+    instructions.style.cssText = 'margin: 0 0 20px 0; font-size: 0.9em; color: #ccc; text-align: center; font-weight: bold;';
 
     // Search box
     const searchContainer = document.createElement('div');
@@ -1174,7 +1176,7 @@ function buildColorFilterOverlay() {
     const filterSelect = document.createElement('select');
     filterSelect.style.cssText = `
       flex: 1;
-      padding: 8px 12px;
+      padding: 6px 14px;
       border: 2px solid rgba(255, 255, 255, 0.2);
       border-radius: 6px;
       background: rgba(0, 0, 0, 0.3);
@@ -1227,7 +1229,7 @@ function buildColorFilterOverlay() {
     enhancedInfo.style.cssText = `
       background: #333;
       color: white;
-      padding: 8px 12px;
+      padding: 6px 14px;
       border-radius: 6px;
       font-size: 0.9em;
       font-weight: bold;
@@ -1278,7 +1280,7 @@ function buildColorFilterOverlay() {
       background: #6c757d;
       color: white;
       border: none;
-      padding: 8px 12px;
+      padding: 6px 14px;
       border-radius: 6px;
       cursor: pointer;
       width: 100%;
@@ -1298,7 +1300,7 @@ function buildColorFilterOverlay() {
       display: flex;
       align-items: center;
       gap: 8px;
-      padding: 8px 12px;
+      padding: 6px 14px;
       background: rgba(255, 255, 255, 0.1);
       border-radius: 6px;
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1774,35 +1776,85 @@ function buildColorFilterOverlay() {
       }
     };
 
-    // Apply button
-    const applyButton = document.createElement('button');
-    applyButton.textContent = 'Apply & Close';
-    applyButton.style.cssText = `
-      background: #2196f3;
-      border: none;
-      color: white;
-      padding: 12px 24px;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 1em;
-      width: 100%;
-      margin-top: 10px;
+    // Create fixed footer with action buttons
+    const footerContainer = document.createElement('div');
+    footerContainer.style.cssText = `
+      background: rgba(21, 48, 99, 0.95);
+      border-top: 2px solid rgba(255, 255, 255, 0.25);
+      border-bottom-left-radius: 12px;
+      border-bottom-right-radius: 12px;
+      padding: 6px;
+      display: flex;
+      gap: 6px;
+      justify-content: center;
+      align-items: center;
+      flex-shrink: 0;
+      height: 48px;
     `;
 
     // Refresh Statistics button
     const refreshStatsButton = document.createElement('button');
-    refreshStatsButton.textContent = '🔄 Update Stats';
+    refreshStatsButton.innerHTML = '🔄 Update Stats';
     refreshStatsButton.style.cssText = `
-      background: #4caf50;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #4caf50, #45a049);
       border: none;
       color: white;
-      padding: 10px 20px;
+      height: 36px;
+      padding: 6px 14px;
+      min-width: 136px;
+      white-space: nowrap;
       border-radius: 8px;
       cursor: pointer;
       font-size: 0.9em;
-      width: 100%;
-      margin-top: 10px;
+      font-weight: 700;
+      transition: transform .15s ease, box-shadow .15s ease;
+      box-shadow: 0 2px 6px rgba(76, 175, 80, 0.25);
     `;
+
+    refreshStatsButton.onmouseover = () => {
+      refreshStatsButton.style.transform = 'translateY(-2px)';
+      refreshStatsButton.style.boxShadow = '0 4px 15px rgba(76, 175, 80, 0.5)';
+    };
+
+    refreshStatsButton.onmouseout = () => {
+      refreshStatsButton.style.transform = 'translateY(0)';
+      refreshStatsButton.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)';
+    };
+
+    // Apply button  
+    const applyButton = document.createElement('button');
+    applyButton.innerHTML = '🎯 Apply Colors';
+    applyButton.style.cssText = `
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #2196f3, #1976d2);
+      border: none;
+      color: white;
+      height: 36px;
+      padding: 6px 14px;
+      min-width: 136px;
+      white-space: nowrap;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9em;
+      font-weight: 700;
+      transition: transform .15s ease, box-shadow .15s ease;
+      box-shadow: 0 2px 6px rgba(33, 150, 243, 0.25);
+    `;
+
+    applyButton.onmouseover = () => {
+      applyButton.style.transform = 'translateY(-2px)';
+      applyButton.style.boxShadow = '0 4px 15px rgba(33, 150, 243, 0.5)';
+    };
+
+    applyButton.onmouseout = () => {
+      applyButton.style.transform = 'translateY(0)';
+      applyButton.style.boxShadow = '0 2px 8px rgba(33, 150, 243, 0.3)';
+    };
     
     refreshStatsButton.onclick = () => {
       consoleLog('🔄 [Color Filter] Refreshing statistics...');
@@ -1827,21 +1879,25 @@ function buildColorFilterOverlay() {
       overflow-y: auto;
       flex: 1;
       min-height: 0;
+      padding: 20px;
     `;
 
-    // Assemble overlay with fixed header
+    // Add buttons to footer
+    footerContainer.appendChild(refreshStatsButton);
+    footerContainer.appendChild(applyButton);
+
+    // Assemble overlay with fixed header and footer
     colorFilterOverlay.appendChild(header);
     contentContainer.appendChild(progressSummary);
     contentContainer.appendChild(includeWrongProgressContainer);
     contentContainer.appendChild(instructions);
-    contentContainer.appendChild(searchContainer);
     contentContainer.appendChild(enhancedSection);
+    contentContainer.appendChild(searchContainer);
     contentContainer.appendChild(filterContainer);
-
     contentContainer.appendChild(colorGrid);
-    contentContainer.appendChild(refreshStatsButton);
-    contentContainer.appendChild(applyButton);
+    
     colorFilterOverlay.appendChild(contentContainer);
+    colorFilterOverlay.appendChild(footerContainer);
 
     document.body.appendChild(colorFilterOverlay);
 
