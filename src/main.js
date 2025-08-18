@@ -1694,11 +1694,6 @@ function buildOverlayMain() {
           instance.handleDisplayStatus(`Disabled templates!`);
         }
       }).buildElement()
-      .addButton({'id': 'bm-button-delete-templates', innerHTML: icons.deleteIcon + 'Delete Template'}, (instance, button) => {
-        button.onclick = () => {
-          deleteSelectedTemplate(instance);
-        }
-      }).buildElement()
       .buildElement()
       .buildElement()
       .addButton({'id': 'bm-button-color-filter', innerHTML: icons.colorFilterIcon + 'Color Filter'}, (instance, button) => {
