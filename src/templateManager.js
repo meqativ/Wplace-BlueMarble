@@ -1301,17 +1301,41 @@ export default class TemplateManager {
               }
             }
             
+            // Apply wrong color logic to painted count for mini tracker
+            const effectivePaintedForTracker = this.includeWrongColorsInProgress ? 
+              paintedForColor + wrongForColor : paintedForColor;
+            
+            // Recalculate percentage based on the effective painted count for mini tracker consistency
+            const totalRequiredForColor = realColorStats[colorKey] ? realColorStats[colorKey].required : colorCount;
+            const correctedPercentage = totalRequiredForColor > 0 ? 
+              Math.round((effectivePaintedForTracker / totalRequiredForColor) * 100) : 0;
+            
+            if (this.includeWrongColorsInProgress && wrongForColor > 0) {
+              consoleLog(`🔧 [Mini Tracker Fix] ${colorKey}: painted ${paintedForColor} + wrong ${wrongForColor} = ${effectivePaintedForTracker} (${correctedPercentage}%) - was ${percentage}%`);
+            }
+            
             colorStats[colorKey] = {
-              totalRequired: realColorStats[colorKey] ? realColorStats[colorKey].required : colorCount,
-              painted: paintedForColor,
+              totalRequired: totalRequiredForColor,
+              painted: effectivePaintedForTracker,
               needsCrosshair: Math.max(0, needsCrosshair),
-              percentage: percentage,
+              percentage: correctedPercentage,
               remaining: Math.max(0, needsCrosshair)
             };
           }
         }
         
         consoleLog('✅ [Enhanced Pixel Analysis] SUMMARY (from tileProgress):');
+        
+        // Calculate the ACTUAL totals that will be used by mini tracker
+        let totalPaintedForTracker = 0;
+        let totalRequiredForTracker = 0;
+        for (const stats of Object.values(colorStats)) {
+          totalPaintedForTracker += stats.painted || 0;
+          totalRequiredForTracker += stats.totalRequired || 0;
+        }
+        const trackPercentage = totalRequiredForTracker > 0 ? Math.round((totalPaintedForTracker / totalRequiredForTracker) * 100) : 0;
+        
+        consoleLog(`📊 Mini tracker will show: ${totalPaintedForTracker}/${totalRequiredForTracker} (${trackPercentage}%) - ${totalRequiredForTracker - totalPaintedForTracker} need crosshair`);
         
                  // Apply wrong color logic to overall progress
          if (this.includeWrongColorsInProgress) {
