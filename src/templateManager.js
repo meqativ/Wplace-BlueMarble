@@ -246,9 +246,53 @@ export default class TemplateManager {
 
   /** Deletes a template from the JSON object.
    * Also delete's the corrosponding {@link Template} class instance
+   * @param {string} templateKey - The key of the template to delete (e.g., "0 $Z")
+   * @since 1.0.0
    */
-  deleteTemplate() {
+  deleteTemplate(templateKey) {
+    if (!templateKey || !this.templatesJSON?.templates) {
+      consoleWarn('⚠️ Invalid template key or no templates available');
+      return false;
+    }
 
+    try {
+      // Remove from JSON
+      if (this.templatesJSON.templates[templateKey]) {
+        delete this.templatesJSON.templates[templateKey];
+        consoleLog(`🗑️ Removed template ${templateKey} from JSON`);
+      }
+
+      // Remove from templatesArray
+      const templateIndex = this.templatesArray.findIndex(template => {
+        const templateKeyFromInstance = `${template.sortID} ${template.authorID}`;
+        return templateKeyFromInstance === templateKey;
+      });
+
+      if (templateIndex !== -1) {
+        this.templatesArray.splice(templateIndex, 1);
+        consoleLog(`🗑️ Removed template ${templateKey} from array`);
+      }
+
+      // Save updated templates to storage
+      this.#storeTemplates();
+
+      // Force refresh template display to clear any visual templates
+      if (typeof refreshTemplateDisplay === 'function') {
+        refreshTemplateDisplay().catch(error => {
+          consoleWarn('Warning: Failed to refresh template display:', error);
+        });
+      }
+
+      // Update mini tracker to reflect changes
+      if (typeof updateMiniTracker === 'function') {
+        updateMiniTracker();
+      }
+
+      return true;
+    } catch (error) {
+      consoleError('❌ Failed to delete template:', error);
+      return false;
+    }
   }
 
   /** Disables the template from view
@@ -829,19 +873,19 @@ export default class TemplateManager {
               if (pa < 64) {
                 // Unpainted -> neither painted nor wrong
                 if (paintedCount + wrongCount < 10) { // Log first 10 pixels
-                  consoleLog(`⚪ [Pixel Analysis] (${gx},${gy}) UNPAINTED: template=${tr},${tg},${tb} vs tile=transparent`);
+                  // consoleLog(`⚪ [Pixel Analysis] (${gx},${gy}) UNPAINTED: template=${tr},${tg},${tb} vs tile=transparent`);
                 }
               } else if (pr === tr && pg === tg && pb === tb) {
                 paintedCount++;
                 colorBreakdown[colorKey].painted++;
                 if (paintedCount + wrongCount < 10) { // Log first 10 pixels
-                  consoleLog(`✅ [Pixel Analysis] (${gx},${gy}) CORRECT: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
+                  // consoleLog(`✅ [Pixel Analysis] (${gx},${gy}) CORRECT: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
                 }
               } else {
                 wrongCount++;
                 colorBreakdown[colorKey].wrong++;
                 if (paintedCount + wrongCount < 10) { // Log first 10 pixels
-                  consoleLog(`❌ [Pixel Analysis] (${gx},${gy}) WRONG: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
+                  // consoleLog(`❌ [Pixel Analysis] (${gx},${gy}) WRONG: template=${tr},${tg},${tb} vs tile=${pr},${pg},${pb}`);
                 }
               }
             }
@@ -1253,7 +1297,7 @@ export default class TemplateManager {
                 needsCrosshair = colorCount - paintedForColor;
                 percentage = colorCount > 0 ? Math.round((paintedForColor / colorCount) * 100) : 0;
                 
-                consoleLog(`📊 [ESTIMATED] ${colorKey}: ${paintedForColor}/${colorCount} (${percentage}%) - ${needsCrosshair} need crosshair`);
+                // consoleLog(`📊 [ESTIMATED] ${colorKey}: ${paintedForColor}/${colorCount} (${percentage}%) - ${needsCrosshair} need crosshair`);
               }
             }
             

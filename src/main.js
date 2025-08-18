@@ -400,6 +400,863 @@ function observeBlack() {
   observer.observe(document.body, { childList: true, subtree: true });
 }
 
+/** Deletes all templates from storage with confirmation dialog
+ * @param {Object} instance - The overlay instance
+ * @since 1.0.0
+ */
+function deleteAllTemplates(instance) {
+  // Get current template count for confirmation message
+  const templateCount = templateManager?.templatesArray?.length || 0;
+  const templateText = templateCount === 1 ? 'template' : 'templates';
+  
+  // Show confirmation dialog
+  const confirmMessage = templateCount > 0 
+    ? `Are you sure you want to delete all ${templateCount} ${templateText}?\n\nThis action cannot be undone!`
+    : 'No templates found to delete.';
+  
+  if (templateCount === 0) {
+    showCustomConfirmDialog(
+      'No Templates Found',
+      'No templates found to delete.',
+      null, // No confirm action needed
+      () => {
+        instance.handleDisplayStatus('No templates to delete');
+      }
+    );
+    return;
+  }
+  
+  // Use custom confirmation dialog instead of native confirm
+  showCustomConfirmDialog(
+    'Delete All Templates?',
+    confirmMessage,
+    () => {
+      // This is the confirmation callback - execute the deletion logic
+      performDeleteAllTemplates(instance, templateCount, templateText);
+    },
+    () => {
+      // This is the cancel callback
+      instance.handleDisplayStatus('Template deletion cancelled');
+    }
+  );
+}
+
+/** Performs the actual deletion of all templates (extracted from deleteAllTemplates)
+ * @param {Object} instance - The overlay instance
+ * @param {number} templateCount - Number of templates to delete
+ * @param {string} templateText - Singular/plural text for templates
+ * @since 1.0.0
+ */
+function performDeleteAllTemplates(instance, templateCount, templateText) {
+  try {
+    // Clear templates from memory
+    if (templateManager) {
+      templateManager.templatesArray = [];
+      templateManager.templatesJSON = {
+        whoami: templateManager.templatesJSON?.whoami || null,
+        templates: {}
+      };
+    }
+    
+    // Clear from TamperMonkey storage
+    try {
+      if (typeof GM !== 'undefined' && GM.deleteValue) {
+        GM.deleteValue('bmTemplates');
+        GM.deleteValue('bmTemplates_timestamp');
+      } else if (typeof GM_deleteValue !== 'undefined') {
+        GM_deleteValue('bmTemplates');
+        GM_deleteValue('bmTemplates_timestamp');
+      }
+    } catch (error) {
+      console.warn('⚠️ Failed to clear TamperMonkey storage:', error);
+    }
+    
+    // Clear from localStorage
+    try {
+      localStorage.removeItem('bmTemplates');
+      localStorage.removeItem('bmTemplates_timestamp');
+    } catch (error) {
+      console.warn('⚠️ Failed to clear localStorage:', error);
+    }
+    
+    // Force refresh template display to clear any visual templates
+    if (typeof refreshTemplateDisplay === 'function') {
+      refreshTemplateDisplay().catch(error => {
+        console.warn('Warning: Failed to refresh template display:', error);
+      });
+    }
+    
+    // Update mini tracker to reflect empty state
+    if (typeof updateMiniTracker === 'function') {
+      updateMiniTracker();
+    }
+    
+    // Close Color Filter overlay if open
+    const existingColorFilterOverlay = document.getElementById('bm-color-filter-overlay');
+    if (existingColorFilterOverlay) {
+      existingColorFilterOverlay.remove();
+    }
+    
+    instance.handleDisplayStatus(`Successfully deleted all ${templateCount} ${templateText}!`);
+    consoleLog(`🗑️ Deleted all ${templateCount} templates from storage`);
+    
+  } catch (error) {
+    consoleError('❌ Failed to delete templates:', error);
+    instance.handleDisplayError('Failed to delete templates. Check console for details.');
+  }
+}
+
+/** Shows a custom confirmation dialog with slate theme
+ * @param {string} title - The title of the confirmation dialog
+ * @param {string} message - The message to display
+ * @param {Function} onConfirm - Callback function to execute when confirmed
+ * @param {Function} onCancel - Optional callback function to execute when cancelled
+ * @since 1.0.0
+ */
+function showCustomConfirmDialog(title, message, onConfirm, onCancel = null) {
+  // Inject confirm dialog styles if not already present
+  if (!document.getElementById('bm-confirm-dialog-styles')) {
+    const styleSheet = document.createElement('style');
+    styleSheet.id = 'bm-confirm-dialog-styles';
+    styleSheet.textContent = `
+      .bmcd-overlay-backdrop { 
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.9);
+        backdrop-filter: blur(12px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 15000;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        animation: bmcd-fadeIn 0.2s ease-out;
+      }
+      
+      @keyframes bmcd-fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      
+      @keyframes bmcd-slideIn {
+        from { 
+          opacity: 0;
+          transform: translate(-50%, -50%) scale(0.9) translateY(20px);
+        }
+        to { 
+          opacity: 1;
+          transform: translate(-50%, -50%) scale(1) translateY(0);
+        }
+      }
+      
+      .bmcd-container { 
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: var(--slate-900, #0f172a);
+        color: var(--slate-100, #f1f5f9);
+        border-radius: 16px;
+        border: 1px solid var(--slate-700, #334155);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.8), 0 0 0 1px rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(16px);
+        max-width: 400px;
+        width: 90%;
+        overflow: hidden;
+        animation: bmcd-slideIn 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+      }
+      
+      .bmcd-container::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 16px;
+        background: linear-gradient(135deg, rgba(239, 68, 68, 0.1), rgba(220, 38, 38, 0.05));
+        pointer-events: none;
+      }
+      
+      .bmcd-header { 
+        padding: 20px 24px 16px 24px;
+        border-bottom: 1px solid var(--slate-700, #334155);
+        background: linear-gradient(135deg, var(--slate-800, #1e293b), var(--slate-750, #293548));
+        position: relative;
+        z-index: 1;
+      }
+      
+      .bmcd-title {
+        margin: 0;
+        font-size: 1.25em;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: -0.025em;
+        background: linear-gradient(135deg, var(--red-400, #f87171), var(--red-500, #ef4444));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      .bmcd-content { 
+        padding: 20px 24px;
+        position: relative;
+        z-index: 1;
+        text-align: center;
+      }
+      
+      .bmcd-message {
+        color: var(--slate-300, #cbd5e1);
+        line-height: 1.6;
+        white-space: pre-line;
+        font-size: 0.95em;
+      }
+      
+      .bmcd-footer { 
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+        padding: 16px 24px 20px 24px;
+        border-top: 1px solid var(--slate-700, #334155);
+        background: linear-gradient(135deg, var(--slate-800, #1e293b), var(--slate-750, #293548));
+        position: relative;
+        z-index: 1;
+      }
+      
+      .bmcd-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 40px;
+        padding: 0 20px;
+        min-width: 100px;
+        border-radius: 10px;
+        border: 1px solid;
+        font-size: 0.9em;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        flex: 1;
+      }
+      
+      .bmcd-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 10px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      
+      .bmcd-btn:hover::before {
+        opacity: 1;
+      }
+      
+      .bmcd-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.4);
+      }
+      
+      .bmcd-btn:active {
+        transform: translateY(0);
+      }
+      
+      .bmcd-btn-danger {
+        background: linear-gradient(135deg, var(--red-500, #ef4444), var(--red-600, #dc2626));
+        color: white;
+        border-color: var(--red-600, #dc2626);
+      }
+      
+      .bmcd-btn-danger:hover {
+        background: linear-gradient(135deg, var(--red-600, #dc2626), var(--red-700, #b91c1c));
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.5);
+      }
+      
+      .bmcd-btn-secondary {
+        background: var(--slate-700, #334155);
+        color: var(--slate-100, #f1f5f9);
+        border-color: var(--slate-600, #475569);
+      }
+      
+      .bmcd-btn-secondary:hover {
+        background: var(--slate-600, #475569);
+      }
+      
+      @media (max-width: 520px) {
+        .bmcd-container {
+          width: 95%;
+        }
+        
+        .bmcd-btn {
+          min-width: 80px;
+          height: 36px;
+          font-size: 0.85em;
+        }
+        
+        .bmcd-header, .bmcd-content, .bmcd-footer {
+          padding-left: 20px;
+          padding-right: 20px;
+        }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+  }
+  
+  // Create overlay backdrop
+  const overlay = document.createElement('div');
+  overlay.className = 'bmcd-overlay-backdrop';
+  
+  // Create main container
+  const container = document.createElement('div');
+  container.className = 'bmcd-container';
+  
+  // Header
+  const header = document.createElement('div');
+  header.className = 'bmcd-header';
+  
+  const titleElement = document.createElement('h3');
+  titleElement.className = 'bmcd-title';
+  titleElement.textContent = title;
+  
+  header.appendChild(titleElement);
+  
+  // Content
+  const content = document.createElement('div');
+  content.className = 'bmcd-content';
+  
+  const messageElement = document.createElement('p');
+  messageElement.className = 'bmcd-message';
+  messageElement.textContent = message;
+  
+  content.appendChild(messageElement);
+  
+  // Footer with buttons
+  const footer = document.createElement('div');
+  footer.className = 'bmcd-footer';
+  
+  // Create buttons based on whether there's a confirm action
+  if (onConfirm) {
+    // Confirm button
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'bmcd-btn bmcd-btn-danger';
+    confirmBtn.textContent = 'Delete';
+    
+    confirmBtn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      onConfirm();
+    });
+    
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'bmcd-btn bmcd-btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    
+    cancelBtn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      if (onCancel) onCancel();
+    });
+    
+    footer.appendChild(cancelBtn);
+    footer.appendChild(confirmBtn);
+  } else {
+    // Only OK button for info dialogs
+    const okBtn = document.createElement('button');
+    okBtn.className = 'bmcd-btn bmcd-btn-secondary';
+    okBtn.textContent = 'OK';
+    okBtn.style.flex = 'none';
+    okBtn.style.minWidth = '120px';
+    
+    okBtn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      if (onCancel) onCancel();
+    });
+    
+    footer.appendChild(okBtn);
+    
+    // Focus the OK button for info dialogs
+    setTimeout(() => okBtn.focus(), 100);
+  }
+  
+  // Assemble the dialog
+  container.appendChild(header);
+  container.appendChild(content);
+  container.appendChild(footer);
+  overlay.appendChild(container);
+  
+  // Close dialog when clicking outside (but not when clicking the container)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+      if (onCancel) onCancel();
+    }
+  });
+  
+  // ESC key support
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+      document.body.removeChild(overlay);
+      document.removeEventListener('keydown', handleKeyDown);
+      if (onCancel) onCancel();
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown);
+  
+  // Add to page
+  document.body.appendChild(overlay);
+  
+  // Focus the cancel button by default for better UX (only if it exists)
+  if (onConfirm) {
+    setTimeout(() => {
+      const cancelButton = footer.querySelector('.bmcd-btn-secondary');
+      if (cancelButton) cancelButton.focus();
+    }, 100);
+  }
+}
+
+/** Deletes a selected template with a dropdown selection interface
+ * @param {Object} instance - The overlay instance
+ * @since 1.0.0
+ */
+function deleteSelectedTemplate(instance) {
+  // Get available templates
+  const templates = templateManager?.templatesJSON?.templates || {};
+  const templateKeys = Object.keys(templates);
+  
+  if (templateKeys.length === 0) {
+    instance.handleDisplayStatus('No templates found to delete');
+    return;
+  }
+  
+  // Inject slate theme styles if not already present
+  if (!document.getElementById('bm-delete-template-styles')) {
+    const styleSheet = document.createElement('style');
+    styleSheet.id = 'bm-delete-template-styles';
+    styleSheet.textContent = `
+      :root { 
+        --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0; --slate-300: #cbd5e1; 
+        --slate-400: #94a3b8; --slate-500: #64748b; --slate-600: #475569; --slate-700: #334155; 
+        --slate-750: #293548; --slate-800: #1e293b; --slate-900: #0f172a; --slate-950: #020617;
+        --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1d4ed8;
+        --emerald-400: #34d399; --emerald-500: #10b981; --emerald-600: #059669; --emerald-700: #047857;
+        --red-400: #f87171; --red-500: #ef4444; --red-600: #dc2626; --red-700: #b91c1c;
+        --bmdt-bg: var(--slate-900); --bmdt-card: var(--slate-800); --bmdt-border: var(--slate-700); 
+        --bmdt-muted: var(--slate-400); --bmdt-text: var(--slate-100); --bmdt-text-muted: var(--slate-300);
+      }
+      
+      .bmdt-overlay-backdrop { 
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(8px);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        z-index: 10000;
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      }
+      
+      .bmdt-container { 
+        background: var(--bmdt-bg);
+        color: var(--bmdt-text);
+        border-radius: 20px;
+        border: 1px solid var(--bmdt-border);
+        box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+        backdrop-filter: blur(16px);
+        max-width: 500px;
+        width: 90%;
+        max-height: 85vh;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        position: relative;
+      }
+      
+      .bmdt-container::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 20px;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.05));
+        pointer-events: none;
+      }
+      
+      .bmdt-header { 
+        display: flex;
+        flex-direction: column;
+        padding: 20px 24px 16px 24px;
+        border-bottom: 1px solid var(--bmdt-border);
+        background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+        position: relative;
+        z-index: 1;
+      }
+      
+      .bmdt-title {
+        margin: 0;
+        font-size: 1.5em;
+        font-weight: 700;
+        text-align: center;
+        letter-spacing: -0.025em;
+        background: linear-gradient(135deg, var(--slate-100), var(--slate-300));
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+        background-clip: text;
+      }
+      
+      .bmdt-content { 
+        padding: 20px 24px;
+        overflow-y: auto;
+        position: relative;
+        z-index: 1;
+        flex: 1;
+      }
+      
+      .bmdt-template-list {
+        margin: 0;
+        max-height: 350px;
+        overflow-y: auto;
+        border: 1px solid var(--bmdt-border);
+        border-radius: 12px;
+        background: var(--bmdt-card);
+      }
+      
+      .bmdt-template-item {
+        padding: 16px;
+        border-bottom: 1px solid var(--bmdt-border);
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        position: relative;
+        min-height: 60px;
+        box-sizing: border-box;
+      }
+      
+      .bmdt-template-item:last-child {
+        border-bottom: none;
+      }
+      
+      .bmdt-template-item:hover {
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.05));
+      }
+      
+      .bmdt-template-info {
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        flex: 1;
+        min-width: 0;
+        margin-right: 12px;
+      }
+      
+      .bmdt-template-name {
+        font-weight: 600;
+        font-size: 1em;
+        color: var(--bmdt-text);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .bmdt-template-key {
+        font-size: 0.8em;
+        color: var(--bmdt-text-muted);
+        font-family: 'Courier New', monospace;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      
+      .bmdt-delete-btn {
+        background: linear-gradient(135deg, var(--red-500), var(--red-600));
+        color: white;
+        border: none;
+        padding: 8px 16px;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 0.85em;
+        font-weight: 600;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+      }
+      
+      .bmdt-delete-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 8px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      
+      .bmdt-delete-btn:hover {
+        background: linear-gradient(135deg, var(--red-600), var(--red-700));
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+      }
+      
+      .bmdt-delete-btn:hover::before {
+        opacity: 1;
+      }
+      
+      .bmdt-footer { 
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        align-items: center;
+        padding: 20px 24px;
+        border-top: 1px solid var(--bmdt-border);
+        background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+        position: relative;
+        z-index: 1;
+      }
+      
+      .bmdt-btn {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        height: 44px;
+        padding: 0 20px;
+        min-width: 140px;
+        border-radius: 12px;
+        border: 1px solid var(--bmdt-border);
+        font-size: 0.9em;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        flex: 1;
+      }
+      
+      .bmdt-btn::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        border-radius: 12px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05));
+        opacity: 0;
+        transition: opacity 0.2s ease;
+      }
+      
+      .bmdt-btn:hover::before {
+        opacity: 1;
+      }
+      
+      .bmdt-btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0,0,0,0.3);
+      }
+      
+      .bmdt-btn-danger {
+        background: linear-gradient(135deg, var(--red-500), var(--red-600));
+        color: white;
+        border-color: var(--red-600);
+      }
+      
+      .bmdt-btn-danger:hover {
+        background: linear-gradient(135deg, var(--red-600), var(--red-700));
+        box-shadow: 0 8px 25px rgba(239, 68, 68, 0.4);
+      }
+      
+      .bmdt-btn-secondary {
+        background: var(--slate-700);
+        color: var(--bmdt-text);
+        border-color: var(--bmdt-border);
+      }
+      
+      .bmdt-btn-secondary:hover {
+        background: var(--slate-600);
+      }
+      
+      /* Custom scrollbar for template list */
+      .bmdt-template-list::-webkit-scrollbar {
+        width: 8px;
+      }
+      
+      .bmdt-template-list::-webkit-scrollbar-track {
+        background: var(--slate-800);
+        border-radius: 4px;
+      }
+      
+      .bmdt-template-list::-webkit-scrollbar-thumb {
+        background: var(--slate-600);
+        border-radius: 4px;
+      }
+      
+      .bmdt-template-list::-webkit-scrollbar-thumb:hover {
+        background: var(--slate-500);
+      }
+      
+      @media (max-width: 520px) {
+        .bmdt-container {
+          width: 95%;
+          max-height: 90vh;
+        }
+        
+        .bmdt-btn {
+          min-width: 120px;
+          height: 40px;
+          font-size: 0.85em;
+        }
+        
+        .bmdt-template-item {
+          padding: 12px;
+        }
+      }
+    `;
+    document.head.appendChild(styleSheet);
+  }
+  
+  // Create overlay backdrop
+  const overlay = document.createElement('div');
+  overlay.id = 'bm-delete-template-overlay';
+  overlay.className = 'bmdt-overlay-backdrop';
+  
+  // Create main container
+  const container = document.createElement('div');
+  container.className = 'bmdt-container';
+  
+  // Header
+  const header = document.createElement('div');
+  header.className = 'bmdt-header';
+  
+  const title = document.createElement('h3');
+  title.className = 'bmdt-title';
+  title.textContent = 'Select Template to Delete';
+  
+  header.appendChild(title);
+  
+  // Content
+  const content = document.createElement('div');
+  content.className = 'bmdt-content';
+  
+  // Template list
+  const templateList = document.createElement('div');
+  templateList.className = 'bmdt-template-list';
+  
+  templateKeys.forEach(templateKey => {
+    const template = templates[templateKey];
+    const templateName = template.name || `Template ${templateKey}`;
+    
+    const templateItem = document.createElement('div');
+    templateItem.className = 'bmdt-template-item';
+    
+    const templateInfo = document.createElement('div');
+    templateInfo.className = 'bmdt-template-info';
+    
+    const nameSpan = document.createElement('div');
+    nameSpan.className = 'bmdt-template-name';
+    nameSpan.textContent = templateName;
+    
+    const keySpan = document.createElement('div');
+    keySpan.className = 'bmdt-template-key';
+    keySpan.textContent = templateKey;
+    
+    templateInfo.appendChild(nameSpan);
+    templateInfo.appendChild(keySpan);
+    
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'bmdt-delete-btn';
+    deleteBtn.textContent = 'Delete';
+    
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      
+      showCustomConfirmDialog(
+        `Delete "${templateName}"?`,
+        `Are you sure you want to delete this template?\n\nThis action cannot be undone!`,
+        () => {
+          try {
+            // Delete from templateManager
+            templateManager.deleteTemplate(templateKey);
+            
+            // Remove overlay
+            document.body.removeChild(overlay);
+            
+            instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
+            consoleLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
+            
+          } catch (error) {
+            consoleError('❌ Failed to delete template:', error);
+            instance.handleDisplayError('Failed to delete template. Check console for details.');
+          }
+        }
+      );
+    });
+    
+    templateItem.appendChild(templateInfo);
+    templateItem.appendChild(deleteBtn);
+    templateList.appendChild(templateItem);
+  });
+  
+  content.appendChild(templateList);
+  
+  // Footer with buttons
+  const footer = document.createElement('div');
+  footer.className = 'bmdt-footer';
+  
+  // Delete All button
+  const deleteAllBtn = document.createElement('button');
+  deleteAllBtn.className = 'bmdt-btn bmdt-btn-danger';
+  deleteAllBtn.textContent = 'Delete All Templates';
+  
+  deleteAllBtn.addEventListener('click', () => {
+    document.body.removeChild(overlay);
+    
+    showCustomConfirmDialog(
+      'Delete All Templates?',
+      `Are you sure you want to delete all ${templateKeys.length} templates?\n\nThis action cannot be undone!`,
+      () => {
+        // Call the actual deletion logic directly, not the wrapper function
+        const templateCount = templateKeys.length;
+        const templateText = templateCount === 1 ? 'template' : 'templates';
+        performDeleteAllTemplates(instance, templateCount, templateText);
+      }
+    );
+  });
+  
+  // Cancel button
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'bmdt-btn bmdt-btn-secondary';
+  cancelBtn.textContent = 'Cancel';
+  
+  cancelBtn.addEventListener('click', () => {
+    document.body.removeChild(overlay);
+    instance.handleDisplayStatus('Template deletion cancelled');
+  });
+  
+  footer.appendChild(deleteAllBtn);
+  footer.appendChild(cancelBtn);
+  
+  // Assemble the interface
+  container.appendChild(header);
+  container.appendChild(content);
+  container.appendChild(footer);
+  overlay.appendChild(container);
+  
+  // Close overlay when clicking outside
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+      instance.handleDisplayStatus('Template deletion cancelled');
+    }
+  });
+  
+  // Add to page
+  document.body.appendChild(overlay);
+}
+
 /** Deploys the overlay to the page with minimize/maximize functionality.
  * Creates a responsive overlay UI that can toggle between full-featured and minimized states.
  * 
@@ -443,6 +1300,7 @@ function buildOverlayMain() {
             const createButton = document.querySelector('#bm-button-create');
             const enableButton = document.querySelector('#bm-button-enable');
             const disableButton = document.querySelector('#bm-button-disable');
+            const deleteTemplatesButton = document.querySelector('#bm-button-delete-templates');
             const coordInputs = document.querySelectorAll('#bm-contain-coords input');
             const colorFilterButton = document.getElementById('bm-button-color-filter');
             
@@ -503,6 +1361,11 @@ function buildOverlayMain() {
               // Hide disable templates button
               if (disableButton) {
                 disableButton.style.display = 'none';
+              }
+
+              // Hide delete templates button
+              if (deleteTemplatesButton) {
+                deleteTemplatesButton.style.display = 'none';
               }
 
               // Keep Color Filter button visible but compact in minimized state
@@ -627,6 +1490,11 @@ function buildOverlayMain() {
               if (disableButton) {
                 disableButton.style.display = '';
                 disableButton.style.marginTop = '';
+              }
+
+              // Restore delete templates button visibility
+              if (deleteTemplatesButton) {
+                deleteTemplatesButton.style.display = '';
               }
 
               // Restore Color Filter button to normal size/state
@@ -818,6 +1686,11 @@ function buildOverlayMain() {
         button.onclick = () => {
           instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(false);
           instance.handleDisplayStatus(`Disabled templates!`);
+        }
+      }).buildElement()
+      .addButton({'id': 'bm-button-delete-templates', innerHTML: icons.deleteIcon + 'Delete Template'}, (instance, button) => {
+        button.onclick = () => {
+          deleteSelectedTemplate(instance);
         }
       }).buildElement()
       .buildElement()
@@ -2513,6 +3386,63 @@ function saveBorderEnabled(enabled) {
   }
 }
 
+/** Gets the enhanced size enabled setting from storage
+ * @returns {boolean} Whether enhanced size is enabled
+ * @since 1.0.0 
+ */
+function getEnhancedSizeEnabled() {
+  try {
+    let enhancedSizeEnabled = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairEnhancedSize', null);
+      if (saved !== null) {
+        enhancedSizeEnabled = JSON.parse(saved);
+      }
+    }
+    
+    // Fallback to localStorage
+    if (enhancedSizeEnabled === null) {
+      const saved = localStorage.getItem('bmCrosshairEnhancedSize');
+      if (saved !== null) {
+        enhancedSizeEnabled = JSON.parse(saved);
+      }
+    }
+    
+    if (enhancedSizeEnabled !== null) {
+      return enhancedSizeEnabled;
+    }
+  } catch (error) {
+    consoleError('Failed to load enhanced size setting:', error);
+  }
+  
+  // Default to disabled
+  return false;
+}
+
+/** Saves the enhanced size enabled setting to storage
+ * @param {boolean} enabled - Whether enhanced size should be enabled
+ * @since 1.0.0 
+ */
+function saveEnhancedSizeEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairEnhancedSize', enabledString);
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairEnhancedSize', enabledString);
+    
+    consoleLog('✅ Enhanced size setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save enhanced size setting:', error);
+  }
+}
+
 /** Gets the mini tracker enabled setting from storage
  * @returns {boolean} Whether mini tracker is enabled
  * @since 1.0.0 
@@ -3192,38 +4122,88 @@ function buildCrosshairSettingsOverlay() {
   };
   
   // Create crosshair preview pattern (simple cross: center + 4 sides)
-  function updateCrosshairPreview(color, borderEnabled) {
+  function updateCrosshairPreview(color, borderEnabled, enhancedSize = false) {
     const { rgb, alpha } = color;
     const colorRgba = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha / 255})`;
     const borderRgba = borderEnabled ? 'rgba(0, 100, 255, 0.8)' : 'transparent'; // Blue borders
     
-    previewColor.innerHTML = `
-      <div style="
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 100%;
-        height: 100%;
-        display: grid;
-        grid-template-columns: 1fr 1fr 1fr;
-        grid-template-rows: 1fr 1fr 1fr;
-        gap: 1px;
-        background: rgba(0,0,0,0.1);
-      ">
-        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
-        <div style="background: ${colorRgba};"></div>
-        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
-        
-        <div style="background: ${colorRgba};"></div>
-        <div style="background: black; border: 2px solid rgba(255,255,255,0.4); box-sizing: border-box;"></div>
-        <div style="background: ${colorRgba};"></div>
-        
-        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
-        <div style="background: ${colorRgba};"></div>
-        <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
-      </div>
-    `;
+    if (enhancedSize) {
+      // Enhanced 5x size crosshair preview (extends beyond center)
+      previewColor.innerHTML = `
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 100%;
+          height: 100%;
+          display: grid;
+          grid-template-columns: repeat(5, 1fr);
+          grid-template-rows: repeat(5, 1fr);
+          gap: 1px;
+          background: rgba(0,0,0,0.1);
+        ">
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: black; border: 2px solid rgba(255,255,255,0.4); box-sizing: border-box;"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${colorRgba};"></div>
+          
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+        </div>
+      `;
+    } else {
+      // Standard 3x3 crosshair preview
+      previewColor.innerHTML = `
+        <div style="
+          position: absolute;
+          top: 50%;
+          left: 50%;
+          transform: translate(-50%, -50%);
+          width: 100%;
+          height: 100%;
+          display: grid;
+          grid-template-columns: 1fr 1fr 1fr;
+          grid-template-rows: 1fr 1fr 1fr;
+          gap: 1px;
+          background: rgba(0,0,0,0.1);
+        ">
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: black; border: 2px solid rgba(255,255,255,0.4); box-sizing: border-box;"></div>
+          <div style="background: ${colorRgba};"></div>
+          
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+          <div style="background: ${colorRgba};"></div>
+          <div style="background: ${borderEnabled ? borderRgba : 'transparent'};"></div>
+        </div>
+      `;
+    }
   }
   
   // Initialize crosshair preview
@@ -3637,6 +4617,100 @@ function buildCrosshairSettingsOverlay() {
   borderSection.appendChild(borderDescription);
   borderSection.appendChild(borderToggle);
 
+  // Crosshair Size section
+  const sizeSection = document.createElement('div');
+  sizeSection.style.cssText = `
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  `;
+
+  const sizeLabel = document.createElement('div');
+  sizeLabel.textContent = 'Crosshair Size:';
+  sizeLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
+
+  const sizeDescription = document.createElement('div');
+  sizeDescription.textContent = 'Make crosshair 5x larger, extending beyond pixel boundaries';
+  sizeDescription.style.cssText = `
+    font-size: 0.9em; 
+    margin-bottom: 16px; 
+    color: var(--slate-300);
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  `;
+
+  const sizeToggle = document.createElement('label');
+  sizeToggle.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    padding: 8px 0;
+    user-select: none;
+  `;
+
+  // Get current enhanced size setting
+  let tempEnhancedSize = false;
+  try {
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairEnhancedSize', null);
+      if (saved !== null) tempEnhancedSize = JSON.parse(saved);
+    } else {
+      const saved = localStorage.getItem('bmCrosshairEnhancedSize');
+      if (saved !== null) tempEnhancedSize = JSON.parse(saved);
+    }
+  } catch (error) {
+    console.warn('Failed to load enhanced size setting:', error);
+  }
+
+  const sizeCheckbox = document.createElement('input');
+  sizeCheckbox.type = 'checkbox';
+  sizeCheckbox.checked = tempEnhancedSize;
+  sizeCheckbox.style.cssText = `
+    width: 20px;
+    height: 20px;
+    cursor: pointer;
+    accent-color: var(--blue-500);
+    border-radius: 4px;
+  `;
+
+  const sizeToggleText = document.createElement('span');
+  sizeToggleText.textContent = 'Enable Enhanced Size (5x)';
+  sizeToggleText.style.cssText = `
+    font-size: 0.95em;
+    color: var(--slate-100);
+    font-weight: 500;
+    letter-spacing: -0.01em;
+  `;
+
+  sizeCheckbox.onchange = () => {
+    tempEnhancedSize = sizeCheckbox.checked;
+    updateCrosshairPreview(tempColor, tempBorderEnabled, tempEnhancedSize);
+  };
+
+  sizeToggle.onclick = (e) => {
+    if (e.target !== sizeCheckbox) {
+      sizeCheckbox.checked = !sizeCheckbox.checked;
+      sizeCheckbox.onchange();
+    }
+  };
+
+  sizeToggle.appendChild(sizeCheckbox);
+  sizeToggle.appendChild(sizeToggleText);
+  sizeSection.appendChild(sizeLabel);
+  sizeSection.appendChild(sizeDescription);
+  sizeSection.appendChild(sizeToggle);
+
   // Mini tracker section
   const trackerSection = document.createElement('div');
   trackerSection.style.cssText = `
@@ -3955,6 +5029,7 @@ function buildCrosshairSettingsOverlay() {
     const hasChanges = 
       JSON.stringify(tempColor) !== JSON.stringify(currentColorSaved) ||
       tempBorderEnabled !== currentBorderSaved ||
+      tempEnhancedSize !== getEnhancedSizeEnabled() ||
       tempMiniTrackerEnabled !== currentTrackerSaved ||
       tempCollapseMinEnabled !== currentCollapseSaved ||
       tempMobileMode !== currentMobileSaved;
@@ -4013,6 +5088,7 @@ function buildCrosshairSettingsOverlay() {
       
       saveCrosshairColor(tempColor);
       saveBorderEnabled(tempBorderEnabled);
+      saveEnhancedSizeEnabled(tempEnhancedSize);
       saveMiniTrackerEnabled(tempMiniTrackerEnabled);
       saveCollapseMinEnabled(tempCollapseMinEnabled);
       saveMobileMode(tempMobileMode);
@@ -4086,6 +5162,7 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(colorGrid);
   contentContainer.appendChild(alphaSection);
   contentContainer.appendChild(borderSection);
+  contentContainer.appendChild(sizeSection);
   contentContainer.appendChild(trackerSection);
   contentContainer.appendChild(mobileSection);
   contentContainer.appendChild(collapseSection);
