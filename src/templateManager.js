@@ -1225,7 +1225,7 @@ export default class TemplateManager {
                  percentage = effectiveRequired > 0 ? 
                    Math.round((effectivePainted / effectiveRequired) * 100) : 0;
                  
-                 consoleLog(`🎯 [REAL DATA + WRONG] ${colorKey}: ${effectivePainted}/${effectiveRequired} (${percentage}%) - ${needsCrosshair} need crosshair (includes ${wrongForColor} wrong)`);
+                //  consoleLog(`🎯 [REAL DATA + WRONG] ${colorKey}: ${effectivePainted}/${effectiveRequired} (${percentage}%) - ${needsCrosshair} need crosshair (includes ${wrongForColor} wrong)`);
                } else {
                  // Standard calculation (exclude wrong colors)
                  needsCrosshair = realColorStats[colorKey].required - paintedForColor;

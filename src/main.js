@@ -843,6 +843,90 @@ function buildColorFilterOverlay() {
       consoleLog(`🎯 [Color Filter] Overall progress: ${displayPainted}/${displayRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair, ${totalWrong} wrong excluded`);
     }
     
+    // Inject compact modern styles for Color Filter UI (once)
+    if (!document.getElementById('bmcf-styles')) {
+      const s = document.createElement('style');
+      s.id = 'bmcf-styles';
+      s.textContent = `
+        :root { 
+          --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0; --slate-300: #cbd5e1; 
+          --slate-400: #94a3b8; --slate-500: #64748b; --slate-600: #475569; --slate-700: #334155; 
+          --slate-750: #293548; --slate-800: #1e293b; --slate-900: #0f172a; --slate-950: #020617;
+          --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1d4ed8;
+          --emerald-400: #34d399; --emerald-500: #10b981; --emerald-600: #059669; --emerald-700: #047857;
+          --bmcf-bg: var(--slate-900); --bmcf-card: var(--slate-800); --bmcf-border: var(--slate-700); 
+          --bmcf-muted: var(--slate-400); --bmcf-text: var(--slate-100); --bmcf-text-muted: var(--slate-300);
+        }
+        .bmcf-overlay { 
+          width: min(94vw, 720px); max-height: 88vh; background: var(--bmcf-bg); color: var(--bmcf-text); 
+          border-radius: 20px; border: 1px solid var(--bmcf-border); 
+          box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05); 
+          display: flex; flex-direction: column; overflow: hidden; 
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; 
+          backdrop-filter: blur(16px); position: relative;
+        }
+        .bmcf-overlay::before {
+          content: ''; position: absolute; inset: 0; border-radius: 20px; 
+          background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.05)); 
+          pointer-events: none;
+        }
+        .bmcf-header { 
+          display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; 
+          border-bottom: 1px solid var(--bmcf-border); 
+          background: linear-gradient(135deg, var(--slate-800), var(--slate-750)); 
+          position: relative; z-index: 1;
+        }
+        .bmcf-content { padding: 20px; overflow: auto; position: relative; z-index: 1; }
+        .bmcf-footer { 
+          display: flex; gap: 12px; justify-content: center; align-items: center; padding: 16px 20px; 
+          border-top: 1px solid var(--bmcf-border); 
+          background: linear-gradient(135deg, var(--slate-800), var(--slate-750)); 
+          position: relative; z-index: 1;
+        }
+        .bmcf-btn { 
+          display: inline-flex; align-items: center; justify-content: center; height: 40px; 
+          padding: 0 18px; min-width: 120px; border-radius: 12px; border: 1px solid var(--bmcf-border); 
+          font-size: 0.9em; font-weight: 600; white-space: nowrap; cursor: pointer; 
+          transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1); position: relative; overflow: hidden;
+          background: var(--slate-700); color: var(--bmcf-text);
+        }
+        .bmcf-btn::before {
+          content: ''; position: absolute; inset: 0; border-radius: 12px; 
+          background: linear-gradient(135deg, rgba(255,255,255,0.1), rgba(255,255,255,0.05)); 
+          opacity: 0; transition: opacity 0.2s ease;
+        }
+        .bmcf-btn:hover::before { opacity: 1; }
+        .bmcf-btn:hover { transform: translateY(-2px); box-shadow: 0 8px 25px rgba(0,0,0,0.3); }
+        .bmcf-btn.success { 
+          background: linear-gradient(135deg, var(--emerald-500), var(--emerald-600)); 
+          color: white; border-color: var(--emerald-600);
+        }
+        .bmcf-btn.success:hover { 
+          background: linear-gradient(135deg, var(--emerald-600), var(--emerald-700)); 
+          box-shadow: 0 8px 25px rgba(16, 185, 129, 0.4);
+        }
+        .bmcf-btn.primary { 
+          background: linear-gradient(135deg, var(--blue-500), var(--blue-600)); 
+          color: white; border-color: var(--blue-600);
+        }
+        .bmcf-btn.primary:hover { 
+          background: linear-gradient(135deg, var(--blue-600), var(--blue-700)); 
+          box-shadow: 0 8px 25px rgba(59, 130, 246, 0.4);
+        }
+        .bmcf-input { 
+          width: 100%; height: 44px; padding: 12px 16px; border-radius: 12px; 
+          border: 1px solid var(--bmcf-border); background: var(--slate-800); color: var(--bmcf-text); 
+          outline: none; font-size: 0.95em; transition: all 0.2s ease;
+        }
+        .bmcf-input:focus { 
+          border-color: var(--blue-500); 
+          box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(59, 130, 246, 0.15); 
+        }
+        @media (max-width: 520px) { .bmcf-btn { min-width: 100px; height: 36px; font-size: 0.85em; } }
+      `;
+      document.head.appendChild(s);
+    }
+
     // Create the color filter overlay
     const colorFilterOverlay = document.createElement('div');
     colorFilterOverlay.id = 'bm-color-filter-overlay';
@@ -851,81 +935,91 @@ function buildColorFilterOverlay() {
       top: 50%;
       left: 50%;
       transform: translate(-50%, -50%);
-      background: rgba(21, 48, 99, 0.95);
-      color: white;
-      border-radius: 12px;
       z-index: 9001;
-      max-width: 650px;
-      max-height: 85vh;
-      width: 90vw;
-      display: flex;
-      flex-direction: column;
-      font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
-      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-      overflow: hidden;
     `;
+    colorFilterOverlay.className = 'bmcf-overlay';
 
     // Header
     const header = document.createElement('div');
-    header.style.cssText = `
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px 20px 15px 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-      cursor: move;
-      user-select: none;
-      flex-shrink: 0;
-      background: rgba(255, 255, 255, 0.05);
-    `;
+    header.className = 'bmcf-header';
+    header.style.cssText = `cursor: move; user-select:none; flex-shrink:0;`;
 
     const title = document.createElement('h2');
     title.textContent = 'Template Color Filter';
     title.style.cssText = `
       margin: 0; 
-      font-size: 1.4em; 
-      font-weight: bold;
-      font-family: 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+      font-size: 1.5em; 
+      font-weight: 700;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       text-align: center;
       flex: 1;
       pointer-events: none;
-      letter-spacing: 0.4px;
+      letter-spacing: -0.025em;
+      background: linear-gradient(135deg, var(--slate-100), var(--slate-300));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
     `;
 
     const closeButton = document.createElement('button');
     closeButton.textContent = '✕';
     closeButton.style.cssText = `
-      background: #d32f2f;
-      border: none;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      border: 1px solid rgba(239, 68, 68, 0.3);
       color: white;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
       cursor: pointer;
       font-size: 16px;
+      font-weight: 600;
       display: flex;
       align-items: center;
       justify-content: center;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
     `;
+    closeButton.onmouseover = () => {
+      closeButton.style.transform = 'translateY(-1px) scale(1.05)';
+      closeButton.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.transform = '';
+      closeButton.style.boxShadow = '';
+    };
     closeButton.onclick = () => colorFilterOverlay.remove();
 
     // Settings button 
     const settingsButton = document.createElement('button');
     settingsButton.innerHTML = icons.settingsIcon;
     settingsButton.style.cssText = `
-      background: #6c757d;
-      border: none;
-      color: white;
-      width: 30px;
-      height: 30px;
-      border-radius: 50%;
+      background: linear-gradient(135deg, var(--slate-600), var(--slate-700));
+      border: 1px solid var(--slate-500);
+      color: var(--slate-200);
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
       cursor: pointer;
       font-size: 16px;
       display: flex;
       align-items: center;
       justify-content: center;
-      margin-right: 8px;
+      margin-right: 12px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
     `;
+    settingsButton.onmouseover = () => {
+      settingsButton.style.transform = 'translateY(-1px) scale(1.05)';
+      settingsButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+      settingsButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
+    };
+    settingsButton.onmouseout = () => {
+      settingsButton.style.transform = '';
+      settingsButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+      settingsButton.style.boxShadow = '';
+    };
     settingsButton.onclick = () => buildCrosshairSettingsOverlay();
 
     header.appendChild(title);
@@ -935,29 +1029,71 @@ function buildColorFilterOverlay() {
     // Progress Summary
     const progressSummary = document.createElement('div');
     progressSummary.style.cssText = `
-      background: linear-gradient(135deg, #1a1a1a, #2a2a2a);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 20px;
-      color: white;
+      background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+      border: 1px solid var(--bmcf-border);
+      border-radius: 16px;
+      padding: 20px;
+      margin-bottom: 24px;
+      color: var(--bmcf-text);
       text-align: center;
+      position: relative;
+      overflow: hidden;
     `;
     
+    // Add subtle background pattern
     progressSummary.innerHTML = `
-      <div style="font-size: 1.1em; font-weight: bold; margin-bottom: 8px;">
-        📊 Template Progress: ${overallProgress}%
+      <div style="
+        position: absolute; inset: 0; 
+        background: radial-gradient(circle at 20% 20%, rgba(59, 130, 246, 0.1), transparent 50%),
+                    radial-gradient(circle at 80% 80%, rgba(16, 185, 129, 0.08), transparent 50%);
+        pointer-events: none;
+      "></div>
+      <div style="position: relative; z-index: 1;">
+        <div style="
+          font-size: 1.2em; font-weight: 700; margin-bottom: 12px; 
+          color: var(--bmcf-text);
+        ">
+          <span style="margin-right: 8px;">📊</span>
+          <span style="
+            background: linear-gradient(135deg, var(--blue-400), var(--emerald-400));
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+          ">Template Progress: ${overallProgress}%</span>
+        </div>
+        <div style="font-size: 0.95em; color: var(--bmcf-text-muted); margin-bottom: 16px; line-height: 1.5;">
+          ${displayPainted.toLocaleString()} / ${displayRequired.toLocaleString()} pixels painted
+          ${templateManager.getIncludeWrongColorsInProgress() ? ` (includes ${totalWrong.toLocaleString()} wrong)` : ''}
+        </div>
+        <div style="
+          width: 100%; height: 12px; background: var(--slate-700); 
+          border-radius: 8px; overflow: hidden; position: relative;
+          box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+        ">
+          <div style="
+            width: ${overallProgress}%; height: 100%; 
+            background: linear-gradient(90deg, var(--blue-500), var(--emerald-500)); 
+            transition: width 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+          ">
+            <div style="
+              position: absolute; inset: 0; 
+              background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+              animation: shimmer 2s infinite;
+            "></div>
+          </div>
+        </div>
+        <div style="
+          font-size: 0.85em; color: #fbbf24; margin-top: 12px; font-weight: 600;
+          text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+        ">
+          ${totalNeedCrosshair.toLocaleString()} Pixels Remaining
+        </div>
       </div>
-      <div style="font-size: 0.9em; color: #ccc; margin-bottom: 10px;">
-        ${displayPainted.toLocaleString()} / ${displayRequired.toLocaleString()} pixels painted
-        ${templateManager.getIncludeWrongColorsInProgress() ? ` (includes ${totalWrong.toLocaleString()} wrong)` : ''}
-      </div>
-      <div style="width: 100%; height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px; overflow: hidden;">
-        <div style="width: ${overallProgress}%; height: 100%; background: linear-gradient(90deg, #2196f3, #4caf50); transition: width 0.3s ease;"></div>
-      </div>
-      <div style="font-size: 0.8em; color: #ffab00; margin-top: 5px;">
-        ${totalNeedCrosshair.toLocaleString()} Pixels Left
-      </div>
+      <style>
+        @keyframes shimmer {
+          0% { transform: translateX(-100%); }
+          100% { transform: translateX(100%); }
+        }
+      </style>
     `;
 
     // Include Wrong Color Pixels in Progress - moved below progress bar
@@ -965,33 +1101,47 @@ function buildColorFilterOverlay() {
     includeWrongProgressContainer.style.cssText = `
       display: flex;
       align-items: center;
-      gap: 8px;
-      padding: 6px 14px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 6px;
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      margin-bottom: 20px;
+      gap: 12px;
+      padding: 12px 16px;
+      background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+      border-radius: 12px;
+      border: 1px solid var(--bmcf-border);
+      margin-bottom: 24px;
+      transition: all 0.2s ease;
+      cursor: pointer;
     `;
+    includeWrongProgressContainer.onmouseover = () => {
+      includeWrongProgressContainer.style.background = 'linear-gradient(135deg, var(--slate-750), var(--slate-700))';
+      includeWrongProgressContainer.style.transform = 'translateY(-1px)';
+    };
+    includeWrongProgressContainer.onmouseout = () => {
+      includeWrongProgressContainer.style.background = 'linear-gradient(135deg, var(--slate-800), var(--slate-750))';
+      includeWrongProgressContainer.style.transform = '';
+    };
 
     const includeWrongProgressCheckbox = document.createElement('input');
     includeWrongProgressCheckbox.type = 'checkbox';
     includeWrongProgressCheckbox.id = 'bm-include-wrong-progress';
     includeWrongProgressCheckbox.checked = templateManager.getIncludeWrongColorsInProgress();
     includeWrongProgressCheckbox.style.cssText = `
-      width: 16px;
-      height: 16px;
+      width: 18px;
+      height: 18px;
       cursor: pointer;
+      accent-color: var(--blue-500);
+      border-radius: 4px;
     `;
 
     const includeWrongProgressLabel = document.createElement('label');
     includeWrongProgressLabel.htmlFor = 'bm-include-wrong-progress';
     includeWrongProgressLabel.textContent = 'Include Wrong Color Pixels in Progress';
     includeWrongProgressLabel.style.cssText = `
-      color: white;
-      font-size: 0.9em;
+      color: var(--bmcf-text);
+      font-size: 0.95em;
+      font-weight: 500;
       cursor: pointer;
       user-select: none;
       flex: 1;
+      letter-spacing: -0.01em;
     `;
 
     // Event listener for include wrong colors in progress
@@ -1010,16 +1160,25 @@ function buildColorFilterOverlay() {
     // Instructions
     const instructions = document.createElement('p');
     instructions.textContent = 'Click on colors to toggle their visibility in the template.';
-    instructions.style.cssText = 'margin: 0 0 20px 0; font-size: 0.9em; color: #ccc; text-align: center; font-weight: bold;';
+    instructions.style.cssText = `
+      margin: 0 0 24px 0; 
+      font-size: 0.95em; 
+      color: var(--bmcf-text-muted); 
+      text-align: center; 
+      font-weight: 500;
+      letter-spacing: -0.01em;
+      line-height: 1.4;
+    `;
 
     // Search box
     const searchContainer = document.createElement('div');
     searchContainer.style.cssText = `
-      margin: 0 0 20px 0;
+      margin: 0 0 24px 0;
       position: relative;
     `;
 
     const searchInput = document.createElement('input');
+    searchInput.className = 'bmcf-input';
     searchInput.type = 'text';
     searchInput.id = 'bm-color-search';
     searchInput.placeholder = 'Search colors by name or RGB (e.g., "red", "255,0,0")...';
@@ -1027,14 +1186,15 @@ function buildColorFilterOverlay() {
     searchInput.spellcheck = false;
     searchInput.style.cssText = `
       width: 100%;
-      padding: 8px 40px 8px 12px;
-      border: 2px solid rgba(255, 255, 255, 0.2);
-      border-radius: 8px;
-      background: rgba(0, 0, 0, 0.3);
-      color: white;
-      font-size: 1em;
+      padding: 14px 50px 14px 48px;
+      border: 1px solid var(--bmcf-border);
+      border-radius: 12px;
+      background: var(--slate-800);
+      color: var(--bmcf-text);
+      font-size: 0.95em;
+      font-weight: 400;
       outline: none;
-      transition: all 0.2s ease;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
       box-sizing: border-box;
       font-family: inherit;
       -webkit-user-select: text;
@@ -1042,38 +1202,51 @@ function buildColorFilterOverlay() {
       -ms-user-select: text;
       user-select: text;
       pointer-events: auto;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
     `;
 
     const searchIcon = document.createElement('div');
     searchIcon.innerHTML = '🔍';
     searchIcon.style.cssText = `
       position: absolute;
-      right: 15px;
+      left: 16px;
       top: 50%;
       transform: translateY(-50%);
       font-size: 1.2em;
       pointer-events: none;
+      opacity: 0.6;
     `;
 
     const searchClearButton = document.createElement('button');
     searchClearButton.innerHTML = '✕';
     searchClearButton.style.cssText = `
       position: absolute;
-      right: 45px;
+      right: 16px;
       top: 50%;
       transform: translateY(-50%);
-      background: none;
-      border: none;
-      color: rgba(255, 255, 255, 0.6);
-      font-size: 1.2em;
+      background: var(--slate-600);
+      border: 1px solid var(--slate-500);
+      border-radius: 8px;
+      color: var(--slate-300);
+      font-size: 12px;
+      font-weight: 600;
       cursor: pointer;
       padding: 0;
-      width: 20px;
-      height: 20px;
+      width: 24px;
+      height: 24px;
       display: none;
       align-items: center;
       justify-content: center;
+      transition: all 0.2s ease;
     `;
+    searchClearButton.onmouseover = () => {
+      searchClearButton.style.background = 'var(--slate-500)';
+      searchClearButton.style.color = 'var(--slate-100)';
+    };
+    searchClearButton.onmouseout = () => {
+      searchClearButton.style.background = 'var(--slate-600)';
+      searchClearButton.style.color = 'var(--slate-300)';
+    };
 
     searchContainer.appendChild(searchInput);
     searchContainer.appendChild(searchIcon);
@@ -1111,9 +1284,11 @@ function buildColorFilterOverlay() {
 
       // Update search input border color based on results
       if (term && visibleCount === 0) {
-        searchInput.style.borderColor = '#f44336'; // Red if no results
+        searchInput.style.borderColor = '#ef4444'; // Red if no results
+        searchInput.style.boxShadow = '0 0 0 3px rgba(239, 68, 68, 0.2)';
       } else {
-        searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)'; // Default
+        searchInput.style.borderColor = 'var(--bmcf-border)'; // Default
+        searchInput.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
       }
     };
 
@@ -1123,12 +1298,14 @@ function buildColorFilterOverlay() {
     });
 
     searchInput.addEventListener('focus', () => {
-      searchInput.style.borderColor = '#2196f3';
+      searchInput.style.borderColor = 'var(--blue-500)';
+      searchInput.style.boxShadow = '0 0 0 3px rgba(59, 130, 246, 0.2), 0 4px 12px rgba(59, 130, 246, 0.15)';
     });
 
     searchInput.addEventListener('blur', () => {
       if (!searchInput.value) {
-        searchInput.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+        searchInput.style.borderColor = 'var(--bmcf-border)';
+        searchInput.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)';
       }
     });
 
@@ -1189,6 +1366,7 @@ function buildColorFilterOverlay() {
     // Filter options
     const filterOptions = [
       { value: 'default', text: 'Default Order' },
+      { value: 'enhanced', text: 'Enhanced Colors Only' },
       { value: 'wrong-desc', text: 'Most Wrong Colors' },
       { value: 'wrong-asc', text: 'Least Wrong Colors' },
       { value: 'missing-desc', text: 'Most Pixels Missing' },
@@ -1640,12 +1818,31 @@ function buildColorFilterOverlay() {
       }
       
       if (filterType === 'default') {
-        // Restore original order
+        // Restore original order and show all items
         originalOrder.forEach(item => {
+          item.style.display = 'flex';
           colorGrid.appendChild(item);
         });
         return;
       }
+      
+      if (filterType === 'enhanced') {
+        // Filter to show only enhanced colors
+        colorItems.forEach(item => {
+          const enhancedCheckbox = item.querySelector('input[type="checkbox"]');
+          if (enhancedCheckbox && enhancedCheckbox.checked) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+        return;
+      }
+      
+      // Show all items for sorting
+      colorItems.forEach(item => {
+        item.style.display = 'flex';
+      });
       
       colorItems.sort((a, b) => {
         const aWrong = parseInt(a.getAttribute('data-wrong-count') || '0');
@@ -1778,41 +1975,12 @@ function buildColorFilterOverlay() {
 
     // Create fixed footer with action buttons
     const footerContainer = document.createElement('div');
-    footerContainer.style.cssText = `
-      background: rgba(21, 48, 99, 0.95);
-      border-top: 2px solid rgba(255, 255, 255, 0.25);
-      border-bottom-left-radius: 12px;
-      border-bottom-right-radius: 12px;
-      padding: 6px;
-      display: flex;
-      gap: 6px;
-      justify-content: center;
-      align-items: center;
-      flex-shrink: 0;
-      height: 48px;
-    `;
+    footerContainer.className = 'bmcf-footer';
 
     // Refresh Statistics button
     const refreshStatsButton = document.createElement('button');
     refreshStatsButton.innerHTML = '🔄 Update Stats';
-    refreshStatsButton.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #4caf50, #45a049);
-      border: none;
-      color: white;
-      height: 36px;
-      padding: 6px 14px;
-      min-width: 136px;
-      white-space: nowrap;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9em;
-      font-weight: 700;
-      transition: transform .15s ease, box-shadow .15s ease;
-      box-shadow: 0 2px 6px rgba(76, 175, 80, 0.25);
-    `;
+    refreshStatsButton.className = 'bmcf-btn success';
 
     refreshStatsButton.onmouseover = () => {
       refreshStatsButton.style.transform = 'translateY(-2px)';
@@ -1827,24 +1995,7 @@ function buildColorFilterOverlay() {
     // Apply button  
     const applyButton = document.createElement('button');
     applyButton.innerHTML = '🎯 Apply Colors';
-    applyButton.style.cssText = `
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      background: linear-gradient(135deg, #2196f3, #1976d2);
-      border: none;
-      color: white;
-      height: 36px;
-      padding: 6px 14px;
-      min-width: 136px;
-      white-space: nowrap;
-      border-radius: 8px;
-      cursor: pointer;
-      font-size: 0.9em;
-      font-weight: 700;
-      transition: transform .15s ease, box-shadow .15s ease;
-      box-shadow: 0 2px 6px rgba(33, 150, 243, 0.25);
-    `;
+    applyButton.className = 'bmcf-btn primary';
 
     applyButton.onmouseover = () => {
       applyButton.style.transform = 'translateY(-2px)';
@@ -2444,53 +2595,124 @@ setTimeout(() => {
  * @since 1.0.0
  */
 function buildCrosshairSettingsOverlay() {
-  // Remove existing settings overlay if it exists
-  const existingOverlay = document.getElementById('bm-crosshair-settings-overlay');
-  if (existingOverlay) {
-    existingOverlay.remove();
-  }
+  try {
+    // Ensure Slate theme CSS variables are available globally
+    if (!document.getElementById('bmcf-styles')) {
+      const crosshairStyles = document.createElement('style');
+      crosshairStyles.id = 'bmcf-styles';
+      crosshairStyles.textContent = `
+        :root { 
+          --slate-50: #f8fafc; --slate-100: #f1f5f9; --slate-200: #e2e8f0; --slate-300: #cbd5e1; 
+          --slate-400: #94a3b8; --slate-500: #64748b; --slate-600: #475569; --slate-700: #334155; 
+          --slate-750: #293548; --slate-800: #1e293b; --slate-900: #0f172a; --slate-950: #020617;
+          --blue-400: #60a5fa; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-700: #1d4ed8;
+          --emerald-400: #34d399; --emerald-500: #10b981; --emerald-600: #059669; --emerald-700: #047857;
+          --bmcf-bg: var(--slate-900); --bmcf-card: var(--slate-800); --bmcf-border: var(--slate-700); 
+          --bmcf-muted: var(--slate-400); --bmcf-text: var(--slate-100); --bmcf-text-muted: var(--slate-300);
+        }
+        
+        @keyframes gradientShift {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        
+        /* Custom RGB input placeholder styling */
+        .bm-custom-rgb-input::placeholder {
+          text-align: center !important;
+          color: var(--slate-400) !important;
+          font-weight: 600 !important;
+          opacity: 1 !important;
+        }
+        
+        .bm-custom-rgb-input::-webkit-input-placeholder {
+          text-align: center !important;
+          color: var(--slate-400) !important;
+          font-weight: 600 !important;
+        }
+        
+        .bm-custom-rgb-input::-moz-placeholder {
+          text-align: center !important;
+          color: var(--slate-400) !important;
+          font-weight: 600 !important;
+          opacity: 1 !important;
+        }
+        
+        .bm-custom-rgb-input:-ms-input-placeholder {
+          text-align: center !important;
+          color: var(--slate-400) !important;
+          font-weight: 600 !important;
+        }
+      `;
+      document.head.appendChild(crosshairStyles);
+    }
 
-  // Get current crosshair color
-  const currentColor = getCrosshairColor();
+    // Remove existing settings overlay if it exists
+    const existingOverlay = document.getElementById('bm-crosshair-settings-overlay');
+    if (existingOverlay) {
+      existingOverlay.remove();
+    }
+
+    // Predefined color options - declare first
+    const colorOptions = [
+      { name: 'Red', rgb: [255, 0, 0], alpha: 255 },
+      { name: 'Blue', rgb: [64, 147, 228], alpha: 255 },
+      { name: 'Green', rgb: [0, 255, 0], alpha: 255 },
+      { name: 'Purple', rgb: [170, 56, 185], alpha: 255 },
+      { name: 'Yellow', rgb: [249, 221, 59], alpha: 255 },
+      { name: 'Orange', rgb: [255, 127, 39], alpha: 255 },
+      { name: 'Cyan', rgb: [96, 247, 242], alpha: 255 },
+      { name: 'Pink', rgb: [236, 31, 128], alpha: 255 },
+      { name: 'Custom', rgb: [255, 255, 255], alpha: 255, isCustom: true }
+    ];
+
+    // Get current crosshair color
+    const currentColor = getCrosshairColor();
+    
+    // Track temporary settings (before confirm)
+    let tempColor = { ...currentColor };
+    
+    // If current color is custom, ensure it has the isCustom flag
+    if (!tempColor.isCustom && !colorOptions.filter(c => !c.isCustom).some(predefined => 
+        JSON.stringify(predefined.rgb) === JSON.stringify(tempColor.rgb)
+      )) {
+      tempColor.isCustom = true;
+      tempColor.name = 'Custom';
+    }
+    let tempBorderEnabled = getBorderEnabled();
+    let tempMiniTrackerEnabled = getMiniTrackerEnabled();
+
+    // Create the settings overlay
+    const settingsOverlay = document.createElement('div');
+    settingsOverlay.id = 'bm-crosshair-settings-overlay';
+    settingsOverlay.style.cssText = `
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: #0f172a;
+      color: #f1f5f9;
+      padding: 0;
+      border-radius: 20px;
+      z-index: 9002;
+      max-width: 520px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
+      border: 1px solid #334155;
+      backdrop-filter: blur(16px);
+      overflow: hidden;
+    `;
   
-  // Track temporary settings (before confirm)
-  let tempColor = { ...currentColor };
-  let tempBorderEnabled = getBorderEnabled();
-  let tempMiniTrackerEnabled = getMiniTrackerEnabled();
-
-  // Predefined color options
-  const colorOptions = [
-    { name: 'Red', rgb: [255, 0, 0], alpha: 255 },
-    { name: 'Blue', rgb: [64, 147, 228], alpha: 255 },
-    { name: 'Green', rgb: [0, 255, 0], alpha: 255 },
-    { name: 'Purple', rgb: [170, 56, 185], alpha: 255 },
-    { name: 'Yellow', rgb: [249, 221, 59], alpha: 255 },
-    { name: 'Orange', rgb: [255, 127, 39], alpha: 255 },
-    { name: 'Cyan', rgb: [96, 247, 242], alpha: 255 },
-    { name: 'Pink', rgb: [236, 31, 128], alpha: 255 },
-    { name: 'Custom', rgb: [255, 255, 255], alpha: 255, isCustom: true }
-  ];
-
-  // Create the settings overlay
-  const settingsOverlay = document.createElement('div');
-  settingsOverlay.id = 'bm-crosshair-settings-overlay';
-  settingsOverlay.style.cssText = `
-    position: fixed;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(21, 48, 99, 0.95);
-    color: white;
-    padding: 20px;
-    border-radius: 12px;
-    z-index: 9002;
-    max-width: 500px;
-    max-height: 70vh;
-    display: flex;
-    flex-direction: column;
-    font-family: 'Roboto Mono', 'Courier New', 'Monaco', 'DejaVu Sans Mono', monospace, 'Arial';
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-    border: 2px solid rgba(255, 255, 255, 0.1);
+  // Add subtle background pattern
+  settingsOverlay.innerHTML = `
+    <div style="
+      position: absolute; inset: 0; border-radius: 20px;
+      background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(16, 185, 129, 0.05));
+      pointer-events: none; z-index: 0;
+    "></div>
   `;
 
   // Header
@@ -2499,42 +2721,60 @@ function buildCrosshairSettingsOverlay() {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 20px;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.3);
-    padding-bottom: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--slate-700);
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     cursor: move;
     user-select: none;
     flex-shrink: 0;
+    position: relative;
+    z-index: 1;
   `;
 
   const title = document.createElement('h2');
-  title.textContent = 'Crosshair Settings';
+  title.textContent = 'Settings';
   title.style.cssText = `
     margin: 0; 
-    font-size: 1.3em; 
-    font-weight: bold;
-    font-family: 'Source Sans Pro', 'Segoe UI', 'Helvetica Neue', 'Arial', sans-serif;
+    font-size: 1.5em; 
+    font-weight: 700;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     text-align: center;
     flex: 1;
     pointer-events: none;
-    letter-spacing: 0.4px;
+    letter-spacing: -0.025em;
+    background: linear-gradient(135deg, var(--slate-100), var(--slate-300));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
   `;
 
   const closeButton = document.createElement('button');
   closeButton.textContent = '✕';
   closeButton.style.cssText = `
-    background: #d32f2f;
-    border: none;
+    background: linear-gradient(135deg, #ef4444, #dc2626);
+    border: 1px solid rgba(239, 68, 68, 0.3);
     color: white;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
+    width: 36px;
+    height: 36px;
+    border-radius: 12px;
     cursor: pointer;
     font-size: 16px;
+    font-weight: 600;
     display: flex;
     align-items: center;
     justify-content: center;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
   `;
+  closeButton.onmouseover = () => {
+    closeButton.style.transform = 'translateY(-1px) scale(1.05)';
+    closeButton.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)';
+  };
+  closeButton.onmouseout = () => {
+    closeButton.style.transform = '';
+    closeButton.style.boxShadow = '';
+  };
   closeButton.onclick = () => settingsOverlay.remove();
 
   header.appendChild(title);
@@ -2543,34 +2783,60 @@ function buildCrosshairSettingsOverlay() {
   // Instructions
   const instructions = document.createElement('p');
   instructions.textContent = 'Select the crosshair color that appears on highlighted template pixels:';
-  instructions.style.cssText = 'margin: 0 0 20px 0; font-size: 0.9em; color: #ccc; text-align: center;';
+  instructions.style.cssText = `
+    margin: 0 0 24px 0; 
+    font-size: 0.95em; 
+    color: var(--slate-300); 
+    text-align: center;
+    font-weight: 500;
+    letter-spacing: -0.01em;
+    line-height: 1.4;
+  `;
 
   // Current color preview
   const currentColorPreview = document.createElement('div');
   currentColorPreview.style.cssText = `
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    padding: 15px;
-    margin-bottom: 20px;
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 16px;
+    padding: 20px;
+    margin-bottom: 24px;
     text-align: center;
+    position: relative;
+    overflow: hidden;
   `;
 
   const previewLabel = document.createElement('div');
   previewLabel.textContent = 'Current Color:';
-  previewLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 8px; color: #ccc;';
+  previewLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
 
   const previewColor = document.createElement('div');
   previewColor.id = 'bm-current-color-preview';
   previewColor.style.cssText = `
-    width: 50px;
-    height: 50px;
-    margin: 0 auto 8px;
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 12px;
     position: relative;
-    background: rgba(0, 0, 0, 0.1);
-    border: 2px solid white;
-    border-radius: 4px;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    background: var(--slate-700);
+    border: 2px solid var(--slate-500);
+    border-radius: 12px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+    transition: all 0.2s ease;
   `;
+  previewColor.onmouseover = () => {
+    previewColor.style.transform = 'scale(1.05)';
+    previewColor.style.boxShadow = '0 6px 20px rgba(0, 0, 0, 0.6)';
+  };
+  previewColor.onmouseout = () => {
+    previewColor.style.transform = '';
+    previewColor.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+  };
   
   // Create crosshair preview pattern (simple cross: center + 4 sides)
   function updateCrosshairPreview(color, borderEnabled) {
@@ -2613,7 +2879,12 @@ function buildCrosshairSettingsOverlay() {
   const previewName = document.createElement('div');
   previewName.id = 'bm-current-color-name';
   previewName.textContent = currentColor.name;
-  previewName.style.cssText = 'font-weight: bold; font-size: 1em;';
+  previewName.style.cssText = `
+    font-weight: 700; 
+    font-size: 1.1em;
+    color: var(--slate-100);
+    letter-spacing: -0.025em;
+  `;
 
   currentColorPreview.appendChild(previewLabel);
   currentColorPreview.appendChild(previewColor);
@@ -2624,51 +2895,72 @@ function buildCrosshairSettingsOverlay() {
   colorGrid.style.cssText = `
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 12px;
-    margin-bottom: 20px;
+    gap: 16px;
+    margin-bottom: 24px;
+    position: relative;
+    z-index: 1;
   `;
 
   // Create color option buttons
   colorOptions.forEach((color) => {
     const colorOption = document.createElement('button');
-    const isSelected = JSON.stringify(color.rgb) === JSON.stringify(currentColor.rgb);
+    
+    // Enhanced selection logic for custom colors
+    let isSelected = false;
+    if (color.isCustom) {
+      // For custom color, check if saved color has isCustom flag OR is not a predefined color
+      isSelected = currentColor.isCustom || 
+        !colorOptions.filter(c => !c.isCustom).some(predefined => 
+          JSON.stringify(predefined.rgb) === JSON.stringify(currentColor.rgb)
+        );
+    } else {
+      // For predefined colors, check exact RGB match AND that current color is not custom
+      isSelected = JSON.stringify(color.rgb) === JSON.stringify(currentColor.rgb) && !currentColor.isCustom;
+    }
     
     // Special handling for custom color button
     if (color.isCustom) {
+      // Use current color if custom is selected, otherwise use sophisticated gradient
+      const backgroundStyle = isSelected 
+        ? `rgba(${currentColor.rgb[0]}, ${currentColor.rgb[1]}, ${currentColor.rgb[2]}, 1)`
+        : `linear-gradient(135deg, 
+            #8B5CF6 0%, #A855F7 25%, #3B82F6 50%, #06B6D4 75%, #8B5CF6 100%)`;
+            
       colorOption.style.cssText = `
-        background: linear-gradient(45deg, 
-          #ff0000 0%, #ff8000 14%, #ffff00 28%, #80ff00 42%, 
-          #00ff00 56%, #00ff80 70%, #00ffff 84%, #0080ff 100%);
-        border: 3px solid ${isSelected ? '#fff' : 'rgba(255, 255, 255, 0.3)'};
-        border-radius: 8px;
-        padding: 8px;
+        background: ${backgroundStyle};
+        border: 2px solid ${isSelected ? 'var(--slate-100)' : 'var(--slate-600)'};
+        border-radius: 12px;
+        padding: 12px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
-        height: 100px;
+        height: 110px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        gap: 6px;
         box-sizing: border-box;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+        ${!isSelected ? 'background-size: 200% 200%; animation: gradientShift 3s ease infinite;' : ''}
       `;
     } else {
       colorOption.style.cssText = `
         background: rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${color.alpha / 255});
-        border: 3px solid ${isSelected ? '#fff' : 'rgba(255, 255, 255, 0.3)'};
-        border-radius: 8px;
-        padding: 8px;
+        border: 2px solid ${isSelected ? 'var(--slate-100)' : 'var(--slate-600)'};
+        border-radius: 12px;
+        padding: 12px;
         cursor: pointer;
-        transition: all 0.2s ease;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
-        height: 100px;
+        height: 110px;
         display: flex;
         flex-direction: column;
         align-items: center;
         justify-content: center;
-        gap: 4px;
+        gap: 6px;
         box-sizing: border-box;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
       `;
     }
 
@@ -2690,8 +2982,9 @@ function buildCrosshairSettingsOverlay() {
       rgbInputs.style.cssText = `
         display: flex;
         flex-direction: column;
-        gap: 2px;
-        width: 100%;
+        gap: 3px;
+        width: 80%;
+        max-width: 80px;
       `;
       
       // Create individual RGB inputs
@@ -2699,35 +2992,49 @@ function buildCrosshairSettingsOverlay() {
       rInput.type = 'number';
       rInput.min = '0';
       rInput.max = '255';
-      rInput.value = tempColor.rgb[0];
+      rInput.value = isSelected ? currentColor.rgb[0] : '';
       rInput.placeholder = 'R';
+      rInput.className = 'bm-custom-rgb-input';
       rInput.style.cssText = `
         width: 100%;
-        padding: 2px 4px;
-        border: 1px solid rgba(255,255,255,0.3);
-        border-radius: 3px;
-        background: rgba(0,0,0,0.5);
-        color: white;
+        padding: 3px 4px;
+        border: 1px solid var(--slate-500);
+        border-radius: 4px;
+        background: var(--slate-700);
+        color: var(--slate-100);
         font-size: 0.7em;
         text-align: center;
         outline: none;
-        font-weight: bold;
+        font-weight: 600;
+        transition: all 0.2s ease;
+        box-sizing: border-box;
+        height: 22px;
       `;
+      rInput.onfocus = () => {
+        rInput.style.borderColor = 'var(--blue-500)';
+        rInput.style.boxShadow = '0 0 0 2px rgba(59, 130, 246, 0.2)';
+      };
+      rInput.onblur = () => {
+        rInput.style.borderColor = 'var(--slate-500)';
+        rInput.style.boxShadow = '';
+      };
       
       const gInput = document.createElement('input');
       gInput.type = 'number';
       gInput.min = '0';
       gInput.max = '255';
-      gInput.value = tempColor.rgb[1];
+      gInput.value = isSelected ? currentColor.rgb[1] : '';
       gInput.placeholder = 'G';
+      gInput.className = 'bm-custom-rgb-input';
       gInput.style.cssText = rInput.style.cssText;
       
       const bInput = document.createElement('input');
       bInput.type = 'number';
       bInput.min = '0';
       bInput.max = '255';
-      bInput.value = tempColor.rgb[2];
+      bInput.value = isSelected ? currentColor.rgb[2] : '';
       bInput.placeholder = 'B';
+      bInput.className = 'bm-custom-rgb-input';
       bInput.style.cssText = rInput.style.cssText;
       
       // Update function for RGB inputs
@@ -2736,7 +3043,7 @@ function buildCrosshairSettingsOverlay() {
         const g = Math.max(0, Math.min(255, parseInt(gInput.value) || 0));
         const b = Math.max(0, Math.min(255, parseInt(bInput.value) || 0));
         
-        tempColor = { name: 'Custom', rgb: [r, g, b], alpha: tempColor.alpha };
+        tempColor = { name: 'Custom', rgb: [r, g, b], alpha: tempColor.alpha, isCustom: true };
         
         // Update the button background to show the custom color
         colorOption.style.background = `rgba(${r}, ${g}, ${b}, 1)`;
@@ -2849,15 +3156,24 @@ function buildCrosshairSettingsOverlay() {
   // Alpha slider section
   const alphaSection = document.createElement('div');
   alphaSection.style.cssText = `
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    padding: 15px;
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
     margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
   `;
 
   const alphaLabel = document.createElement('div');
   alphaLabel.textContent = 'Crosshair Transparency:';
-  alphaLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+  alphaLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
 
   const alphaSlider = document.createElement('input');
   alphaSlider.type = 'range';
@@ -2871,7 +3187,14 @@ function buildCrosshairSettingsOverlay() {
 
   const alphaValue = document.createElement('div');
   alphaValue.textContent = `${Math.round((currentColor.alpha / 255) * 100)}%`;
-  alphaValue.style.cssText = 'text-align: center; font-weight: bold;';
+  alphaValue.style.cssText = `
+    text-align: center; 
+    font-weight: 700; 
+    font-size: 1.1em;
+    color: var(--slate-100);
+    margin-top: 8px;
+    letter-spacing: -0.025em;
+  `;
 
   alphaSlider.oninput = () => {
     const alpha = parseInt(alphaSlider.value);
@@ -2891,19 +3214,34 @@ function buildCrosshairSettingsOverlay() {
   // Border options section
   const borderSection = document.createElement('div');
   borderSection.style.cssText = `
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    padding: 15px;
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
     margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
   `;
 
   const borderLabel = document.createElement('div');
   borderLabel.textContent = 'Corner Borders:';
-  borderLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+  borderLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
 
   const borderDescription = document.createElement('div');
   borderDescription.textContent = 'Add subtle borders around corner pixels of the crosshair';
-  borderDescription.style.cssText = 'font-size: 0.8em; margin-bottom: 12px; color: #aaa;';
+  borderDescription.style.cssText = `
+    font-size: 0.9em; 
+    margin-bottom: 16px; 
+    color: var(--slate-300);
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  `;
 
   const borderToggle = document.createElement('label');
   borderToggle.style.cssText = `
@@ -2918,14 +3256,20 @@ function buildCrosshairSettingsOverlay() {
   borderCheckbox.type = 'checkbox';
   borderCheckbox.checked = tempBorderEnabled;
   borderCheckbox.style.cssText = `
-    width: 18px;
-    height: 18px;
+    width: 20px;
+    height: 20px;
     cursor: pointer;
+    accent-color: var(--blue-500);
+    border-radius: 4px;
   `;
 
   const borderToggleText = document.createElement('span');
   borderToggleText.textContent = 'Enable corner borders';
-  borderToggleText.style.cssText = 'color: white; font-weight: bold;';
+  borderToggleText.style.cssText = `
+    color: var(--slate-100); 
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
 
   borderCheckbox.onchange = () => {
     tempBorderEnabled = borderCheckbox.checked;
@@ -2943,19 +3287,34 @@ function buildCrosshairSettingsOverlay() {
   // Mini tracker section
   const trackerSection = document.createElement('div');
   trackerSection.style.cssText = `
-    background: rgba(0, 0, 0, 0.3);
-    border-radius: 8px;
-    padding: 15px;
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
     margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
   `;
 
   const trackerLabel = document.createElement('div');
   trackerLabel.textContent = 'Mini Progress Tracker:';
-  trackerLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+  trackerLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
 
   const trackerDescription = document.createElement('div');
   trackerDescription.textContent = 'Show a compact progress tracker below the Color Filter button.';
-  trackerDescription.style.cssText = 'font-size: 0.8em; color: #aaa; margin-bottom: 12px; line-height: 1.3;';
+  trackerDescription.style.cssText = `
+    font-size: 0.9em; 
+    color: var(--slate-300); 
+    margin-bottom: 16px; 
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  `;
 
   const trackerToggle = document.createElement('div');
   trackerToggle.style.cssText = `
@@ -2981,20 +3340,14 @@ function buildCrosshairSettingsOverlay() {
     cursor: pointer;
   `;
 
-  // Function to update tracker state
+  // Function to update tracker state (visual only, no saving)
   const updateTrackerState = () => {
     tempMiniTrackerEnabled = trackerCheckbox.checked;
     trackerToggleText.textContent = tempMiniTrackerEnabled ? 'Enabled' : 'Disabled';
     trackerToggleText.style.color = tempMiniTrackerEnabled ? '#4caf50' : '#f44336';
     
-    // IMMEDIATE UPDATE: Save and apply the mini tracker setting immediately
-    saveMiniTrackerEnabled(tempMiniTrackerEnabled);
-    updateMiniTracker();
-    
-    // Restart auto-update system
-    startMiniTrackerAutoUpdate();
-    
-    consoleLog(`📊 Mini tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'} immediately`);
+    // Only update visual state, actual saving happens on Apply
+    consoleLog(`📊 Mini tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'} (preview only)`);
   };
 
   trackerCheckbox.addEventListener('change', updateTrackerState);
@@ -3018,19 +3371,34 @@ function buildCrosshairSettingsOverlay() {
   // Collapse Mini Template Section
   const collapseSection = document.createElement('div');
   collapseSection.style.cssText = `
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 15px;
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
     margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
   `;
 
   const collapseLabel = document.createElement('div');
   collapseLabel.textContent = 'Collapse Mini Template:';
-  collapseLabel.style.cssText = 'font-size: 0.9em; margin-bottom: 10px; color: #ccc;';
+  collapseLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
 
   const collapseDescription = document.createElement('div');
   collapseDescription.textContent = 'Hide mini tracker when template section is collapsed.';
-  collapseDescription.style.cssText = 'font-size: 0.8em; color: #aaa; margin-bottom: 12px; line-height: 1.3;';
+  collapseDescription.style.cssText = `
+    font-size: 0.9em; 
+    color: var(--slate-300); 
+    margin-bottom: 16px; 
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  `;
 
   let tempCollapseMinEnabled = getCollapseMinEnabled();
 
@@ -3085,71 +3453,165 @@ function buildCrosshairSettingsOverlay() {
   collapseSection.appendChild(collapseDescription);
   collapseSection.appendChild(collapseToggle);
 
+  // Create fixed footer with action buttons
+  const footerContainer = document.createElement('div');
+  footerContainer.style.cssText = `
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    align-items: center;
+    padding: 16px 20px;
+    border-top: 1px solid var(--slate-700);
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    position: relative;
+    z-index: 1;
+    flex-shrink: 0;
+  `;
+
   // Action buttons
   const actionsContainer = document.createElement('div');
   actionsContainer.style.cssText = `
     display: flex;
-    gap: 10px;
-    margin-top: 20px;
+    gap: 12px;
+    width: 100%;
+    max-width: 400px;
   `;
 
   const cancelButton = document.createElement('button');
   cancelButton.textContent = 'Cancel';
   cancelButton.style.cssText = `
-    background: #6c757d;
-    border: none;
-    color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
+    background: linear-gradient(135deg, var(--slate-600), var(--slate-700));
+    border: 1px solid var(--slate-500);
+    color: var(--slate-100);
+    padding: 14px 20px;
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 0.95em;
+    font-weight: 600;
     flex: 1;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
   `;
-  cancelButton.onclick = () => settingsOverlay.remove();
+  cancelButton.onmouseover = () => {
+    cancelButton.style.transform = 'translateY(-1px)';
+    cancelButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+    cancelButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
+  };
+  cancelButton.onmouseout = () => {
+    cancelButton.style.transform = '';
+    cancelButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+    cancelButton.style.boxShadow = '';
+  };
+  cancelButton.onclick = () => {
+    // Check if any settings have changed
+    const currentColorSaved = getCrosshairColor();
+    const currentBorderSaved = getBorderEnabled();
+    const currentTrackerSaved = getMiniTrackerEnabled();
+    const currentCollapseSaved = getCollapseMinEnabled();
+    
+    const hasChanges = 
+      JSON.stringify(tempColor) !== JSON.stringify(currentColorSaved) ||
+      tempBorderEnabled !== currentBorderSaved ||
+      tempMiniTrackerEnabled !== currentTrackerSaved ||
+      tempCollapseMinEnabled !== currentCollapseSaved;
+    
+    if (hasChanges) {
+      if (confirm('Discard changes? Any unsaved settings will be lost.')) {
+        settingsOverlay.remove();
+        overlayMain.handleDisplayStatus('Crosshair settings cancelled - changes discarded');
+      }
+    } else {
+      settingsOverlay.remove();
+    }
+  };
 
   const applyButton = document.createElement('button');
   applyButton.textContent = 'Apply Settings';
   applyButton.style.cssText = `
-    background: #2196f3;
-    border: none;
+    background: linear-gradient(135deg, var(--blue-500), var(--blue-600));
+    border: 1px solid var(--blue-600);
     color: white;
-    padding: 12px 24px;
-    border-radius: 8px;
+    padding: 14px 20px;
+    border-radius: 12px;
     cursor: pointer;
-    font-size: 1em;
+    font-size: 0.95em;
+    font-weight: 700;
     flex: 2;
-    font-weight: bold;
+    transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    position: relative;
+    overflow: hidden;
   `;
+  applyButton.onmouseover = () => {
+    applyButton.style.transform = 'translateY(-1px)';
+    applyButton.style.background = 'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
+    applyButton.style.boxShadow = '0 6px 20px rgba(59, 130, 246, 0.4)';
+  };
+  applyButton.onmouseout = () => {
+    applyButton.style.transform = '';
+    applyButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+    applyButton.style.boxShadow = '';
+  };
 
   applyButton.onclick = async () => {
-    // Save all settings
-    consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled });
+    // Visual feedback - button click animation
+    const originalBg = applyButton.style.background;
+    const originalText = applyButton.textContent;
     
-    saveCrosshairColor(tempColor);
-    saveBorderEnabled(tempBorderEnabled);
-    saveMiniTrackerEnabled(tempMiniTrackerEnabled);
-    saveCollapseMinEnabled(tempCollapseMinEnabled);
+    // Immediate click feedback
+    applyButton.style.background = 'linear-gradient(135deg, var(--emerald-500), var(--emerald-600))';
+    applyButton.textContent = 'Applying...';
+    applyButton.style.transform = 'scale(0.95)';
+    applyButton.disabled = true;
     
-    settingsOverlay.remove();
-    overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}!`);
-    
-    // Update mini tracker visibility
-    updateMiniTracker();
-    
-    // Force invalidate template caches to ensure borders are applied
-    if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
-      templateManager.templatesArray.forEach(template => {
-        if (template.invalidateEnhancedCache) {
-          template.invalidateEnhancedCache();
-        }
-      });
-    }
-    
-    // Refresh template display to apply new settings
     try {
+      // Save all settings
+      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled });
+      
+      saveCrosshairColor(tempColor);
+      saveBorderEnabled(tempBorderEnabled);
+      saveMiniTrackerEnabled(tempMiniTrackerEnabled);
+      saveCollapseMinEnabled(tempCollapseMinEnabled);
+      
+      // Success feedback
+      applyButton.style.background = 'linear-gradient(135deg, var(--emerald-600), var(--emerald-700))';
+      applyButton.textContent = 'Applied! ✓';
+      
+      // Update mini tracker visibility and restart auto-update
+      updateMiniTracker();
+      startMiniTrackerAutoUpdate();
+      
+      // Force invalidate template caches to ensure borders are applied
+      if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+        templateManager.templatesArray.forEach(template => {
+          if (template.invalidateEnhancedCache) {
+            template.invalidateEnhancedCache();
+          }
+        });
+      }
+      
+      // Refresh template display to apply new settings
       await refreshTemplateDisplay();
+      
+      // Close overlay after short delay
+      setTimeout(() => {
+        settingsOverlay.remove();
+        overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}!`);
+      }, 800);
+      
       consoleLog('✅ Crosshair settings successfully applied and templates refreshed');
     } catch (error) {
+      // Error feedback
+      applyButton.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+      applyButton.textContent = 'Error! ✗';
+      
+      setTimeout(() => {
+        applyButton.style.background = originalBg;
+        applyButton.textContent = originalText;
+        applyButton.style.transform = 'scale(1)';
+        applyButton.disabled = false;
+      }, 2000);
+      
       consoleError('❌ Error applying crosshair settings:', error);
       overlayMain.handleDisplayError('Failed to apply crosshair settings');
     }
@@ -3157,6 +3619,7 @@ function buildCrosshairSettingsOverlay() {
 
   actionsContainer.appendChild(cancelButton);
   actionsContainer.appendChild(applyButton);
+  footerContainer.appendChild(actionsContainer);
 
   // Create scrollable content container for fixed header solution
   const contentContainer = document.createElement('div');
@@ -3164,9 +3627,12 @@ function buildCrosshairSettingsOverlay() {
     overflow-y: auto;
     flex: 1;
     min-height: 0;
+    padding: 20px;
+    position: relative;
+    z-index: 1;
   `;
 
-  // Assemble overlay with fixed header
+  // Assemble overlay with fixed header and footer
   settingsOverlay.appendChild(header);
   contentContainer.appendChild(instructions);
   contentContainer.appendChild(currentColorPreview);
@@ -3175,55 +3641,59 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(borderSection);
   contentContainer.appendChild(trackerSection);
   contentContainer.appendChild(collapseSection);
-  contentContainer.appendChild(actionsContainer);
   settingsOverlay.appendChild(contentContainer);
-
+  settingsOverlay.appendChild(footerContainer);
   document.body.appendChild(settingsOverlay);
 
-  // Add drag functionality
-  let isDragging = false;
-  let dragStartX = 0;
-  let dragStartY = 0;
-  let initialLeft = 0;
-  let initialTop = 0;
+    // Add drag functionality
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+    let initialLeft = 0;
+    let initialTop = 0;
 
-  header.addEventListener('mousedown', (e) => {
-    isDragging = true;
-    dragStartX = e.clientX;
-    dragStartY = e.clientY;
-    
-    const rect = settingsOverlay.getBoundingClientRect();
-    initialLeft = rect.left;
-    initialTop = rect.top;
-    
-    settingsOverlay.style.position = 'fixed';
-    settingsOverlay.style.transform = 'none';
-    settingsOverlay.style.left = initialLeft + 'px';
-    settingsOverlay.style.top = initialTop + 'px';
-    
-    e.preventDefault();
-  });
+    header.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      
+      const rect = settingsOverlay.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      
+      settingsOverlay.style.position = 'fixed';
+      settingsOverlay.style.transform = 'none';
+      settingsOverlay.style.left = initialLeft + 'px';
+      settingsOverlay.style.top = initialTop + 'px';
+      
+      e.preventDefault();
+    });
 
-  document.addEventListener('mousemove', (e) => {
-    if (!isDragging) return;
-    
-    const deltaX = e.clientX - dragStartX;
-    const deltaY = e.clientY - dragStartY;
-    
-    const newLeft = initialLeft + deltaX;
-    const newTop = initialTop + deltaY;
-    
-    const maxLeft = window.innerWidth - settingsOverlay.offsetWidth;
-    const maxTop = window.innerHeight - settingsOverlay.offsetHeight;
-    
-    const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
-    const clampedTop = Math.max(0, Math.min(newTop, maxTop));
-    
-    settingsOverlay.style.left = clampedLeft + 'px';
-    settingsOverlay.style.top = clampedTop + 'px';
-  });
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      
+      const newLeft = initialLeft + deltaX;
+      const newTop = initialTop + deltaY;
+      
+      const maxLeft = window.innerWidth - settingsOverlay.offsetWidth;
+      const maxTop = window.innerHeight - settingsOverlay.offsetHeight;
+      
+      const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+      
+      settingsOverlay.style.left = clampedLeft + 'px';
+      settingsOverlay.style.top = clampedTop + 'px';
+    });
 
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+  } catch (error) {
+    consoleError('Failed to build Crosshair Settings overlay:', error);
+    overlayMain.handleDisplayError('Failed to open Crosshair Settings');
+  }
 }
