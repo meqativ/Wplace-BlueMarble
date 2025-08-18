@@ -1572,11 +1572,13 @@ function buildColorFilterOverlay() {
 
     // Color grid
     const colorGrid = document.createElement('div');
+    colorGrid.className = 'bmcf-grid';
     colorGrid.style.cssText = `
       display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+      grid-template-columns: repeat(auto-fit, minmax(120px, 120px));
       gap: 8px;
       margin-bottom: 20px;
+      justify-content: center;
     `;
 
     // Get current template
@@ -1585,6 +1587,7 @@ function buildColorFilterOverlay() {
     // Create color items
     colorPalette.forEach((colorInfo, index) => {
       const colorItem = document.createElement('div');
+      colorItem.className = 'bmcf-card';
       const rgb = colorInfo.rgb;
       const isFreeColor = colorInfo.free;
       const isDisabled = currentTemplate.isColorDisabled(rgb);
@@ -1599,15 +1602,18 @@ function buildColorFilterOverlay() {
         background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});
         border: 3px solid ${isDisabled ? '#f44336' : '#4caf50'};
         border-radius: 8px;
-        padding: 6px;
+        padding: 6px 6px 14px 6px;
         text-align: center;
         transition: all 0.2s ease;
         position: relative;
-        min-height: 60px;
+        width: 120px;
+        height: 120px;
         display: flex;
         flex-direction: column;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start;
+        box-sizing: border-box;
+        overflow: hidden;
       `;
 
       // Color info and controls container
@@ -1616,20 +1622,22 @@ function buildColorFilterOverlay() {
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 4px;
+        gap: 2px;
         width: 100%;
+        flex-shrink: 0;
       `;
 
       // Color enable/disable click area (main area)
       const colorClickArea = document.createElement('div');
       colorClickArea.style.cssText = `
         width: 100%;
-        height: 30px;
+        height: 20px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         position: relative;
+        flex-shrink: 0;
       `;
 
       // Add overlay for disabled state
@@ -1659,11 +1667,12 @@ function buildColorFilterOverlay() {
       enhancedContainer.style.cssText = `
         display: flex;
         align-items: center;
-        gap: 4px;
-        font-size: 10px;
+        gap: 2px;
+        font-size: 9px;
         color: white;
         text-shadow: 1px 1px 1px rgba(0,0,0,0.8);
         font-weight: bold;
+        flex-shrink: 0;
       `;
 
       const enhancedCheckbox = document.createElement('input');
@@ -1671,8 +1680,8 @@ function buildColorFilterOverlay() {
       enhancedCheckbox.checked = isEnhanced;
       enhancedCheckbox.disabled = isDisabled; // Disable checkbox if color is disabled
       enhancedCheckbox.style.cssText = `
-        width: 14px;
-        height: 14px;
+        width: 12px;
+        height: 12px;
         cursor: pointer;
       `;
 
@@ -1693,14 +1702,16 @@ function buildColorFilterOverlay() {
       const colorName = document.createElement('div');
       colorName.textContent = colorInfo.name;
       colorName.style.cssText = `
-        font-size: 0.8em;
+        font-size: 0.75em;
         text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
         color: white;
         font-weight: bold;
         z-index: 1;
         position: relative;
         text-align: center;
-        margin-bottom: 2px;
+        margin-bottom: 1px;
+        flex-shrink: 0;
+        line-height: 1.1;
       `;
 
       const dropletIcon = document.createElement('div');
@@ -1710,6 +1721,7 @@ function buildColorFilterOverlay() {
         position: absolute;
         bottom: 2px;
         right: 4px;
+        z-index: 2;
       `;
 
       // Add pixel statistics display
@@ -1758,7 +1770,7 @@ function buildColorFilterOverlay() {
         }
         
         pixelStatsDisplay.innerHTML = `
-          <div style="font-size: 0.65em; color: rgba(255,255,255,0.9); text-shadow: 1px 1px 2px rgba(0,0,0,0.8); line-height: 1.2;">
+          <div style="font-size: 0.6em; color: rgba(255,255,255,0.9); text-shadow: 1px 1px 2px rgba(0,0,0,0.8); line-height: 1.1;">
             <div style="margin-bottom: 1px;">
               ${displayText}
             </div>
@@ -1766,10 +1778,31 @@ function buildColorFilterOverlay() {
               ${displayRemaining.toLocaleString()} Left
             </div>
           </div>
-          <div style="width: 100%; height: 3px; background: rgba(255,255,255,0.2); border-radius: 2px; margin-top: 3px; overflow: hidden;">
-            <div style="width: ${displayPercentage}%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39); transition: width 0.3s ease;"></div>
-          </div>
         `;
+
+        // Fixed progress bar pinned to bottom of the card
+        const progressTrack = document.createElement('div');
+        progressTrack.style.cssText = `
+          position: absolute;
+          left: 20px;
+          right: 20px;
+          bottom: 6px;
+          height: 4px;
+          background: rgba(255,255,255,0.25);
+          border-radius: 2px;
+          overflow: hidden;
+          pointer-events: none;
+          z-index: 1;
+        `;
+        const progressFill = document.createElement('div');
+        progressFill.style.cssText = `
+          width: ${Math.min(displayPercentage, 100)}%;
+          height: 100%;
+          background: linear-gradient(90deg, #4CAF50, #8BC34A, #CDDC39);
+          transition: width 0.3s ease;
+        `;
+        progressTrack.appendChild(progressFill);
+        colorItem.appendChild(progressTrack);
         
         consoleLog(`🎯 [Color Filter] Displaying stats for ${colorInfo.name} (${colorKey}): ${displayPainted}/${displayRequired} (${displayPercentage}%) - ${displayRemaining} need crosshair${wrongPixelsForColor > 0 ? ` - includes ${wrongPixelsForColor} wrong` : ''}`);
       } else {
@@ -1787,6 +1820,11 @@ function buildColorFilterOverlay() {
         position: relative;
         padding: 2px 4px;
         text-align: center;
+        flex-grow: 1;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        min-height: 0;
       `;
 
       colorItem.appendChild(colorName);
@@ -2586,12 +2624,16 @@ function applyMobileModeToColorFilter(enableMobile) {
         font-size: 0.75em !important; 
       }
       .bmcf-grid { 
-        grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)) !important; 
+        grid-template-columns: repeat(auto-fit, minmax(100px, 100px)) !important; 
         gap: 6px !important; 
+        justify-content: center !important;
       }
       .bmcf-card { 
         padding: 6px 8px !important; 
         border-radius: 6px !important; 
+        width: 100px !important;
+        height: 100px !important;
+        box-sizing: border-box !important;
       }
       .bmcf-color-box { 
         width: 18px !important; 
