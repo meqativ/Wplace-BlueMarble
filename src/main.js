@@ -861,7 +861,7 @@ function buildColorFilterOverlay() {
           --bmcf-muted: var(--slate-400); --bmcf-text: var(--slate-100); --bmcf-text-muted: var(--slate-300);
         }
         .bmcf-overlay { 
-          width: min(94vw, 720px); max-height: 88vh; background: var(--bmcf-bg); color: var(--bmcf-text); 
+          width: min(94vw, 670px); max-height: 88vh; background: var(--bmcf-bg); color: var(--bmcf-text); 
           border-radius: 20px; border: 1px solid var(--bmcf-border); 
           box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05); 
           display: flex; flex-direction: column; overflow: hidden; 
@@ -1575,7 +1575,7 @@ function buildColorFilterOverlay() {
     colorGrid.className = 'bmcf-grid';
     colorGrid.style.cssText = `
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(120px, 120px));
+      grid-template-columns: repeat(4, 1fr);
       gap: 8px;
       margin-bottom: 20px;
       justify-content: center;
@@ -1606,7 +1606,7 @@ function buildColorFilterOverlay() {
         text-align: center;
         transition: all 0.2s ease;
         position: relative;
-        width: 120px;
+        width: 100%;
         height: 120px;
         display: flex;
         flex-direction: column;
