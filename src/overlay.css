@@ -469,11 +469,11 @@ input[type="file"][id*="template"] {
   font-weight: 500;
 }
 
-/* Template buttons container - 3x3 grid layout */
+/* Template buttons container - 3x4 grid layout */
 #bm-contain-buttons-template {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: auto auto auto; /* 3 rows: Upload+Delete, Create+Enable+Disable, Color Filter */
+  grid-template-rows: auto auto auto auto; /* 4 rows: Upload+Delete, Create+Enable+Disable, Pause Tiles, Color Filter */
   align-items: stretch; /* all buttons same height in each row */
   gap: .25rem;
 }
@@ -536,15 +536,31 @@ div:has(> #bm-input-file-template) > button {
   grid-row: 3;
   grid-column: 1 / span 3;
   background-color: #ff9800 !important;
+  transition: all 0.3s ease !important;
 }
 
 #bm-button-pause-tiles:hover {
   background-color: #f57c00 !important;
+  transform: translateY(-1px);
 }
 
 #bm-button-pause-tiles:active,
 #bm-button-pause-tiles:focus-visible {
   background-color: #ef6c00 !important;
+}
+
+/* Pause button when paused (green state) */
+#bm-button-pause-tiles.paused {
+  background-color: #4CAF50 !important;
+}
+
+#bm-button-pause-tiles.paused:hover {
+  background-color: #45a049 !important;
+}
+
+#bm-button-pause-tiles.paused:active,
+#bm-button-pause-tiles.paused:focus-visible {
+  background-color: #3d8b40 !important;
 }
 
 /* Row 4: Color Filter button (spans all 3 columns) */

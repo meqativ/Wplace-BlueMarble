@@ -1705,14 +1705,22 @@ function buildOverlayMain() {
         }
       }).buildElement()
       .addButton({'id': 'bm-button-pause-tiles', innerHTML: icons.disableIcon + (isTileRefreshPaused() ? 'Resume Tiles' : 'Pause Tiles')}, (instance, button) => {
+        // Set initial CSS class based on current pause state
+        if (isTileRefreshPaused()) {
+          button.classList.add('paused');
+        }
         button.onclick = () => {
           const isPaused = toggleTileRefreshPause(templateManager);
           const cachedCount = getCachedTileCount();
           
           button.innerHTML = `${icons.disableIcon} ${isPaused ? 'Resume Tiles' : 'Pause Tiles'}${isPaused && cachedCount > 0 ? ` (${cachedCount})` : ''}`;
-          button.style.background = isPaused ? 
-            'linear-gradient(135deg, #4CAF50, #45a049)' : 
-            'linear-gradient(135deg, #ff9800, #f57c00)';
+          
+          // Toggle CSS class based on pause state
+          if (isPaused) {
+            button.classList.add('paused');
+          } else {
+            button.classList.remove('paused');
+          }
           
           instance.handleDisplayStatus(isPaused ? 
             `🧊 Tile refresh paused! Showing frozen template view with ${cachedCount} cached tiles for better performance.` : 
