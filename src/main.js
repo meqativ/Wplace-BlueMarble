@@ -1808,6 +1808,12 @@ function buildColorFilterOverlay() {
     consoleLog('🎯 [Color Filter] Calculating pixel statistics...');
     const pixelStats = templateManager.calculateRemainingPixelsByColor();
     consoleLog('🎯 [Color Filter] Pixel statistics received:', pixelStats);
+    // Update native palette badges as well (if settings enabled)
+    try {
+      updatePaletteLeftBadges(pixelStats);
+    } catch (e) {
+      consoleWarn('Failed to update palette left badges:', e);
+    }
     
     // Calculate overall progress
     let totalRequired = 0;
@@ -2619,6 +2625,12 @@ function buildColorFilterOverlay() {
         overflow: hidden;
       `;
 
+      // Desktop: keep content more central to avoid items glued to the top
+      if (!isMobileMode) {
+        colorItem.style.padding = '12px 8px 16px 8px';
+        colorItem.style.justifyContent = 'center';
+      }
+
       // Color info and controls container
       const controlsContainer = document.createElement('div');
       controlsContainer.style.cssText = `
@@ -2667,6 +2679,7 @@ function buildColorFilterOverlay() {
 
       // Enhanced mode checkbox
       const enhancedContainer = document.createElement('div');
+      enhancedContainer.className = 'bmcf-enhanced';
       enhancedContainer.style.cssText = `
         display: flex;
         align-items: center;
@@ -2698,11 +2711,17 @@ function buildColorFilterOverlay() {
       enhancedContainer.appendChild(enhancedCheckbox);
       enhancedContainer.appendChild(enhancedLabel);
 
+      // Slight top spacing on desktop to avoid sticking to top border
+      if (!isMobileMode) {
+        enhancedContainer.style.marginTop = '6px';
+      }
+
       controlsContainer.appendChild(colorClickArea);
       controlsContainer.appendChild(enhancedContainer);
       colorItem.appendChild(controlsContainer);
 
       const colorName = document.createElement('div');
+      colorName.className = 'bmcf-color-name';
       colorName.textContent = colorInfo.name;
       colorName.style.cssText = `
         font-size: 0.75em;
@@ -2712,7 +2731,7 @@ function buildColorFilterOverlay() {
         z-index: 1;
         position: relative;
         text-align: center;
-        margin-bottom: 1px;
+        margin-bottom: 6px;
         flex-shrink: 0;
         line-height: 1.1;
       `;
@@ -2731,6 +2750,7 @@ function buildColorFilterOverlay() {
       const colorKey = `${rgb[0]},${rgb[1]},${rgb[2]}`;
       const stats = pixelStats[colorKey];
       const pixelStatsDisplay = document.createElement('div');
+      pixelStatsDisplay.className = 'bmcf-stats';
       
       if (stats && stats.totalRequired > 0) {
         // Get wrong pixels for this specific color from tile progress data
@@ -2766,12 +2786,11 @@ function buildColorFilterOverlay() {
         colorItem.setAttribute('data-total-count', displayRequired.toString());
         colorItem.setAttribute('data-painted-count', displayPainted.toString());
         
-        // Create display text based on wrong color setting
+        // Always render full stats inside the Template Color overlay
         let displayText = `${displayPainted.toLocaleString()}/${displayRequired.toLocaleString()} (${displayPercentage}%)`;
         if (templateManager.getIncludeWrongColorsInProgress() && wrongPixelsForColor > 0) {
           displayText += `\n+${wrongPixelsForColor.toLocaleString()} wrong`;
         }
-        
         pixelStatsDisplay.innerHTML = `
           <div style="font-size: 0.6em; color: rgba(255,255,255,0.9); text-shadow: 1px 1px 2px rgba(0,0,0,0.8); line-height: 1.1;">
             <div style="margin-bottom: 1px;">
@@ -2821,7 +2840,7 @@ function buildColorFilterOverlay() {
       pixelStatsDisplay.style.cssText = `
         z-index: 1;
         position: relative;
-        padding: 2px 4px;
+        padding: 4px 6px;
         text-align: center;
         flex-grow: 1;
         display: flex;
@@ -3148,10 +3167,12 @@ function buildColorFilterOverlay() {
 
     document.body.appendChild(colorFilterOverlay);
 
-    // Apply mobile mode immediately if enabled
+    // Apply or remove mobile mode styles based on current setting
+    applyMobileModeToColorFilter(!!isMobileMode);
     if (isMobileMode) {
-      applyMobileModeToColorFilter(true);
       consoleLog('📱 [Initial Build] Mobile mode applied immediately');
+    } else {
+      consoleLog('📱 [Initial Build] Mobile mode is OFF - ensuring desktop styles');
     }
 
     // Add drag functionality
@@ -3186,6 +3207,24 @@ function buildColorFilterOverlay() {
       e.preventDefault();
     });
 
+    // Touch drag support (mobile)
+    header.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      isDragging = true;
+      dragStartX = t.clientX;
+      dragStartY = t.clientY;
+      const rect = colorFilterOverlay.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      colorFilterOverlay.style.position = 'fixed';
+      colorFilterOverlay.style.transform = 'none';
+      colorFilterOverlay.style.left = initialLeft + 'px';
+      colorFilterOverlay.style.top = initialTop + 'px';
+      colorFilterOverlay.style.userSelect = 'none';
+      e.preventDefault();
+    }, { passive: false });
+
     document.addEventListener('mousemove', (e) => {
       if (!isDragging) return;
       
@@ -3206,6 +3245,23 @@ function buildColorFilterOverlay() {
       colorFilterOverlay.style.top = clampedTop + 'px';
     });
 
+    document.addEventListener('touchmove', (e) => {
+      if (!isDragging) return;
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      const deltaX = t.clientX - dragStartX;
+      const deltaY = t.clientY - dragStartY;
+      const newLeft = initialLeft + deltaX;
+      const newTop = initialTop + deltaY;
+      const maxLeft = window.innerWidth - colorFilterOverlay.offsetWidth;
+      const maxTop = window.innerHeight - colorFilterOverlay.offsetHeight;
+      const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+      colorFilterOverlay.style.left = clampedLeft + 'px';
+      colorFilterOverlay.style.top = clampedTop + 'px';
+      e.preventDefault();
+    }, { passive: false });
+
     document.addEventListener('mouseup', () => {
       if (isDragging) {
         isDragging = false;
@@ -3213,6 +3269,13 @@ function buildColorFilterOverlay() {
         header.style.cursor = 'move';
         dragBar.style.cursor = 'grab';
         dragBar.style.opacity = '0.8';
+        colorFilterOverlay.style.userSelect = '';
+      }
+    });
+
+    document.addEventListener('touchend', () => {
+      if (isDragging) {
+        isDragging = false;
         colorFilterOverlay.style.userSelect = '';
       }
     });
@@ -3464,6 +3527,50 @@ function handleEKeyColorClick(event) {
 // Make functions globally available
 window.refreshColorFilterOverlay = refreshColorFilterOverlay;
 window.forceTemplateRedraw = forceTemplateRedraw;
+
+/** Injects/updates numeric LEFT badges on the site's native color palette buttons
+ * @param {Object} pixelStats - Map keyed by "r,g,b" with {totalRequired, painted, needsCrosshair}
+ */
+function updatePaletteLeftBadges(pixelStats) {
+  if (!getShowLeftOnColorEnabled()) return;
+  if (!pixelStats || typeof pixelStats !== 'object') return;
+  
+  const idToRgb = COLOR_PALETTE_MAP || {};
+  
+  Object.entries(idToRgb).forEach(([colorId, rgb]) => {
+    const btn = document.querySelector(`button#${CSS.escape(colorId)}`);
+    if (!btn) return;
+    if (colorId === 'color-0') return; // Transparent
+    const key = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+    const stats = pixelStats[key];
+    const left = stats && typeof stats.needsCrosshair === 'number' ? stats.needsCrosshair : 0;
+    
+    let badge = btn.querySelector('.bm-left-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+      badge.className = 'bm-left-badge';
+      badge.style.cssText = `
+        position: absolute;
+        bottom: 2px;
+        right: 2px;
+        background: rgba(0,0,0,0.65);
+        color: #fff;
+        font-weight: 800;
+        font-size: 10px;
+        line-height: 1;
+        padding: 2px 4px;
+        border-radius: 6px;
+        pointer-events: none;
+        user-select: none;
+        z-index: 2;
+      `;
+      if (!btn.style.position) btn.style.position = 'relative';
+      btn.appendChild(badge);
+    }
+    badge.textContent = left.toLocaleString();
+    badge.style.display = left > 0 ? 'block' : 'none';
+  });
+}
 
 /** Refreshes the template display to show color filter changes
  * @since 1.0.0
@@ -3821,6 +3928,46 @@ function getMobileMode() {
   }
 }
 
+/** Gets the setting for showing only the numeric left value on color cards
+ * @returns {boolean} Whether numeric left badges are enabled
+ */
+function getShowLeftOnColorEnabled() {
+  try {
+    let enabled = null;
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmShowLeftOnColor', null);
+      if (saved !== null) enabled = JSON.parse(saved);
+    }
+    if (enabled === null) {
+      const saved = localStorage.getItem('bmShowLeftOnColor');
+      if (saved !== null) enabled = JSON.parse(saved);
+    }
+    if (enabled !== null) {
+      consoleLog('🔢 Show Left-on-Color setting loaded:', enabled);
+      return enabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load Show Left-on-Color setting:', error);
+  }
+  return false;
+}
+
+/** Saves the setting for showing only the numeric left value on color cards
+ * @param {boolean} enabled - Whether numeric left badges should be shown
+ */
+function saveShowLeftOnColorEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(!!enabled);
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmShowLeftOnColor', enabledString);
+    }
+    localStorage.setItem('bmShowLeftOnColor', enabledString);
+    consoleLog('✅ Show Left-on-Color setting saved:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save Show Left-on-Color setting:', error);
+  }
+}
+
 /** Saves the mobile mode setting
  * @param {boolean} enabled - Whether mobile mode is enabled
  * @since 1.0.0
@@ -3864,20 +4011,20 @@ function applyMobileModeToColorFilter(enableMobile) {
     mobileStyleElement.textContent = `
       /* Dynamic Mobile Mode Styles - Applied Fresh */
       .bmcf-overlay { 
-        width: min(95vw, 400px) !important; 
+        width: min(96vw, 420px) !important; 
         max-height: 75vh !important; 
         border-radius: 12px !important; 
         padding: 6px !important;
       }
       .bmcf-header { 
-        padding: 10px 14px 8px 14px !important; 
+        padding: 8px 10px 6px 10px !important; 
       }
       .bmcf-drag-bar { 
         height: 4px !important; 
         margin-bottom: 6px !important; 
       }
       .bmcf-title { 
-        font-size: 1.1em !important; 
+        font-size: 1.12em !important; 
       }
       .bmcf-close { 
         width: 22px !important; 
@@ -3891,19 +4038,40 @@ function applyMobileModeToColorFilter(enableMobile) {
       .bmcf-select { 
         height: 28px !important; 
         padding: 4px 8px !important; 
-        font-size: 0.75em !important; 
+        font-size: 0.85em !important; 
       }
       .bmcf-grid { 
-        grid-template-columns: repeat(auto-fit, minmax(100px, 100px)) !important; 
-        gap: 6px !important; 
-        justify-content: center !important;
+        grid-template-columns: repeat(3, minmax(0, 1fr)) !important; 
+        gap: 4px !important; 
+        justify-content: stretch !important;
       }
       .bmcf-card { 
-        padding: 6px 8px !important; 
+        padding: 6px 8px 10px 8px !important; 
         border-radius: 6px !important; 
-        width: 100px !important;
-        height: 100px !important;
+        width: auto !important;
+        height: 108px !important;
         box-sizing: border-box !important;
+      }
+      /* Enhanced row and label compact spacing */
+      .bmcf-card .bmcf-enhanced { 
+        padding: 0 2px !important; 
+        margin-top: 2px !important; 
+        margin-bottom: 2px !important; 
+        gap: 2px !important; 
+      }
+      .bmcf-card .bmcf-enhanced input { 
+        width: 12px !important; 
+        height: 12px !important; 
+      }
+      .bmcf-card .bmcf-color-name { 
+        margin-bottom: 1px !important; 
+        font-size: 0.9em !important; 
+        line-height: 1.05 !important;
+      }
+      .bmcf-card .bmcf-stats { 
+        padding: 0 2px !important; 
+        font-size: 0.8em !important; 
+        line-height: 1.05 !important;
       }
       .bmcf-color-box { 
         width: 18px !important; 
@@ -3915,7 +4083,7 @@ function applyMobileModeToColorFilter(enableMobile) {
       }
       .bmcf-stats { 
         font-size: 0.65em !important; 
-        gap: 3px !important; 
+        gap: 2px !important; 
       }
       .bmcf-btn { 
         height: 28px !important; 
@@ -3924,7 +4092,7 @@ function applyMobileModeToColorFilter(enableMobile) {
         font-size: 0.75em !important; 
       }
       .bmcf-footer { 
-        padding: 6px 10px !important; 
+        padding: 6px 8px !important; 
         gap: 6px !important; 
       }
       .bmcf-progress-container { 
@@ -3974,6 +4142,13 @@ function updateMiniTracker() {
       totalRequired += stats.totalRequired || 0;
       totalPainted += stats.painted || 0;
       totalNeedCrosshair += stats.needsCrosshair || 0;
+    }
+
+    // Also update native palette badges with per-color LEFT numbers if enabled
+    try {
+      updatePaletteLeftBadges(pixelStats);
+    } catch (e) {
+      consoleWarn('Failed to update palette left badges:', e);
     }
   }
   
@@ -4209,6 +4384,7 @@ function buildCrosshairSettingsOverlay() {
     let tempBorderEnabled = getBorderEnabled();
     let tempMiniTrackerEnabled = getMiniTrackerEnabled();
     let tempMobileMode = getMobileMode();
+    let tempShowLeftOnColor = getShowLeftOnColorEnabled();
 
     // Create the settings overlay
     const settingsOverlay = document.createElement('div');
@@ -4834,18 +5010,17 @@ function buildCrosshairSettingsOverlay() {
   borderCheckbox.type = 'checkbox';
   borderCheckbox.checked = tempBorderEnabled;
   borderCheckbox.style.cssText = `
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     cursor: pointer;
-    accent-color: var(--blue-500);
     border-radius: 4px;
   `;
 
   const borderToggleText = document.createElement('span');
-  borderToggleText.textContent = 'Enable corner borders';
+  borderToggleText.textContent = tempBorderEnabled ? 'Enabled' : 'Disabled';
   borderToggleText.style.cssText = `
     color: var(--slate-100); 
-    font-weight: 600;
+    font-weight: 700;
     letter-spacing: -0.01em;
   `;
 
@@ -4854,6 +5029,13 @@ function buildCrosshairSettingsOverlay() {
     
     // Update crosshair preview to show/hide borders
     updateCrosshairPreview(tempColor, tempBorderEnabled);
+    // Visual feedback like the Mini Progress Tracker (text color only)
+    borderToggleText.style.background = '';
+    borderToggleText.style.border = '';
+    borderToggleText.style.padding = '';
+    borderToggleText.style.borderRadius = '';
+    borderToggleText.style.color = tempBorderEnabled ? '#4caf50' : '#f44336';
+    borderToggleText.textContent = tempBorderEnabled ? 'Enabled' : 'Disabled';
   };
 
   borderToggle.appendChild(borderCheckbox);
@@ -4900,58 +5082,52 @@ function buildCrosshairSettingsOverlay() {
     align-items: center;
     gap: 12px;
     cursor: pointer;
-    padding: 8px 0;
+    padding: 4px 0;
     user-select: none;
   `;
 
-  // Get current enhanced size setting
-  let tempEnhancedSize = false;
-  try {
-    if (typeof GM_getValue !== 'undefined') {
-      const saved = GM_getValue('bmCrosshairEnhancedSize', null);
-      if (saved !== null) tempEnhancedSize = JSON.parse(saved);
-    } else {
-      const saved = localStorage.getItem('bmCrosshairEnhancedSize');
-      if (saved !== null) tempEnhancedSize = JSON.parse(saved);
-    }
-  } catch (error) {
-    console.warn('Failed to load enhanced size setting:', error);
-  }
+  // Get current enhanced size setting (single source of truth)
+  let tempEnhancedSize = getEnhancedSizeEnabled();
 
   const sizeCheckbox = document.createElement('input');
   sizeCheckbox.type = 'checkbox';
   sizeCheckbox.checked = tempEnhancedSize;
   sizeCheckbox.style.cssText = `
-    width: 20px;
-    height: 20px;
+    width: 16px;
+    height: 16px;
     cursor: pointer;
-    accent-color: var(--blue-500);
     border-radius: 4px;
   `;
 
   const sizeToggleText = document.createElement('span');
-  sizeToggleText.textContent = 'Enable Enhanced Size (5x)';
+  sizeToggleText.textContent = tempEnhancedSize ? 'Enabled' : 'Disabled';
   sizeToggleText.style.cssText = `
     font-size: 0.95em;
     color: var(--slate-100);
-    font-weight: 500;
+    font-weight: 700;
     letter-spacing: -0.01em;
   `;
 
   sizeCheckbox.onchange = () => {
     tempEnhancedSize = sizeCheckbox.checked;
     updateCrosshairPreview(tempColor, tempBorderEnabled, tempEnhancedSize);
+    // Visual feedback like the Mini Progress Tracker (only checkbox toggles)
+    sizeToggleText.style.background = '';
+    sizeToggleText.style.border = '';
+    sizeToggleText.style.padding = '';
+    sizeToggleText.style.borderRadius = '';
+    sizeToggleText.style.color = tempEnhancedSize ? '#4caf50' : '#f44336';
+    sizeToggleText.textContent = tempEnhancedSize ? 'Enabled' : 'Disabled';
   };
 
-  sizeToggle.onclick = (e) => {
-    if (e.target !== sizeCheckbox) {
-      sizeCheckbox.checked = !sizeCheckbox.checked;
-      sizeCheckbox.onchange();
-    }
-  };
+  // Only a BOX click altera o estado – clique no texto não alterna
+  sizeToggle.onclick = (e) => {};
 
   sizeToggle.appendChild(sizeCheckbox);
   sizeToggle.appendChild(sizeToggleText);
+  // Initialize visual state
+  borderCheckbox.onchange();
+  sizeCheckbox.onchange();
   sizeSection.appendChild(sizeLabel);
   sizeSection.appendChild(sizeDescription);
   sizeSection.appendChild(sizeToggle);
@@ -5124,6 +5300,22 @@ function buildCrosshairSettingsOverlay() {
 
   mobileToggle.appendChild(mobileCheckbox);
   mobileToggle.appendChild(mobileToggleText);
+  // Visual feedback for enabled/disabled
+  const applyMobileVisual = () => {
+    mobileToggleText.style.background = '';
+    mobileToggleText.style.border = '';
+    mobileToggleText.style.padding = '';
+    mobileToggleText.style.borderRadius = '';
+    mobileToggleText.style.color = tempMobileMode ? '#4caf50' : '#f44336';
+    mobileToggleText.textContent = tempMobileMode ? 'Enabled' : 'Disabled';
+  };
+  applyMobileVisual();
+  const oldUpdateMobile = updateMobileState;
+  const updateMobileStateWrapped = () => { oldUpdateMobile(); applyMobileVisual(); };
+  mobileCheckbox.removeEventListener('change', updateMobileState);
+  mobileCheckbox.addEventListener('change', updateMobileStateWrapped);
+  // Only checkbox toggles the state
+  mobileToggleText.onclick = null;
   mobileSection.appendChild(mobileLabel);
   mobileSection.appendChild(mobileDescription);
   mobileSection.appendChild(mobileToggle);
@@ -5209,6 +5401,22 @@ function buildCrosshairSettingsOverlay() {
 
   collapseToggle.appendChild(collapseCheckbox);
   collapseToggle.appendChild(collapseToggleText);
+  // Visual feedback for enabled/disabled
+  const applyCollapseVisual = () => {
+    collapseToggleText.style.background = '';
+    collapseToggleText.style.border = '';
+    collapseToggleText.style.padding = '';
+    collapseToggleText.style.borderRadius = '';
+    collapseToggleText.style.color = tempCollapseMinEnabled ? '#4caf50' : '#f44336';
+    collapseToggleText.textContent = tempCollapseMinEnabled ? 'Enabled' : 'Disabled';
+  };
+  applyCollapseVisual();
+  const oldUpdateCollapse = updateCollapseState;
+  const updateCollapseStateWrapped = () => { oldUpdateCollapse(); applyCollapseVisual(); };
+  collapseCheckbox.removeEventListener('change', updateCollapseState);
+  collapseCheckbox.addEventListener('change', updateCollapseStateWrapped);
+  // Only checkbox toggles the state
+  collapseToggleText.onclick = null;
   collapseSection.appendChild(collapseLabel);
   collapseSection.appendChild(collapseDescription);
   collapseSection.appendChild(collapseToggle);
@@ -5277,7 +5485,8 @@ function buildCrosshairSettingsOverlay() {
       tempEnhancedSize !== getEnhancedSizeEnabled() ||
       tempMiniTrackerEnabled !== currentTrackerSaved ||
       tempCollapseMinEnabled !== currentCollapseSaved ||
-      tempMobileMode !== currentMobileSaved;
+      tempMobileMode !== currentMobileSaved ||
+      tempShowLeftOnColor !== getShowLeftOnColorEnabled();
     
     if (hasChanges) {
       if (confirm('Discard changes? Any unsaved settings will be lost.')) {
@@ -5329,7 +5538,7 @@ function buildCrosshairSettingsOverlay() {
     
     try {
       // Save all settings
-      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled, mobile: tempMobileMode });
+      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled, mobile: tempMobileMode, showLeftOnColor: tempShowLeftOnColor });
       
       saveCrosshairColor(tempColor);
       saveBorderEnabled(tempBorderEnabled);
@@ -5337,9 +5546,18 @@ function buildCrosshairSettingsOverlay() {
       saveMiniTrackerEnabled(tempMiniTrackerEnabled);
       saveCollapseMinEnabled(tempCollapseMinEnabled);
       saveMobileMode(tempMobileMode);
+      saveShowLeftOnColorEnabled(tempShowLeftOnColor);
       
       // Apply mobile mode to existing Color Filter overlay dynamically
       applyMobileModeToColorFilter(tempMobileMode);
+
+      // Refresh palette badges after applying settings
+      try {
+        const stats = templateManager.calculateRemainingPixelsByColor();
+        updatePaletteLeftBadges(stats);
+      } catch (e) {
+        consoleWarn('Failed to refresh palette left badges after apply:', e);
+      }
       
       // Success feedback
       applyButton.style.background = 'linear-gradient(135deg, var(--emerald-600), var(--emerald-700))';
@@ -5364,7 +5582,7 @@ function buildCrosshairSettingsOverlay() {
       // Close overlay after short delay
       setTimeout(() => {
         settingsOverlay.remove();
-        overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}, mobile ${tempMobileMode ? 'enabled' : 'disabled'}!`);
+        overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}, mobile ${tempMobileMode ? 'enabled' : 'disabled'}, Left-on-Color ${tempShowLeftOnColor ? 'enabled' : 'disabled'}!`);
       }, 800);
       
       consoleLog('✅ Crosshair settings successfully applied and templates refreshed');
@@ -5409,7 +5627,96 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(borderSection);
   contentContainer.appendChild(sizeSection);
   contentContainer.appendChild(trackerSection);
+  
+  // Show Left number on color cards (compact mode)
+  const leftOnColorSection = document.createElement('div');
+  leftOnColorSection.style.cssText = `
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: 12px;
+    padding: 18px;
+    margin-bottom: 20px;
+    position: relative;
+    z-index: 1;
+  `;
+  const leftOnColorLabel = document.createElement('div');
+  leftOnColorLabel.textContent = 'Display Left number on color cards:';
+  leftOnColorLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
+  const leftOnColorDescription = document.createElement('div');
+  leftOnColorDescription.textContent = 'Displays just the remaining pixels number centered on each color.';
+  leftOnColorDescription.style.cssText = `
+    font-size: 0.9em; 
+    color: var(--slate-300); 
+    margin-bottom: 16px; 
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  `;
+  const leftOnColorToggle = document.createElement('div');
+  leftOnColorToggle.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  `;
+  const leftOnColorCheckbox = document.createElement('input');
+  leftOnColorCheckbox.type = 'checkbox';
+  leftOnColorCheckbox.checked = tempShowLeftOnColor;
+  leftOnColorCheckbox.style.cssText = `
+    width: 16px;
+    height: 16px;
+    cursor: pointer;
+  `;
+  const leftOnColorToggleText = document.createElement('span');
+  leftOnColorToggleText.textContent = tempShowLeftOnColor ? 'Enabled' : 'Disabled';
+  leftOnColorToggleText.style.cssText = `
+    color: ${tempShowLeftOnColor ? '#4caf50' : '#f44336'};
+    font-weight: bold;
+    cursor: pointer;
+  `;
+  const updateLeftOnColorState = () => {
+    tempShowLeftOnColor = leftOnColorCheckbox.checked;
+    leftOnColorToggleText.textContent = tempShowLeftOnColor ? 'Enabled' : 'Disabled';
+    leftOnColorToggleText.style.color = tempShowLeftOnColor ? '#4caf50' : '#f44336';
+  };
+  leftOnColorCheckbox.addEventListener('change', updateLeftOnColorState);
+  leftOnColorToggleText.onclick = (e) => {
+    e.stopPropagation();
+    leftOnColorCheckbox.checked = !leftOnColorCheckbox.checked;
+    updateLeftOnColorState();
+  };
+  leftOnColorToggle.style.cursor = 'default';
+  leftOnColorToggle.appendChild(leftOnColorCheckbox);
+  leftOnColorToggle.appendChild(leftOnColorToggleText);
+  // Visual estado verde/vermelho no container
+  const applyLeftOnColorToggleVisual = () => {
+    leftOnColorToggleText.style.background = '';
+    leftOnColorToggleText.style.border = '';
+    leftOnColorToggleText.style.padding = '';
+    leftOnColorToggleText.style.borderRadius = '';
+    leftOnColorToggleText.style.color = tempShowLeftOnColor ? '#4caf50' : '#f44336';
+    leftOnColorToggleText.textContent = tempShowLeftOnColor ? 'Enabled' : 'Disabled';
+  };
+  applyLeftOnColorToggleVisual();
+  // Hook on change
+  const oldUpdateLeftOnColorState = updateLeftOnColorState;
+  const updateLeftOnColorStateWrapped = () => {
+    oldUpdateLeftOnColorState();
+    applyLeftOnColorToggleVisual();
+  };
+  leftOnColorCheckbox.removeEventListener('change', updateLeftOnColorState);
+  leftOnColorCheckbox.addEventListener('change', updateLeftOnColorStateWrapped);
+  // Only checkbox toggles the state
+  leftOnColorToggleText.onclick = null;
+  leftOnColorSection.appendChild(leftOnColorLabel);
+  leftOnColorSection.appendChild(leftOnColorDescription);
+  leftOnColorSection.appendChild(leftOnColorToggle);
   contentContainer.appendChild(mobileSection);
+  contentContainer.appendChild(leftOnColorSection);
   contentContainer.appendChild(collapseSection);
   settingsOverlay.appendChild(contentContainer);
   settingsOverlay.appendChild(footerContainer);

@@ -667,10 +667,42 @@ export default class TemplateManager {
                  // Determine if this is a wrong color pixel
                  const isWrongColor = wrongColorPixels.has(pixelCoord);
                  
-                 // Apply crosshairs only around enhanced pixels (red centers only)
-                 const crosshairOffsets = [
-                   [0, -1, 'center'], [0, 1, 'center'], [-1, 0, 'center'], [1, 0, 'center'] // Orthogonal only
-                 ];
+                 // Build base offsets and optionally add expansion as EXTRA if base is eligible
+                 const enhancedOn = this.getEnhancedSizeEnabled();
+                 const baseOffsets = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+                 let crosshairOffsets = baseOffsets.map(([dx, dy]) => [dx, dy, 'center']);
+                 if (enhancedOn) {
+                   // Check if any base offset would apply (transparent and not painted, unless wrong color)
+                   let baseEligible = false;
+                   for (const [bdx, bdy] of baseOffsets) {
+                     const bx = px + bdx;
+                     const by = py + bdy;
+                     if (bx < 0 || bx >= width || by < 0 || by >= height) continue;
+                     const bi = (by * width + bx) * 4;
+                     if (originalData[bi + 3] !== 0) continue; // must be transparent in template
+                     let painted = false;
+                     if (canvasRegionData) {
+                       painted = canvasRegionData[bi + 3] > 0;
+                     } else {
+                       const canvasX = bx + templateOffsetX;
+                       const canvasY = by + templateOffsetY;
+                       if (canvasX >= 0 && canvasX < canvas.width && canvasY >= 0 && canvasY < canvas.height) {
+                         const canvasIndex = (canvasY * canvas.width + canvasX) * 4;
+                         painted = canvasData[canvasIndex + 3] > 0;
+                       }
+                     }
+                     if (!painted || isWrongColor) { baseEligible = true; break; }
+                   }
+                   if (baseEligible) {
+                     const radius = 16; // expansion radius beyond base
+                     for (let d = 2; d <= radius; d++) {
+                       crosshairOffsets.push([0, -d, 'center']);
+                       crosshairOffsets.push([0, d, 'center']);
+                       crosshairOffsets.push([-d, 0, 'center']);
+                       crosshairOffsets.push([d, 0, 'center']);
+                     }
+                   }
+                 }
                  
                  for (const [dx, dy, type] of crosshairOffsets) {
                    const x = px + dx;
@@ -1746,6 +1778,28 @@ export default class TemplateManager {
     
     // Default to disabled
     console.log('🔲 Using default border setting: false');
+    return false;
+  }
+
+  /** Gets the enhanced size enabled setting from storage
+   * Mirrors the setting used in the settings overlay (5x crosshair)
+   * @returns {boolean}
+   */
+  getEnhancedSizeEnabled() {
+    try {
+      let enhancedSizeEnabled = null;
+      if (typeof GM_getValue !== 'undefined') {
+        const saved = GM_getValue('bmCrosshairEnhancedSize', null);
+        if (saved !== null) enhancedSizeEnabled = JSON.parse(saved);
+      }
+      if (enhancedSizeEnabled === null) {
+        const saved = localStorage.getItem('bmCrosshairEnhancedSize');
+        if (saved !== null) enhancedSizeEnabled = JSON.parse(saved);
+      }
+      if (enhancedSizeEnabled !== null) return enhancedSizeEnabled;
+    } catch (error) {
+      console.warn('Failed to load enhanced size setting:', error);
+    }
     return false;
   }
 
