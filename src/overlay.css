@@ -535,7 +535,7 @@ div:has(> #bm-input-file-template) > button {
 #bm-button-pause-tiles {
   grid-row: 3;
   grid-column: 1 / span 3;
-  background-color: #ff9800 !important;
+  background-color: #50a9f1 !important;
   transition: all 0.3s ease !important;
 }
 
@@ -593,7 +593,7 @@ div:has(> #bm-input-file-template) > button {
 /* All overlay buttons when pressed (plus disabled color) */
 #bm-overlay button:active,
 #bm-overlay button:disabled {
-  background-color: #4FA7F1;
+  background-color: #50a9f1;
 }
 
 /* All overlay buttons when disabled */
