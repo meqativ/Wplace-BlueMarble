@@ -531,9 +531,25 @@ div:has(> #bm-input-file-template) > button {
 #bm-button-enable  { grid-row: 2; grid-column: 2; }
 #bm-button-disable { grid-row: 2; grid-column: 3; }
 
-/* Row 3: Color Filter button (spans all 3 columns) */
-#bm-button-color-filter {
+/* Row 3: Pause Tiles button (spans all 3 columns) */
+#bm-button-pause-tiles {
   grid-row: 3;
+  grid-column: 1 / span 3;
+  background-color: #ff9800 !important;
+}
+
+#bm-button-pause-tiles:hover {
+  background-color: #f57c00 !important;
+}
+
+#bm-button-pause-tiles:active,
+#bm-button-pause-tiles:focus-visible {
+  background-color: #ef6c00 !important;
+}
+
+/* Row 4: Color Filter button (spans all 3 columns) */
+#bm-button-color-filter {
+  grid-row: 4;
   grid-column: 1 / span 3;
   margin-top: 0; /* remove the old margin since we're using grid now */
 }
