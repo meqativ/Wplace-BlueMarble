@@ -5314,8 +5314,12 @@ function buildCrosshairSettingsOverlay() {
   const updateMobileStateWrapped = () => { oldUpdateMobile(); applyMobileVisual(); };
   mobileCheckbox.removeEventListener('change', updateMobileState);
   mobileCheckbox.addEventListener('change', updateMobileStateWrapped);
-  // Only checkbox toggles the state
-  mobileToggleText.onclick = null;
+  // Make TEXT clickable too
+  mobileToggleText.onclick = (e) => {
+    e.stopPropagation();
+    mobileCheckbox.checked = !mobileCheckbox.checked;
+    updateMobileStateWrapped();
+  };
   mobileSection.appendChild(mobileLabel);
   mobileSection.appendChild(mobileDescription);
   mobileSection.appendChild(mobileToggle);
@@ -5415,8 +5419,12 @@ function buildCrosshairSettingsOverlay() {
   const updateCollapseStateWrapped = () => { oldUpdateCollapse(); applyCollapseVisual(); };
   collapseCheckbox.removeEventListener('change', updateCollapseState);
   collapseCheckbox.addEventListener('change', updateCollapseStateWrapped);
-  // Only checkbox toggles the state
-  collapseToggleText.onclick = null;
+  // Make TEXT clickable too
+  collapseToggleText.onclick = (e) => {
+    e.stopPropagation();
+    collapseCheckbox.checked = !collapseCheckbox.checked;
+    updateCollapseStateWrapped();
+  };
   collapseSection.appendChild(collapseLabel);
   collapseSection.appendChild(collapseDescription);
   collapseSection.appendChild(collapseToggle);
@@ -5710,8 +5718,12 @@ function buildCrosshairSettingsOverlay() {
   };
   leftOnColorCheckbox.removeEventListener('change', updateLeftOnColorState);
   leftOnColorCheckbox.addEventListener('change', updateLeftOnColorStateWrapped);
-  // Only checkbox toggles the state
-  leftOnColorToggleText.onclick = null;
+  // Make TEXT clickable too
+  leftOnColorToggleText.onclick = (e) => {
+    e.stopPropagation();
+    leftOnColorCheckbox.checked = !leftOnColorCheckbox.checked;
+    updateLeftOnColorStateWrapped();
+  };
   leftOnColorSection.appendChild(leftOnColorLabel);
   leftOnColorSection.appendChild(leftOnColorDescription);
   leftOnColorSection.appendChild(leftOnColorToggle);
