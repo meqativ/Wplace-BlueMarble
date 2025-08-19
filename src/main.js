@@ -8,6 +8,8 @@ import ApiManager from './apiManager.js';
 import TemplateManager from './templateManager.js';
 import { consoleLog, consoleWarn, consoleError } from './utils.js';
 import * as icons from './icons.js';
+import { initializeTileRefreshPause, toggleTileRefreshPause, isTileRefreshPaused, getCachedTileCount } from './tileManager.js';
+import * as Settings from './settingsManager.js';
 
 const name = GM_info.script.name.toString(); // Name of userscript
 const version = GM_info.script.version.toString(); // Version of userscript
@@ -347,6 +349,11 @@ async function migrateAndValidateStorage() {
 Promise.resolve(migrateAndValidateStorage()).then(() => loadTemplates());
 
 buildOverlayMain(); // Builds the main overlay
+
+// Pause tiles functionality is now integrated into the main UI through buildOverlayMain()
+
+// Initialize tile refresh pause system
+initializeTileRefreshPause(templateManager);
 
 // Initialize mini tracker after a short delay to ensure DOM is ready
 setTimeout(() => {
@@ -1695,6 +1702,22 @@ function buildOverlayMain() {
         button.onclick = () => {
           instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(false);
           instance.handleDisplayStatus(`Disabled templates!`);
+        }
+      }).buildElement()
+      .addButton({'id': 'bm-button-pause-tiles', innerHTML: icons.disableIcon + (isTileRefreshPaused() ? 'Resume Tiles' : 'Pause Tiles')}, (instance, button) => {
+        button.onclick = () => {
+          const isPaused = toggleTileRefreshPause(templateManager);
+          const cachedCount = getCachedTileCount();
+          
+          button.innerHTML = `${icons.disableIcon} ${isPaused ? 'Resume Tiles' : 'Pause Tiles'}${isPaused && cachedCount > 0 ? ` (${cachedCount})` : ''}`;
+          button.style.background = isPaused ? 
+            'linear-gradient(135deg, #4CAF50, #45a049)' : 
+            'linear-gradient(135deg, #ff9800, #f57c00)';
+          
+          instance.handleDisplayStatus(isPaused ? 
+            `🧊 Tile refresh paused! Showing frozen template view with ${cachedCount} cached tiles for better performance.` : 
+            '▶️ Tile refresh resumed - templates now update in real-time'
+          );
         }
       }).buildElement()
       .buildElement()

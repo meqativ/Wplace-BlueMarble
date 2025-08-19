@@ -1636,7 +1636,7 @@ export default class TemplateManager {
         }
       }
       
-      consoleLog(`🔧 [Build Palette] Found ${Object.keys(colorPalette).length} colors in tiles`);
+      // consoleLog(`🔧 [Build Palette] Found ${Object.keys(colorPalette).length} colors in tiles`);
       for (const [colorKey, info] of Object.entries(colorPalette)) {
         consoleLog(`   ${colorKey}: ${info.count} pixels`);
       }
