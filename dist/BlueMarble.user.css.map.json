@@ -51,5 +51,7 @@
   "bm-cStyle": "bm-N",
   "bm-canvas": "bm-O",
   "bm-help": "bm-P",
-  "bm-name": "bm-Q"
+  "bm-name": "bm-Q",
+  "bm-button-pause-tiles": "bm-19",
+  "bm-left-badge": "bm-1w"
 }

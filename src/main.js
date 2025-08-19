@@ -191,6 +191,9 @@ const observers = new Observers(); // Constructs a new Observers object
 const overlayMain = new Overlay(name, version); // Constructs a new Overlay object for the main overlay
 const overlayTabTemplate = new Overlay(name, version); // Constructs a Overlay object for the template tab
 const templateManager = new TemplateManager(name, version, overlayMain); // Constructs a new TemplateManager object
+
+// Initialize error map mode from storage
+templateManager.setErrorMapMode(getErrorMapEnabled());
 const apiManager = new ApiManager(templateManager); // Constructs a new ApiManager object
 
 overlayMain.setApiManager(apiManager); // Sets the API manager
@@ -404,6 +407,30 @@ function observeBlack() {
       const paintPixel = black.parentNode.parentNode.parentNode.parentNode.querySelector('h2');
 
       paintPixel.parentNode?.appendChild(move); // Adds the move button
+      
+      // Add the Map button next to the Move button
+      let mapButton = document.querySelector('#bm-button-map-native');
+      if (!mapButton) {
+        mapButton = document.createElement('button');
+        mapButton.id = 'bm-button-map-native';
+        mapButton.innerHTML = '🗺️';
+        mapButton.className = 'btn btn-soft';
+        mapButton.title = 'Error Map View';
+        mapButton.style.marginLeft = '8px'; // Add some spacing from Move button
+        
+        // Initialize button appearance based on saved state
+        const initialState = getErrorMapEnabled();
+        mapButton.style.background = initialState ? 'linear-gradient(135deg, #10b981, #059669)' : '';
+        
+        mapButton.onclick = function() {
+          toggleErrorMapMode();
+          const isEnabled = getErrorMapEnabled();
+          this.style.background = isEnabled ? 'linear-gradient(135deg, #10b981, #059669)' : '';
+          overlayMain.handleDisplayStatus(`Error Map ${isEnabled ? 'enabled' : 'disabled'}! ${isEnabled ? 'Green=correct, Red=wrong pixels' : 'Back to normal view'}`);
+        };
+        
+        paintPixel.parentNode?.appendChild(mapButton); // Adds the map button next to move
+      }
     }
   });
 
@@ -3528,6 +3555,61 @@ function handleEKeyColorClick(event) {
 window.refreshColorFilterOverlay = refreshColorFilterOverlay;
 window.forceTemplateRedraw = forceTemplateRedraw;
 
+// ====== ERROR MAP MODE (LURK INTEGRATION) ======
+
+/** Gets the error map enabled state from storage */
+function getErrorMapEnabled() {
+  try {
+    let enabled = null;
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmErrorMap', null);
+      if (saved !== null) enabled = JSON.parse(saved);
+    }
+    if (enabled === null) {
+      const saved = localStorage.getItem('bmErrorMap');
+      if (saved !== null) enabled = JSON.parse(saved);
+    }
+    return enabled !== null ? enabled : false;
+  } catch (error) {
+    consoleWarn('Failed to load error map setting:', error);
+  }
+  return false;
+}
+
+/** Saves the error map enabled state to storage */
+function saveErrorMapEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(!!enabled);
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmErrorMap', enabledString);
+    }
+    localStorage.setItem('bmErrorMap', enabledString);
+    consoleLog('✅ Error map setting saved:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save error map setting:', error);
+  }
+}
+
+/** Toggles error map mode on/off */
+function toggleErrorMapMode() {
+  const currentState = getErrorMapEnabled();
+  const newState = !currentState;
+  saveErrorMapEnabled(newState);
+  
+  // Apply to template manager
+  if (templateManager) {
+    templateManager.setErrorMapMode(newState);
+  }
+  
+  // Force template redraw to apply changes
+  if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+    templateManager.setTemplatesShouldBeDrawn(false);
+    setTimeout(() => {
+      templateManager.setTemplatesShouldBeDrawn(true);
+    }, 50);
+  }
+}
+
 /** Injects/updates numeric LEFT badges on the site's native color palette buttons
  * @param {Object} pixelStats - Map keyed by "r,g,b" with {totalRequired, painted, needsCrosshair}
  */
@@ -4168,7 +4250,9 @@ function updateMiniTracker() {
     }
   }
   
-  // Style the tracker - COMPACT SLATE THEME
+  // Style the tracker - COMPACT SLATE THEME (responsive to minimized state)
+  const isMainMinimizedForStyle = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px');
+  
   tracker.style.cssText = `
     background: linear-gradient(135deg, #1e293b, #334155);
     border: 1px solid #475569;
@@ -4178,13 +4262,14 @@ function updateMiniTracker() {
     color: #f1f5f9;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-    width: 100%;
+    width: ${isMainMinimizedForStyle ? '230px' : '100%'};
     font-size: 0.85rem;
     display: grid;
     grid-template-columns: 1fr;
     grid-template-rows: auto auto auto auto;
     grid-gap: 6px;
     letter-spacing: -0.01em;
+    box-sizing: border-box;
   `;
   
   // LAYOUT CSS GRID - HTML LIMPO
@@ -4208,7 +4293,7 @@ function updateMiniTracker() {
     `;
   }
   
-  // Aplicar estilos CSS às classes - SLATE THEME COMPACT
+  // Aplicar estilos CSS às classes - SLATE THEME COMPACT (fixed styles)
   const style = document.createElement('style');
   style.textContent = `
     .tracker-title {
@@ -4219,6 +4304,7 @@ function updateMiniTracker() {
       text-align: left;
       color: #f1f5f9;
       letter-spacing: -0.02em;
+      line-height: 1.2;
     }
     .tracker-pixels {
       font-size: 0.8rem;
@@ -4227,6 +4313,7 @@ function updateMiniTracker() {
       width: 100%;
       text-align: left;
       font-weight: 500;
+      line-height: 1.2;
     }
     .tracker-progress {
       height: 8px;
@@ -4236,12 +4323,14 @@ function updateMiniTracker() {
       grid-row: 3;
       width: 100%;
       border: 1px solid #64748b;
+      min-width: 0;
     }
     .tracker-bar {
       height: 100%;
       background: linear-gradient(90deg, #3b82f6, #10b981);
       border-radius: 4px;
       transition: width 0.3s ease;
+      min-width: 0;
     }
     .tracker-left {
       font-size: 0.8rem;
@@ -4250,12 +4339,16 @@ function updateMiniTracker() {
       width: 100%;
       text-align: left;
       font-weight: 600;
+      line-height: 1.2;
     }
   `;
-  if (!document.getElementById('tracker-styles')) {
-    style.id = 'tracker-styles';
-    document.head.appendChild(style);
+  // Remove existing styles and add updated ones to ensure state changes are reflected
+  const existingStyle = document.getElementById('tracker-styles');
+  if (existingStyle) {
+    existingStyle.remove();
   }
+  style.id = 'tracker-styles';
+  document.head.appendChild(style);
   
   consoleLog(`📊 Mini tracker updated: ${totalPainted}/${totalRequired} (${progressPercentage}%) - ${totalNeedCrosshair} need crosshair`);
 }

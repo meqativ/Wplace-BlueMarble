@@ -50,7 +50,13 @@ export default class TemplateManager {
     this.encodingBase = '!#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~'; // Characters to use for encoding/decoding
     this.tileSize = 1000; // The number of pixels in a tile. Assumes the tile is square
     this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
-    this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong} (from Storage fork)
+    this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong}
+    
+    // Error Map Mode Properties (ported from lurk)
+    this.errorMapEnabled = false; // Whether to show green/red overlay for correct/wrong pixels
+    this.showCorrectPixels = true; // Show green overlay for correct pixels
+    this.showWrongPixels = true; // Show red overlay for wrong pixels
+    this.showUnpaintedAsWrong = false; // Mark unpainted pixels as wrong (red) (from Storage fork)
     
     // Wrong Color Options
     this.includeWrongColorsInProgress = false; // Include wrong color pixels in progress calculation
@@ -956,6 +962,156 @@ export default class TemplateManager {
         
       } catch (error) {
         consoleWarn('Failed to compute tile progress stats:', error);
+      }
+    }
+
+    // ==================== ERROR MAP MODE (LURK INTEGRATION) ====================
+    // Apply green/red overlay when error map mode is enabled (based on lurk logic)
+    if (this.errorMapEnabled && templatesToDraw.length > 0) {
+      try {
+        // Get fresh tile pixels from the original tileBlob (not our overlay with template drawn)
+        let tilePixels = null;
+        try {
+          // Use the original tile blob data for accurate pixel comparison
+          const originalTileBitmap = await createImageBitmap(tileBlob);
+          const originalTileCanvas = document.createElement('canvas');
+          originalTileCanvas.width = drawSize;
+          originalTileCanvas.height = drawSize;
+          const originalTileCtx = originalTileCanvas.getContext('2d', { willReadFrequently: true });
+          originalTileCtx.imageSmoothingEnabled = false;
+          originalTileCtx.clearRect(0, 0, drawSize, drawSize);
+          originalTileCtx.drawImage(originalTileBitmap, 0, 0, drawSize, drawSize);
+          const originalTileImageData = originalTileCtx.getImageData(0, 0, drawSize, drawSize);
+          tilePixels = originalTileImageData.data;
+        } catch (_) {
+          // If reading fails for any reason, we will skip error map
+        }
+
+        if (tilePixels) {
+          // Store correct and wrong pixels map for visual render (lurk style)
+          const wrongMap = [];
+          const correctMap = [];
+
+          // Analyze each template (same logic as lurk)
+          for (const template of templatesToDraw) {
+            const tempW = template.bitmap.width;
+            const tempH = template.bitmap.height;
+            const tempCanvas = new OffscreenCanvas(tempW, tempH);
+            const tempCtx = tempCanvas.getContext('2d', { willReadFrequently: true });
+            tempCtx.imageSmoothingEnabled = false;
+            tempCtx.clearRect(0, 0, tempW, tempH);
+            tempCtx.drawImage(template.bitmap, 0, 0);
+            const tImg = tempCtx.getImageData(0, 0, tempW, tempH);
+            const tData = tImg.data;
+
+            const offsetX = Number(template.pixelCoords[0]) * this.drawMult;
+            const offsetY = Number(template.pixelCoords[1]) * this.drawMult;
+
+            for (let y = 0; y < tempH; y++) {
+              for (let x = 0; x < tempW; x++) {
+                // Only evaluate the center pixel of each 3x3 block (lurk logic)
+                if ((x % this.drawMult) !== 1 || (y % this.drawMult) !== 1) { continue; }
+                const gx = x + offsetX;
+                const gy = y + offsetY;
+                if (gx < 0 || gy < 0 || gx >= drawSize || gy >= drawSize) { continue; }
+                const tIdx = (y * tempW + x) * 4;
+                const tr = tData[tIdx];
+                const tg = tData[tIdx + 1];
+                const tb = tData[tIdx + 2];
+                const ta = tData[tIdx + 3];
+                
+                // Handle template transparent pixel (alpha < 64): wrong if board has any site palette color here
+                if (ta < 64) {
+                  try {
+                    const activeTemplate = this.templatesArray?.[0];
+                    const tileIdx = (gy * drawSize + gx) * 4;
+                    const pr = tilePixels[tileIdx];
+                    const pg = tilePixels[tileIdx + 1];
+                    const pb = tilePixels[tileIdx + 2];
+                    const pa = tilePixels[tileIdx + 3];
+                    const key = `${pr},${pg},${pb}`;
+                    const isSiteColor = activeTemplate?.allowedColorsSet ? activeTemplate.allowedColorsSet.has(key) : false;
+                    if (pa >= 64 && isSiteColor) {
+                      wrongMap.push({ x: gx, y: gy, color: `${tr},${tg},${tb}` });
+                    }
+                  } catch (_) {}
+                  continue;
+                }
+                
+                // Treat #deface as Transparent palette color (required and paintable)
+                // Ignore non-palette colors (match against allowed set when available)
+                try {
+                  const activeTemplate = this.templatesArray?.[0];
+                  if (activeTemplate?.allowedColorsSet && !activeTemplate.allowedColorsSet.has(`${tr},${tg},${tb}`)) {
+                    continue;
+                  }
+                } catch (_) {}
+
+                // Strict center-pixel matching. Treat transparent tile pixels as unpainted (not wrong)
+                const tileIdx = (gy * drawSize + gx) * 4;
+                const pr = tilePixels[tileIdx];
+                const pg = tilePixels[tileIdx + 1];
+                const pb = tilePixels[tileIdx + 2];
+                const pa = tilePixels[tileIdx + 3];
+
+                if (pa < 64) {
+                  // Unpainted -> neither painted nor wrong
+                  // if it not a transparent pixel on target template, treat it as wrong pixel
+                  if (this.showUnpaintedAsWrong && ta !== 0) {
+                    wrongMap.push({ x: gx, y: gy, color: `${tr},${tg},${tb}`, unpainted: true });
+                  }
+                } else if (pr === tr && pg === tg && pb === tb) {
+                  correctMap.push({ x: gx, y: gy, color: `${tr},${tg},${tb}` });
+                } else {
+                  wrongMap.push({ x: gx, y: gy, color: `${tr},${tg},${tb}`, unpainted: false });
+                }
+              }
+            }
+          }
+
+          // Draw the stat map (exact lurk logic)
+          context.globalCompositeOperation = "source-over";
+
+          const activeTemplate = this.templatesArray?.[0];
+          const palette = activeTemplate?.colorPalette || {};
+
+          const isDisable = key => {
+            const inSitePalette = activeTemplate?.allowedColorsSet ? activeTemplate.allowedColorsSet.has(key) : true;
+            const enabled = palette?.[key]?.enabled !== false;
+            return !inSitePalette || !enabled;
+          }
+
+          if (this.showWrongPixels) {
+            // Use blur dark red as marker for wrong pixel
+            context.fillStyle = "rgba(128, 0, 0, 0.6)";
+            for (const { x, y, color, unpainted } of wrongMap) {
+              if (isDisable(color)) {continue;}
+              if (unpainted) {
+                // Only mark a most center pixel for better visibility
+                context.fillRect(x, y, 1, 1);
+              }
+              else {
+                // Calculate offset base on enlarged size
+                const offset = Math.floor(this.drawMult / 2);
+                context.fillRect(x - offset, y - offset, this.drawMult, this.drawMult);
+              }
+            }
+          }
+
+          if (this.showCorrectPixels) {
+            // Use blur dark green as marker for correct pixel
+            context.fillStyle = "rgba(0, 128, 0, 0.6)";
+            for (const { x, y, color } of correctMap) {
+              if (isDisable(color)) {continue;}
+              // Calculate offset base on enlarged size
+              const offset = Math.floor(this.drawMult / 2); 
+              context.fillRect(x - offset, y - offset, this.drawMult, this.drawMult);
+            }
+          }
+        }
+        
+      } catch (error) {
+        console.warn('Failed to render error map overlay:', error);
       }
     }
 
@@ -1869,6 +2025,20 @@ export default class TemplateManager {
    */
   getEnhanceWrongColors() {
     return this.enhanceWrongColors;
+  }
+
+  /** Sets the error map mode state
+   * @param {boolean} enabled - Whether error map mode should be enabled
+   */
+  setErrorMapMode(enabled) {
+    this.errorMapEnabled = !!enabled;
+  }
+
+  /** Gets whether error map mode is enabled
+   * @returns {boolean} True if error map mode is enabled
+   */
+  getErrorMapMode() {
+    return this.errorMapEnabled;
   }
 
   /** Loads wrong color settings from storage
