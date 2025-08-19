@@ -359,6 +359,9 @@ apiManager.spontaneousResponseListener(overlayMain); // Reads spontaneous fetch 
 
 observeBlack(); // Observes the black palette color
 
+// Initialize keyboard shortcuts
+initializeKeyboardShortcuts();
+
 consoleLog(`%c${name}%c (${version}) userscript has loaded!`, 'color: cornflowerblue;', '');
 
 /** Observe the black color, and add the "Move" button.
@@ -3214,6 +3217,216 @@ function forceTemplateRedraw() {
       // Update mini tracker after template redraw
       updateMiniTracker();
     }, 100); // Slightly longer delay to ensure redraw is complete
+  }
+}
+
+// ====== KEYBOARD SHORTCUT: E + CLICK FOR ENHANCED COLORS ======
+
+/** Map of color IDs to RGB values from r/place palette */
+const COLOR_PALETTE_MAP = {
+  'color-0': [255, 255, 255, 0], // Transparent
+  'color-1': [0, 0, 0], // Black
+  'color-2': [60, 60, 60], // Dark Gray
+  'color-3': [120, 120, 120], // Gray
+  'color-4': [210, 210, 210], // Light Gray
+  'color-5': [255, 255, 255], // White
+  'color-6': [96, 0, 24], // Deep Red
+  'color-7': [237, 28, 36], // Red
+  'color-8': [255, 127, 39], // Orange
+  'color-9': [246, 170, 9], // Gold
+  'color-10': [249, 221, 59], // Yellow
+  'color-11': [255, 250, 188], // Light Yellow
+  'color-12': [14, 185, 104], // Dark Green
+  'color-13': [19, 230, 123], // Green
+  'color-14': [135, 255, 94], // Light Green
+  'color-15': [12, 129, 110], // Dark Teal
+  'color-16': [16, 174, 166], // Teal
+  'color-17': [19, 225, 190], // Light Teal
+  'color-18': [40, 80, 158], // Dark Blue
+  'color-19': [64, 147, 228], // Blue
+  'color-20': [96, 247, 242], // Cyan
+  'color-21': [107, 80, 246], // Indigo
+  'color-22': [153, 177, 251], // Light Indigo
+  'color-23': [120, 12, 153], // Dark Purple
+  'color-24': [170, 56, 185], // Purple
+  'color-25': [224, 159, 249], // Light Purple
+  'color-26': [203, 0, 122], // Dark Pink
+  'color-27': [236, 31, 128], // Pink
+  'color-28': [243, 141, 169], // Light Pink
+  'color-29': [104, 70, 52], // Dark Brown
+  'color-30': [149, 104, 42], // Brown
+  'color-31': [248, 178, 119], // Beige
+  'color-32': [170, 170, 170], // Medium Gray
+  'color-33': [165, 14, 30], // Dark Red
+  'color-34': [250, 128, 114], // Light Red
+  'color-35': [228, 92, 26], // Dark Orange
+  'color-36': [214, 181, 148], // Light Tan
+  'color-37': [156, 132, 49], // Dark Goldenrod
+  'color-38': [197, 173, 49], // Goldenrod
+  'color-39': [232, 212, 95], // Light Goldenrod
+  'color-40': [74, 107, 58], // Dark Olive
+  'color-41': [90, 148, 74], // Olive
+  'color-42': [132, 197, 115], // Light Olive
+  'color-43': [15, 121, 159], // Dark Cyan
+  'color-44': [187, 250, 242], // Light Cyan
+  'color-45': [125, 199, 255], // Light Blue
+  'color-46': [77, 49, 184], // Dark Indigo
+  'color-47': [74, 66, 132], // Dark Slate Blue
+  'color-48': [122, 113, 196], // Slate Blue
+  'color-49': [181, 174, 241], // Light Slate Blue
+  'color-50': [219, 164, 99], // Light Brown
+  'color-51': [209, 128, 81], // Dark Beige
+  'color-52': [255, 197, 165], // Light Beige
+  'color-53': [155, 82, 73], // Dark Peach
+  'color-54': [209, 128, 120], // Peach
+  'color-55': [250, 182, 164], // Light Peach
+  'color-56': [123, 99, 82], // Dark Tan
+  'color-57': [156, 132, 107], // Tan
+  'color-58': [51, 57, 65], // Dark Slate
+  'color-59': [109, 117, 141], // Slate
+  'color-60': [179, 185, 209], // Light Slate
+  'color-61': [109, 100, 63], // Dark Stone
+  'color-62': [148, 140, 107], // Stone
+  'color-63': [205, 197, 158] // Light Stone
+};
+
+/** State for E key shortcut */
+let isEKeyPressed = false;
+let eKeyModeActive = false;
+
+/** Initialize keyboard shortcut functionality 
+ * 
+ * HOW TO USE THE E+CLICK SHORTCUT:
+ * 1. Press and hold the 'E' key
+ * 2. While holding 'E', click on any color in the r/place palette
+ * 3. This will:
+ *    - Clear all currently enhanced colors
+ *    - Enable enhanced mode ONLY for the clicked color
+ *    - Refresh the template to show the changes
+ * 4. Release the 'E' key to exit enhanced selection mode
+ * 
+ * VISUAL FEEDBACK:
+ * - Cursor changes to crosshair when E-Mode is active
+ * - Status messages appear to confirm actions
+ * - Color filter overlay automatically refreshes if open
+ * 
+ * @since 1.0.0
+ */
+function initializeKeyboardShortcuts() {
+  consoleLog('🎹 [Keyboard Shortcuts] Initializing E+Click shortcut for enhanced colors...');
+  
+  // Track E key press/release
+  document.addEventListener('keydown', (event) => {
+    if (event.code === 'KeyE' && !event.repeat) {
+      isEKeyPressed = true;
+      eKeyModeActive = true;
+      
+      // Visual feedback - add cursor style to show E mode is active
+      document.body.style.cursor = 'crosshair';
+      
+      // Show notification
+      if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+        overlayMain.handleDisplayStatus('🎹 E-Mode: Click a color to enable enhanced mode for that color only');
+      }
+      
+      consoleLog('🎹 [E-Mode] Enhanced selection mode ACTIVATED');
+    }
+  });
+  
+  document.addEventListener('keyup', (event) => {
+    if (event.code === 'KeyE') {
+      isEKeyPressed = false;
+      eKeyModeActive = false;
+      
+      // Reset cursor
+      document.body.style.cursor = '';
+      
+      consoleLog('🎹 [E-Mode] Enhanced selection mode DEACTIVATED');
+    }
+  });
+  
+  // Handle clicks on color palette buttons when E is pressed
+  document.addEventListener('click', handleEKeyColorClick, true);
+  
+  consoleLog('✅ [Keyboard Shortcuts] E+Click shortcut initialized successfully');
+}
+
+/** Handle E+Click on color palette */
+function handleEKeyColorClick(event) {
+  if (!eKeyModeActive) return;
+  
+  // Check if clicked element is a color button
+  const colorButton = event.target.closest('button[id^="color-"]');
+  if (!colorButton) return;
+  
+  // Prevent normal color selection
+  event.preventDefault();
+  event.stopPropagation();
+  
+  const colorId = colorButton.id;
+  const rgbColor = COLOR_PALETTE_MAP[colorId];
+  
+  if (!rgbColor) {
+    consoleWarn(`🎹 [E-Mode] Unknown color ID: ${colorId}`);
+    return;
+  }
+  
+  // Skip transparent color
+  if (colorId === 'color-0') {
+    if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+      overlayMain.handleDisplayStatus('🎹 E-Mode: Cannot enhance transparent color');
+    }
+    return;
+  }
+  
+  consoleLog(`🎹 [E-Mode] Processing color: ${colorId} -> RGB(${rgbColor.join(', ')})`);
+  
+  // Get current template
+  const currentTemplate = templateManager.templatesArray?.[0];
+  if (!currentTemplate) {
+    if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayError) {
+      overlayMain.handleDisplayError('🎹 E-Mode: No template loaded');
+    }
+    return;
+  }
+  
+  try {
+    // Clear all enhanced colors first
+    currentTemplate.enhancedColors.clear();
+    consoleLog('🎹 [E-Mode] Cleared all enhanced colors');
+    
+    // Enable enhanced mode for the selected color
+    currentTemplate.enableColorEnhanced(rgbColor);
+    consoleLog(`🎹 [E-Mode] Enhanced mode enabled for RGB(${rgbColor.join(', ')})`);
+    
+    // Visual feedback
+    const colorName = colorButton.getAttribute('aria-label') || colorId;
+    if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+      overlayMain.handleDisplayStatus(`✅ Enhanced mode enabled for: ${colorName}`);
+    }
+    
+    // Refresh template to apply changes
+    refreshTemplateDisplay().then(() => {
+      consoleLog('🎹 [E-Mode] Template refreshed with new enhanced color');
+    }).catch(error => {
+      consoleError('🎹 [E-Mode] Error refreshing template:', error);
+    });
+    
+    // Update color filter overlay if it's open
+    const colorFilterOverlay = document.getElementById('bm-color-filter-overlay');
+    if (colorFilterOverlay) {
+      // Close and reopen to refresh
+      colorFilterOverlay.remove();
+      setTimeout(() => {
+        buildColorFilterOverlay();
+      }, 100);
+    }
+    
+  } catch (error) {
+    consoleError('🎹 [E-Mode] Error processing enhanced color:', error);
+    if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayError) {
+      overlayMain.handleDisplayError('🎹 E-Mode: Failed to set enhanced color');
+    }
   }
 }
 

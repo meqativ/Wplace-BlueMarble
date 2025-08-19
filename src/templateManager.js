@@ -433,7 +433,7 @@ export default class TemplateManager {
              const wrongColors = Object.entries(tileData.colorBreakdown)
                .filter(([color, data]) => data.wrong > 0)
                .map(([color, data]) => `${color}(${data.wrong} wrong)`);
-             console.log(`🎯 [Debug] Wrong colors in this tile: ${wrongColors.join(', ')}`);
+            //  console.log(`🎯 [Debug] Wrong colors in this tile: ${wrongColors.join(', ')}`);
            }
          }
        }
@@ -626,15 +626,15 @@ export default class TemplateManager {
                    wrongColorCount++;
                    
                    if (wrongColorCount <= 5) { // Log first 5 wrong colors for debugging
-                     console.log(`🎯 [Wrong Colors] Found wrong color at (${px},${py}): template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB}`);
+                    //  console.log(`🎯 [Wrong Colors] Found wrong color at (${px},${py}): template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB}`);
                    }
                  } else if (wrongColorCount <= 5) {
                    // Log first few pixels that are NOT wrong for debugging
-                   console.log(`🎯 [Wrong Colors] Pixel at (${px},${py}) is NOT wrong: template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB} (alpha: ${canvasA})`);
+                  //  console.log(`🎯 [Wrong Colors] Pixel at (${px},${py}) is NOT wrong: template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB} (alpha: ${canvasA})`);
                  }
                }
                
-               console.log(`🎯 [Wrong Colors] Found ${wrongColorCount} wrong color pixels out of ${enhancedPixelsArray.length} enhanced pixels`);
+              //  console.log(`🎯 [Wrong Colors] Found ${wrongColorCount} wrong color pixels out of ${enhancedPixelsArray.length} enhanced pixels`);
                
                // Add wrong color pixels to enhanced pixels set for crosshair processing
                for (const pixelCoord of wrongColorPixels) {
@@ -1239,13 +1239,13 @@ export default class TemplateManager {
         
         // Use template's color palette to break down by color
         consoleLog('🔍 [Enhanced Pixel Analysis] Template colorPalette:', template.colorPalette);
-        consoleLog('🔍 [Enhanced Pixel Analysis] ColorPalette keys:', Object.keys(template.colorPalette || {}));
+        // consoleLog('🔍 [Enhanced Pixel Analysis] ColorPalette keys:', Object.keys(template.colorPalette || {}));
         
         // If no color palette, rebuild it from tile data
         if (!template.colorPalette || Object.keys(template.colorPalette).length === 0) {
-          consoleLog('🔧 [Enhanced Pixel Analysis] Color palette empty, rebuilding from tiles...');
+          // consoleLog('🔧 [Enhanced Pixel Analysis] Color palette empty, rebuilding from tiles...');
           template.colorPalette = this.buildColorPaletteFromTileProgress(template);
-          consoleLog('🔧 [Enhanced Pixel Analysis] Rebuilt palette:', Object.keys(template.colorPalette));
+          // consoleLog('🔧 [Enhanced Pixel Analysis] Rebuilt palette:', Object.keys(template.colorPalette));
         }
         
         if (template.colorPalette && Object.keys(template.colorPalette).length > 0) {
@@ -1311,7 +1311,7 @@ export default class TemplateManager {
               Math.round((effectivePaintedForTracker / totalRequiredForColor) * 100) : 0;
             
             if (this.includeWrongColorsInProgress && wrongForColor > 0) {
-              consoleLog(`🔧 [Mini Tracker Fix] ${colorKey}: painted ${paintedForColor} + wrong ${wrongForColor} = ${effectivePaintedForTracker} (${correctedPercentage}%) - was ${percentage}%`);
+              // consoleLog(`🔧 [Mini Tracker Fix] ${colorKey}: painted ${paintedForColor} + wrong ${wrongForColor} = ${effectivePaintedForTracker} (${correctedPercentage}%) - was ${percentage}%`);
             }
             
             colorStats[colorKey] = {
@@ -1772,7 +1772,7 @@ export default class TemplateManager {
    * @since 1.0.0
    */
   getIncludeWrongColorsInProgress() {
-    console.log(`🎯 [Debug] getIncludeWrongColorsInProgress returning: ${this.includeWrongColorsInProgress}`);
+    // console.log(`🎯 [Debug] getIncludeWrongColorsInProgress returning: ${this.includeWrongColorsInProgress}`);
     return this.includeWrongColorsInProgress;
   }
 
