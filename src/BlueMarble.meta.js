@@ -16,6 +16,8 @@
 // @grant        GM_addStyle
 // @grant        GM.setValue
 // @grant        GM_getValue
+// @grant        GM_xmlhttpRequest
+// @connect      nominatim.openstreetmap.org
 // @resource     CSS-BM-File https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/11ff785482f220feb9fa97f19f403775735ed3af/dist/BlueMarble.user.css
 // ==/UserScript==
 

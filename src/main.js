@@ -164,6 +164,329 @@ inject(() => {
 const cssOverlay = GM_getResourceText("CSS-BM-File");
 GM_addStyle(cssOverlay);
 
+// Add Search Window CSS with Slate Theme
+const searchWindowCSS = `
+#skirk-search-draggable {
+  position: fixed; right: 75px; top: 440px; z-index: 2147483646;
+  width: min(420px,90vw); max-height: 500px;
+  background: #1e293b; color: #f1f5f9; border-radius: 10px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  border: 1px solid #334155;
+  font: 14px/1.4 Roboto Mono, monospace, Arial;
+  display: none;
+  flex-direction: column;
+  min-width: 300px;
+  will-change: transform;
+}
+#skirk-search-draggable .drag-handle {
+  margin-bottom: 0.5em;
+  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="5" height="5"><circle cx="3" cy="3" r="1.5" fill="%23475569" /></svg>') repeat;
+  cursor: grab;
+  width: 100%;
+  height: 1.2em;
+  border-radius: 10px 10px 0 0;
+}
+#skirk-search-draggable.dragging .drag-handle {
+  cursor: grabbing;
+}
+#skirk-search-draggable .hdr {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px 0 14px;
+}
+#skirk-search-draggable .hdr h3 {
+  margin: 0; font-size: 17px; font-weight: 700; letter-spacing: 0.07em;
+  display: flex; align-items: center; gap: 0.5em;
+  color: #f1f5f9;
+}
+#skirk-search-draggable .hdr .actions {
+  display: flex; gap: 10px;
+}
+#skirk-search-draggable .hdr button {
+  border: none; padding: 6px 10px; border-radius: 7px;
+  background: #475569; color: #f1f5f9; font: 14px monospace;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+#skirk-search-draggable .hdr button:hover { 
+  background: #64748b; 
+  transform: translateY(-1px);
+}
+#skirk-search-draggable .hdr button:active { 
+  background: #334155; 
+  transform: translateY(0px);
+}
+#skirk-search-draggable .body {
+  padding: 10px 14px; overflow: hidden;
+}
+#mars-search-input {
+  width: 100%; padding: 8px 12px; border-radius: 6px;
+  border: 1px solid #475569; background: #0f172a;
+  color: #f1f5f9; font: 14px monospace;
+  margin-bottom: 10px;
+  transition: all 0.2s;
+}
+#mars-search-input:focus { 
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+#mars-search-input::placeholder { color: #64748b; }
+#mars-search-results {
+  max-height: 320px; overflow-y: auto;
+}
+#mars-search-results::-webkit-scrollbar {
+  width: 6px;
+}
+#mars-search-results::-webkit-scrollbar-track {
+  background: #0f172a;
+  border-radius: 3px;
+}
+#mars-search-results::-webkit-scrollbar-thumb {
+  background: #475569;
+  border-radius: 3px;
+}
+#mars-search-results::-webkit-scrollbar-thumb:hover {
+  background: #64748b;
+}
+.mars-search-result {
+  padding: 12px; cursor: pointer;
+  border-bottom: 1px solid #334155;
+  transition: all 0.2s;
+  position: relative;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+}
+.mars-search-result:hover {
+  background-color: #334155;
+  transform: translateX(2px);
+}
+.mars-search-result:last-child {
+  border-bottom: none;
+}
+.mars-result-content {
+  flex: 1;
+}
+.mars-result-name {
+  font-size: 14px;
+  color: #f1f5f9;
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+.mars-result-address {
+  font-size: 12px;
+  color: #94a3b8;
+  line-height: 1.3;
+}
+.mars-result-address.secondary {
+  color: #cbd5e1;
+  font-weight: 500;
+}
+.mars-favorite-star {
+  color: #64748b;
+  font-size: 16px;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+  user-select: none;
+  margin-left: 8px;
+}
+.mars-favorite-star:hover {
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.1);
+  transform: scale(1.1);
+}
+.mars-favorite-star.favorited {
+  color: #fbbf24;
+}
+.mars-loading, .mars-no-results {
+  padding: 20px;
+  text-align: center;
+  color: #64748b;
+  font-size: 14px;
+}
+.mars-icon {
+  display: inline-block; height: 2em; margin-right: 1ch; vertical-align: middle;
+}
+
+/* Favorites Menu */
+#mars-favorites-menu {
+  border-top: 1px solid #334155;
+  margin-top: 10px;
+  padding-top: 10px;
+}
+#mars-favorites-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+#mars-favorites-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: #cbd5e1;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: color 0.2s;
+}
+#mars-favorites-title:hover {
+  color: #f1f5f9;
+}
+#mars-favorites-toggle {
+  font-size: 10px;
+  transition: transform 0.2s;
+}
+#mars-favorites-toggle.collapsed {
+  transform: rotate(-90deg);
+}
+#mars-favorites-count {
+  background: #475569;
+  color: #f1f5f9;
+  border-radius: 10px;
+  padding: 2px 6px;
+  font-size: 11px;
+  font-weight: 500;
+}
+#mars-clear-favorites {
+  background: none;
+  border: none;
+  color: #64748b;
+  cursor: pointer;
+  font-size: 11px;
+  padding: 2px 6px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+#mars-clear-favorites:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+#mars-favorites-list {
+  max-height: 150px;
+  overflow-y: auto;
+}
+.mars-favorite-item {
+  padding: 8px;
+  cursor: pointer;
+  border-radius: 6px;
+  margin-bottom: 2px;
+  transition: all 0.2s;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+.mars-favorite-item:hover {
+  background: #334155;
+}
+.mars-favorite-item .mars-result-content {
+  flex: 1;
+}
+.mars-favorite-item .mars-result-name {
+  font-size: 13px;
+  margin-bottom: 2px;
+}
+.mars-favorite-item .mars-result-address {
+  font-size: 11px;
+}
+.mars-favorite-remove {
+  color: #64748b;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 2px;
+  border-radius: 3px;
+  transition: all 0.2s;
+}
+.mars-favorite-remove:hover {
+  color: #ef4444;
+  background: rgba(239, 68, 68, 0.1);
+}
+
+/* Custom Location Modal */
+#mars-location-modal {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: 2147483647;
+  display: none;
+  align-items: center;
+  justify-content: center;
+}
+#mars-location-dialog {
+  background: #1e293b;
+  color: #f1f5f9;
+  border-radius: 10px;
+  border: 1px solid #334155;
+  padding: 20px;
+  min-width: 400px;
+  max-width: 90vw;
+}
+#mars-location-dialog h3 {
+  margin: 0 0 16px 0;
+  color: #f1f5f9;
+  font-size: 18px;
+}
+#mars-location-dialog .form-group {
+  margin-bottom: 16px;
+}
+#mars-location-dialog label {
+  display: block;
+  margin-bottom: 4px;
+  color: #cbd5e1;
+  font-size: 14px;
+  font-weight: 500;
+}
+#mars-location-dialog input {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #475569;
+  background: #0f172a;
+  color: #f1f5f9;
+  border-radius: 6px;
+  font: 14px monospace;
+  transition: all 0.2s;
+}
+#mars-location-dialog input:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+#mars-location-dialog .button-group {
+  display: flex;
+  gap: 8px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+#mars-location-dialog button {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  font: 14px monospace;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+#mars-location-dialog .btn-primary {
+  background: #3b82f6;
+  color: #fff;
+}
+#mars-location-dialog .btn-primary:hover {
+  background: #2563eb;
+}
+#mars-location-dialog .btn-secondary {
+  background: #475569;
+  color: #f1f5f9;
+}
+#mars-location-dialog .btn-secondary:hover {
+  background: #64748b;
+}
+
+
+`;
+
+GM_addStyle(searchWindowCSS);
+
 // Imports the Roboto Mono font family
 let robotoStylesheetLink = document.createElement('link');
 robotoStylesheetLink.href = 'https://fonts.googleapis.com/css2?family=Roboto+Mono:ital,wght@0,100..700;1,100..700&display=swap';
@@ -1802,14 +2125,20 @@ function buildOverlayMain() {
       }).buildElement()
       .addTextarea({'id': overlayMain.outputStatusId, 'placeholder': `Status: Sleeping...\nVersion: ${version}`, 'readOnly': true}).buildElement()
       .addDiv({'id': 'bm-contain-buttons-action'})
-        .addDiv()
-          // .addButton({'id': 'bm-button-teleport', 'className': 'bm-help', 'textContent': '✈'}).buildElement()
-          // .addButton({'id': 'bm-button-favorite', 'className': 'bm-help', 'innerHTML': '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><polygon points="10,2 12,7.5 18,7.5 13.5,11.5 15.5,18 10,14 4.5,18 6.5,11.5 2,7.5 8,7.5" fill="white"></polygon></svg>'}).buildElement()
-          // .addButton({'id': 'bm-button-templates', 'className': 'bm-help', 'innerHTML': '🖌'}).buildElement()
+        .addDiv({'style': 'display: flex; gap: 6px; align-items: center;'})
           .addButton({'id': 'bm-button-convert', 'className': 'bm-help', 'innerHTML': '🎨', 'title': 'Template Color Converter'}, 
             (instance, button) => {
             button.addEventListener('click', () => {
               window.open('https://pepoafonso.github.io/color_converter_wplace/', '_blank', 'noopener noreferrer');
+            });
+          }).buildElement()
+          .addButton({'id': 'bm-search', 'className': 'bm-help', 'innerHTML': '🔍', 'title': 'Location Search'}, 
+            (instance, button) => {
+            button.addEventListener('click', () => {
+              const searchPanel = document.getElementById('skirk-search-draggable');
+              if (searchPanel) {
+                searchPanel.style.display = searchPanel.style.display === 'none' || !searchPanel.style.display ? 'flex' : 'none';
+              }
             });
           }).buildElement()
         .buildElement()
@@ -5982,4 +6311,513 @@ function buildCrosshairSettingsOverlay() {
     consoleError('Failed to build Crosshair Settings overlay:', error);
     overlayMain.handleDisplayError('Failed to open Crosshair Settings');
   }
+}
+
+// Add Search Functionality
+function createSearchWindow() {
+  const searchPanel = document.createElement('div');
+  searchPanel.id = 'skirk-search-draggable';
+  searchPanel.innerHTML = `
+<div class="drag-handle"></div>
+<div class="hdr">
+  <h3>
+    <img class="mars-icon" src="https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png" alt="Blue Marble">
+    Location Search
+  </h3>
+  <div class="actions">
+    <button id="mars-location-btn">Location</button>
+    <button id="mars-search-close">Close</button>
+  </div>
+</div>
+<div class="body">
+  <input type="text" id="mars-search-input" placeholder="Search for a place...">
+  <div id="mars-search-results"></div>
+  <div id="mars-favorites-menu" style="display: none;">
+    <div id="mars-favorites-header">
+      <div id="mars-favorites-title" style="cursor: pointer;">
+        <span id="mars-favorites-toggle">▼</span> ⭐ Favorites
+        <span id="mars-favorites-count">0</span>
+      </div>
+
+      <button id="mars-clear-favorites">Clear All</button>
+    </div>
+    <div id="mars-favorites-list"></div>
+  </div>
+</div>`;
+  document.body.appendChild(searchPanel);
+
+  // Close logic
+  searchPanel.querySelector('#mars-search-close').addEventListener('click', () => searchPanel.style.display = 'none');
+
+  // Favorites management
+  const FAVORITES_KEY = 'bm-search-favorites';
+  
+  function getFavorites() {
+    try {
+      return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
+    } catch {
+      return [];
+    }
+  }
+  
+  function saveFavorites(favorites) {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+      updateFavoritesDisplay();
+    } catch (error) {
+      console.error('Error saving favorites:', error);
+    }
+  }
+  
+  function addFavorite(location) {
+    const favorites = getFavorites();
+    const exists = favorites.find(fav => fav.lat === location.lat && fav.lon === location.lon);
+    if (!exists) {
+      favorites.push(location);
+      saveFavorites(favorites);
+    }
+  }
+  
+  function removeFavorite(lat, lon) {
+    const favorites = getFavorites();
+    const filtered = favorites.filter(fav => !(fav.lat === lat && fav.lon === lon));
+    saveFavorites(filtered);
+  }
+  
+  function isFavorited(lat, lon) {
+    const favorites = getFavorites();
+    return favorites.some(fav => fav.lat === lat && fav.lon === lon);
+  }
+  
+  function updateFavoritesDisplay() {
+    const favorites = getFavorites();
+    const favoritesMenu = searchPanel.querySelector('#mars-favorites-menu');
+    const favoritesCount = searchPanel.querySelector('#mars-favorites-count');
+    const favoritesList = searchPanel.querySelector('#mars-favorites-list');
+    
+    favoritesCount.textContent = favorites.length;
+    
+    if (favorites.length > 0) {
+      favoritesMenu.style.display = 'block';
+      favoritesList.innerHTML = '';
+      
+      favorites.forEach(favorite => {
+        const favoriteItem = document.createElement('div');
+        favoriteItem.className = 'mars-favorite-item';
+        
+        favoriteItem.innerHTML = `
+          <div class="mars-result-content">
+            <div class="mars-result-name">${favorite.primaryName}</div>
+            <div class="mars-result-address">${favorite.secondaryInfo}</div>
+          </div>
+          <span class="mars-favorite-remove" title="Remove from favorites">×</span>
+        `;
+        
+        // Click to navigate
+        favoriteItem.querySelector('.mars-result-content').addEventListener('click', () => {
+          navigateToLocation(favorite.lat, favorite.lon);
+          searchPanel.style.display = 'none';
+        });
+        
+        // Click to remove
+        favoriteItem.querySelector('.mars-favorite-remove').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeFavorite(favorite.lat, favorite.lon);
+        });
+        
+        favoritesList.appendChild(favoriteItem);
+      });
+    } else {
+      favoritesMenu.style.display = 'none';
+    }
+  }
+  
+  // Clear all favorites
+  searchPanel.querySelector('#mars-clear-favorites').addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all favorites?')) {
+      saveFavorites([]);
+    }
+  });
+  
+  // Initialize favorites display
+  updateFavoritesDisplay();
+
+  // Create modals
+  const locationModal = document.createElement('div');
+  locationModal.id = 'mars-location-modal';
+  locationModal.innerHTML = `
+    <div id="mars-location-dialog">
+      <h3>Add Custom Location</h3>
+      <div class="form-group">
+        <label for="location-name">Name:</label>
+        <input type="text" id="location-name" placeholder="e.g., My House, My Art, Work">
+      </div>
+      <div class="form-group">
+        <label for="location-lat">Latitude:</label>
+        <input type="text" id="location-lat" placeholder="e.g., -23.5506507">
+      </div>
+      <div class="form-group">
+        <label for="location-lon">Longitude:</label>
+        <input type="text" id="location-lon" placeholder="e.g., -46.6333824">
+      </div>
+      <div class="button-group">
+        <button class="btn-secondary" id="location-cancel">Cancel</button>
+        <button class="btn-primary" id="location-save">Save to Favorites</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(locationModal);
+
+
+
+  // Location button logic
+  searchPanel.querySelector('#mars-location-btn').addEventListener('click', () => {
+    locationModal.style.display = 'flex';
+    locationModal.querySelector('#location-name').focus();
+  });
+
+  // Location modal logic
+  locationModal.querySelector('#location-cancel').addEventListener('click', () => {
+    locationModal.style.display = 'none';
+    locationModal.querySelector('#location-name').value = '';
+    locationModal.querySelector('#location-lat').value = '';
+    locationModal.querySelector('#location-lon').value = '';
+  });
+
+  locationModal.querySelector('#location-save').addEventListener('click', () => {
+    const name = locationModal.querySelector('#location-name').value.trim();
+    const lat = locationModal.querySelector('#location-lat').value.trim();
+    const lon = locationModal.querySelector('#location-lon').value.trim();
+
+    if (!name || !lat || !lon) {
+      alert('Please fill all fields');
+      return;
+    }
+
+    if (isNaN(parseFloat(lat)) || isNaN(parseFloat(lon))) {
+      alert('Please enter valid coordinates');
+      return;
+    }
+
+    const locationData = {
+      lat: lat,
+      lon: lon,
+      primaryName: name,
+      secondaryInfo: `Custom Location (${lat}, ${lon})`,
+      fullAddress: ''
+    };
+
+    addFavorite(locationData);
+    locationModal.style.display = 'none';
+    locationModal.querySelector('#location-name').value = '';
+    locationModal.querySelector('#location-lat').value = '';
+    locationModal.querySelector('#location-lon').value = '';
+  });
+
+  // Close modal on outside click
+  locationModal.addEventListener('click', (e) => {
+    if (e.target === locationModal) {
+      locationModal.querySelector('#location-cancel').click();
+    }
+  });
+
+  // Favorites collapse toggle
+  let favoritesCollapsed = false;
+  searchPanel.querySelector('#mars-favorites-title').addEventListener('click', () => {
+    favoritesCollapsed = !favoritesCollapsed;
+    const toggle = searchPanel.querySelector('#mars-favorites-toggle');
+    const list = searchPanel.querySelector('#mars-favorites-list');
+    
+    if (favoritesCollapsed) {
+      toggle.classList.add('collapsed');
+      list.style.display = 'none';
+    } else {
+      toggle.classList.remove('collapsed');
+      list.style.display = 'block';
+    }
+  });
+
+
+
+
+
+  // Drag logic
+  const dragHandle = searchPanel.querySelector('.drag-handle');
+  let isDragging = false, dragOriginX = 0, dragOriginY = 0, dragOffsetX = 0, dragOffsetY = 0, animationId = 0;
+
+  function getTransformXY(el) {
+    const computed = window.getComputedStyle(el).transform;
+    if (computed && computed !== 'none') {
+      const matrix = new DOMMatrix(computed);
+      return [matrix.m41, matrix.m42];
+    }
+    return [0, 0];
+  }
+
+  function animate() {
+    if (isDragging) {
+      searchPanel.style.transform = `translate(${dragOffsetX}px, ${dragOffsetY}px)`;
+      animationId = requestAnimationFrame(animate);
+    }
+  }
+
+  function startDrag(clientX, clientY) {
+    isDragging = true;
+    searchPanel.classList.add('dragging');
+    const rect = searchPanel.getBoundingClientRect();
+    let [curX, curY] = getTransformXY(searchPanel);
+    dragOriginX = clientX - rect.left;
+    dragOriginY = clientY - rect.top;
+    searchPanel.style.left = "0px";
+    searchPanel.style.top = "0px";
+    searchPanel.style.right = "auto";
+    searchPanel.style.bottom = "auto";
+    searchPanel.style.position = "fixed";
+    if (curX === 0 && curY === 0) {
+      dragOffsetX = rect.left;
+      dragOffsetY = rect.top;
+      searchPanel.style.transform = `translate(${dragOffsetX}px, ${dragOffsetY}px)`;
+    } else {
+      dragOffsetX = curX;
+      dragOffsetY = curY;
+    }
+    document.body.style.userSelect = "none";
+    if (animationId) cancelAnimationFrame(animationId);
+    animate();
+  }
+
+  function stopDrag() {
+    isDragging = false;
+    if (animationId) cancelAnimationFrame(animationId);
+    document.body.style.userSelect = "";
+    searchPanel.classList.remove('dragging');
+  }
+
+  function doDrag(clientX, clientY) {
+    if (!isDragging) return;
+    dragOffsetX = clientX - dragOriginX;
+    dragOffsetY = clientY - dragOriginY;
+  }
+
+  dragHandle.addEventListener("mousedown", function(e) {
+    e.preventDefault();
+    startDrag(e.clientX, e.clientY);
+  });
+
+  document.addEventListener("mousemove", function(e) {
+    if (isDragging) doDrag(e.clientX, e.clientY);
+  }, { passive: true });
+
+  document.addEventListener("mouseup", stopDrag);
+
+  dragHandle.addEventListener("touchstart", function(e) {
+    const touch = e?.touches?.[0];
+    if (touch) {
+      startDrag(touch.clientX, touch.clientY);
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener("touchmove", function(e) {
+    if (isDragging) {
+      const touch = e?.touches?.[0];
+      if (!touch) return;
+      doDrag(touch.clientX, touch.clientY);
+      e.preventDefault();
+    }
+  }, { passive: false });
+
+  document.addEventListener("touchend", stopDrag);
+  document.addEventListener("touchcancel", stopDrag);
+
+  // Search functionality
+  const searchInput = searchPanel.querySelector('#mars-search-input');
+  const resultsContainer = searchPanel.querySelector('#mars-search-results');
+
+  function searchLocation(query) {
+    return new Promise((resolve, reject) => {
+      console.log('Searching for:', query);
+      GM_xmlhttpRequest({
+        method: 'GET',
+        url: `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=5&addressdetails=1`,
+        headers: {
+          'User-Agent': 'BlueMarble-Search-UserScript/1.0'
+        },
+        onload: function(response) {
+          console.log('Search API Response Status:', response.status);
+          console.log('Search API Response Text:', response.responseText);
+          try {
+            const data = JSON.parse(response.responseText);
+            console.log('Parsed data:', data);
+            resolve(data);
+          } catch (error) {
+            console.error('JSON Parse error:', error);
+            reject(error);
+          }
+        },
+        onerror: function(error) {
+          console.error('Search API error:', error);
+          reject(error);
+        }
+      });
+    });
+  }
+
+  function navigateToLocation(lat, lon) {
+    const zoom = 14.62;
+    const url = `https://wplace.live/?lat=${lat}&lng=${lon}&zoom=${zoom}`;
+    console.log('Opening URL:', url);
+    
+    // Open in current tab (like the original)
+    window.location.href = url;
+    
+    // Alternative: uncomment this line to open in new tab for debugging
+    // window.open(url, '_blank', 'noopener noreferrer');
+  }
+
+  function displayResults(results) {
+    console.log('Search results received:', results);
+    
+    if (results.length === 0) {
+      resultsContainer.innerHTML = '<div class="mars-no-results">No results found</div>';
+      return;
+    }
+
+    resultsContainer.innerHTML = '';
+    results.forEach(result => {
+      console.log('Raw result object:', result);
+      console.log('Object keys:', Object.keys(result));
+      
+      // Try to access properties directly from the raw object
+      const displayName = result['display_name'] || result['name'] || 'Unknown location';
+      const lat = result['lat'];
+      const lon = result['lon'];
+      
+      console.log('Extracted values:', {
+        displayName: displayName,
+        lat: lat,
+        lon: lon
+      });
+      
+      const resultItem = document.createElement('div');
+      resultItem.className = 'mars-search-result';
+
+      // Store lat/lon directly on the element as data attributes
+      resultItem.dataset.lat = String(lat || '');
+      resultItem.dataset.lon = String(lon || '');
+
+      // Show primary name + first part of address for better context
+      const nameParts = displayName.split(',');
+      const primaryName = nameParts[0]?.trim() || 'Unknown';
+      const secondaryInfo = nameParts.slice(1, 3).join(',').trim(); // Show next 2 parts
+      const fullAddress = nameParts.slice(3).join(',').trim(); // Rest of address
+
+      console.log('Display parts:', {
+        primaryName: primaryName,
+        secondaryInfo: secondaryInfo,
+        fullAddress: fullAddress
+      });
+
+      resultItem.innerHTML = `
+        <div class="mars-result-content">
+          <div class="mars-result-name">${primaryName}</div>
+          ${secondaryInfo ? `<div class="mars-result-address secondary">${secondaryInfo}</div>` : ''}
+          ${fullAddress ? `<div class="mars-result-address">${fullAddress}</div>` : ''}
+        </div>
+        <span class="mars-favorite-star ${isFavorited(lat, lon) ? 'favorited' : ''}" title="Add to favorites">★</span>
+      `;
+
+      // Handle content click (navigation)
+      resultItem.querySelector('.mars-result-content').addEventListener('click', (e) => {
+        const latStr = e.currentTarget.parentElement.dataset.lat;
+        const lonStr = e.currentTarget.parentElement.dataset.lon;
+        console.log('=== NAVIGATION DEBUG ===');
+        console.log('Clicking result with lat:', latStr, 'lon:', lonStr);
+        console.log('URL will be:', `https://wplace.live/?lat=${latStr}&lng=${lonStr}&zoom=14.62`);
+        
+        if (latStr && lonStr && latStr !== 'undefined' && lonStr !== 'undefined') {
+          navigateToLocation(latStr, lonStr);
+          searchPanel.style.display = 'none';
+          searchInput.value = '';
+          resultsContainer.innerHTML = '';
+        } else {
+          console.error('Invalid coordinates, not navigating');
+          alert('Error: Invalid coordinates for this location');
+        }
+      });
+
+      // Handle star click (favorites)
+      resultItem.querySelector('.mars-favorite-star').addEventListener('click', (e) => {
+        e.stopPropagation();
+        const star = e.target;
+        const isFav = star.classList.contains('favorited');
+        
+        if (isFav) {
+          removeFavorite(lat, lon);
+          star.classList.remove('favorited');
+          star.title = 'Add to favorites';
+        } else {
+          const locationData = {
+            lat: lat,
+            lon: lon,
+            primaryName: primaryName,
+            secondaryInfo: secondaryInfo || '',
+            fullAddress: fullAddress || ''
+          };
+          addFavorite(locationData);
+          star.classList.add('favorited');
+          star.title = 'Remove from favorites';
+        }
+      });
+
+      resultsContainer.appendChild(resultItem);
+    });
+  }
+
+  async function handleSearch() {
+    const query = searchInput.value.trim();
+    if (!query) return;
+
+    resultsContainer.innerHTML = '<div class="mars-loading">Searching...</div>';
+
+    try {
+      const results = await searchLocation(query);
+      displayResults(results);
+    } catch (error) {
+      consoleError('Search error:', error);
+      resultsContainer.innerHTML = '<div class="mars-no-results">Error searching. Please try again.</div>';
+    }
+  }
+
+  searchInput.addEventListener('keypress', (e) => {
+    if (e.key === 'Enter') {
+      handleSearch();
+    }
+  });
+
+  let searchTimeout;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    
+    const query = searchInput.value.trim();
+    if (!query) {
+      // Clear results when search is empty
+      resultsContainer.innerHTML = '';
+      return;
+    }
+    
+    searchTimeout = setTimeout(handleSearch, 500); // Debounce search
+  });
+}
+
+// Initialize search window when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+  createSearchWindow();
+});
+
+// Also initialize if DOM is already loaded
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', createSearchWindow);
+} else {
+  createSearchWindow();
 }

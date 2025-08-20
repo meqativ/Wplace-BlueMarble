@@ -30,7 +30,10 @@ export function initializeTileRefreshPause(templateManager) {
       
       // If we're not paused and not in capturing state, cache this processed tile
       if (!tileRefreshPaused && !isCapturingState) {
-        const tileKey = Array.isArray(tileCoords) ? `${tileCoords[0]},${tileCoords[1]}` : tileCoords.toString();
+        // Use the same formatting as the original function for consistency
+        const tileKey = Array.isArray(tileCoords) ? 
+          tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0') : 
+          tileCoords.toString();
         frozenTileCache.set(tileKey, result);
         
         // Limit cache size to prevent memory issues
@@ -58,7 +61,10 @@ function applyTileRefreshPause(templateManager) {
   if (tileRefreshPaused) {
     // Replace the drawTemplateOnTile function with a paused version that uses frozen cache
     templateManager.drawTemplateOnTile = function(tileBlob, tileCoords) {
-      const tileKey = Array.isArray(tileCoords) ? `${tileCoords[0]},${tileCoords[1]}` : tileCoords.toString();
+      // Use the same formatting as the original function for consistency
+      const tileKey = Array.isArray(tileCoords) ? 
+        tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0') : 
+        tileCoords.toString();
       
       // Check if we have a cached version with templates applied
       if (frozenTileCache.has(tileKey)) {
@@ -78,7 +84,10 @@ function applyTileRefreshPause(templateManager) {
         
         // Continue caching tiles when they're processed
         if (!tileRefreshPaused && !isCapturingState) {
-          const tileKey = Array.isArray(tileCoords) ? `${tileCoords[0]},${tileCoords[1]}` : tileCoords.toString();
+          // Use the same formatting as the original function for consistency
+          const tileKey = Array.isArray(tileCoords) ? 
+            tileCoords[0].toString().padStart(4, '0') + ',' + tileCoords[1].toString().padStart(4, '0') : 
+            tileCoords.toString();
           frozenTileCache.set(tileKey, result);
           
           // Limit cache size to prevent memory issues
