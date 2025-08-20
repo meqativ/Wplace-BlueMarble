@@ -453,6 +453,16 @@ const searchWindowCSS = `
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
+#mars-location-dialog input[readonly] {
+  background: #0a0e1a;
+  border-color: #374151;
+  color: #9ca3af;
+  cursor: not-allowed;
+}
+#mars-location-dialog input[readonly]:focus {
+  border-color: #374151;
+  box-shadow: none;
+}
 #mars-location-dialog .button-group {
   display: flex;
   gap: 8px;
@@ -2045,12 +2055,6 @@ function buildOverlayMain() {
       .buildElement()
       .addDiv({'id': 'bm-contain-buttons-template'})
         .addInputFile({'id': 'bm-input-file-template', 'textContent': 'Upload Template', 'accept': 'image/png, image/jpeg, image/webp, image/bmp, image/gif'})
-        // Compact delete button placed next to Upload Template
-        .addButton({'id': 'bm-button-delete-templates', innerHTML: icons.deleteIcon, 'title': 'Delete Template'}, (instance, button) => {
-          button.onclick = () => {
-            deleteSelectedTemplate(instance);
-          }
-        }).buildElement()
         .addButton({'id': 'bm-button-create', innerHTML: icons.createIcon + 'Create'}, (instance, button) => {
           button.onclick = () => {
             const input = document.querySelector('#bm-input-file-template');
@@ -2139,6 +2143,12 @@ function buildOverlayMain() {
               if (searchPanel) {
                 searchPanel.style.display = searchPanel.style.display === 'none' || !searchPanel.style.display ? 'flex' : 'none';
               }
+            });
+          }).buildElement()
+          // Moved delete button here as a small action next to Location Search
+          .addButton({'id': 'bm-button-delete-templates', 'className': 'bm-help', innerHTML: icons.deleteIcon, 'title': 'Delete Template'}, (instance, button) => {
+            button.addEventListener('click', () => {
+              deleteSelectedTemplate(instance);
             });
           }).buildElement()
         .buildElement()
@@ -3177,10 +3187,11 @@ function buildColorFilterOverlay() {
         let displayPainted, displayRequired, displayPercentage, displayRemaining;
         
         if (templateManager.getIncludeWrongColorsInProgress()) {
-          // Include wrong colors in progress calculation for this specific color
-          displayPainted = stats.painted + wrongPixelsForColor;
-          displayRequired = stats.totalRequired; // Keep original required, wrong pixels are already part of it
-          displayPercentage = displayRequired > 0 ? Math.round((displayPainted / displayRequired) * 100) : 0;
+          // When wrong colors are included, stats.painted already contains the effective painted count
+          // so we don't need to add wrongPixelsForColor again (that would be double counting)
+          displayPainted = stats.painted; // stats.painted already includes wrong colors logic from calculateRemainingPixelsByColor
+          displayRequired = stats.totalRequired;
+          displayPercentage = stats.percentage || 0; // Use pre-calculated percentage
           displayRemaining = stats.needsCrosshair;
         } else {
           // Standard calculation (exclude wrong colors)
@@ -6452,14 +6463,23 @@ function createSearchWindow() {
         <label for="location-name">Name:</label>
         <input type="text" id="location-name" placeholder="e.g., My House, My Art, Work">
       </div>
+      
       <div class="form-group">
-        <label for="location-lat">Latitude:</label>
-        <input type="text" id="location-lat" placeholder="e.g., -23.5506507">
+        <label for="location-link">Paste wplace.live link:</label>
+        <input type="text" id="location-link" placeholder="https://wplace.live/?lat=-19.037942104984218&lng=-42.420498378222675&zoom=16.078281108991245">
       </div>
-      <div class="form-group">
-        <label for="location-lon">Longitude:</label>
-        <input type="text" id="location-lon" placeholder="e.g., -46.6333824">
+      
+      <div class="form-group" style="display: flex; gap: 8px;">
+        <div style="flex: 1;">
+          <label for="location-lat">Latitude:</label>
+          <input type="text" id="location-lat" placeholder="e.g., -23.5506507" readonly>
+        </div>
+        <div style="flex: 1;">
+          <label for="location-lon">Longitude:</label>
+          <input type="text" id="location-lon" placeholder="e.g., -46.6333824" readonly>
+        </div>
       </div>
+      
       <div class="button-group">
         <button class="btn-secondary" id="location-cancel">Cancel</button>
         <button class="btn-primary" id="location-save">Save to Favorites</button>
@@ -6476,12 +6496,55 @@ function createSearchWindow() {
     locationModal.querySelector('#location-name').focus();
   });
 
+  // Add link parsing functionality
+  const linkInput = locationModal.querySelector('#location-link');
+  const latInput = locationModal.querySelector('#location-lat');
+  const lonInput = locationModal.querySelector('#location-lon');
+  
+  linkInput.addEventListener('input', () => {
+    const link = linkInput.value.trim();
+    if (!link) {
+      latInput.value = '';
+      lonInput.value = '';
+      return;
+    }
+    
+    // Extract lat and lng from wplace.live URL
+    const latMatch = link.match(/lat=([^&]+)/);
+    const lngMatch = link.match(/lng=([^&]+)/);
+    
+    if (latMatch && lngMatch) {
+      const lat = parseFloat(latMatch[1]);
+      const lng = parseFloat(lngMatch[1]);
+      
+      if (!isNaN(lat) && !isNaN(lng)) {
+        latInput.value = lat.toString();
+        lonInput.value = lng.toString();
+        latInput.style.color = '#4ade80'; // Green to indicate success
+        lonInput.style.color = '#4ade80';
+      } else {
+        latInput.value = '';
+        lonInput.value = '';
+        latInput.style.color = '#f87171'; // Red to indicate error
+        lonInput.style.color = '#f87171';
+      }
+    } else {
+      latInput.value = '';
+      lonInput.value = '';
+      latInput.style.color = '#f87171'; // Red to indicate invalid format
+      lonInput.style.color = '#f87171';
+    }
+  });
+
   // Location modal logic
   locationModal.querySelector('#location-cancel').addEventListener('click', () => {
     locationModal.style.display = 'none';
     locationModal.querySelector('#location-name').value = '';
+    locationModal.querySelector('#location-link').value = '';
     locationModal.querySelector('#location-lat').value = '';
     locationModal.querySelector('#location-lon').value = '';
+    latInput.style.color = '#f1f5f9'; // Reset color
+    lonInput.style.color = '#f1f5f9';
   });
 
   locationModal.querySelector('#location-save').addEventListener('click', () => {
@@ -6510,8 +6573,11 @@ function createSearchWindow() {
     addFavorite(locationData);
     locationModal.style.display = 'none';
     locationModal.querySelector('#location-name').value = '';
+    locationModal.querySelector('#location-link').value = '';
     locationModal.querySelector('#location-lat').value = '';
     locationModal.querySelector('#location-lon').value = '';
+    latInput.style.color = '#f1f5f9'; // Reset color
+    lonInput.style.color = '#f1f5f9';
   });
 
   // Close modal on outside click
