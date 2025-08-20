@@ -4826,11 +4826,13 @@ function buildCrosshairSettingsOverlay() {
 
   // Color grid
   const colorGrid = document.createElement('div');
+  const gridGap = isMobileMode ? '8px' : '16px';
+  const gridMargin = isMobileMode ? '16px' : '24px';
   colorGrid.style.cssText = `
     display: grid;
     grid-template-columns: repeat(3, 1fr);
-    gap: 16px;
-    margin-bottom: 24px;
+    gap: ${gridGap};
+    margin-bottom: ${gridMargin};
     position: relative;
     z-index: 1;
   `;
@@ -4860,15 +4862,17 @@ function buildCrosshairSettingsOverlay() {
         : `linear-gradient(135deg, 
             #8B5CF6 0%, #A855F7 25%, #3B82F6 50%, #06B6D4 75%, #8B5CF6 100%)`;
             
+      const buttonHeight = isMobileMode ? '85px' : '110px';
+      const buttonPadding = isMobileMode ? '8px' : '12px';
       colorOption.style.cssText = `
         background: ${backgroundStyle};
         border: 2px solid ${isSelected ? 'var(--slate-100)' : 'var(--slate-600)'};
         border-radius: 12px;
-        padding: 12px;
+        padding: ${buttonPadding};
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
-        height: 110px;
+        height: ${buttonHeight};
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -4879,15 +4883,17 @@ function buildCrosshairSettingsOverlay() {
         ${!isSelected ? 'background-size: 200% 200%; animation: gradientShift 3s ease infinite;' : ''}
       `;
     } else {
+      const buttonHeight = isMobileMode ? '85px' : '110px';
+      const buttonPadding = isMobileMode ? '8px' : '12px';
       colorOption.style.cssText = `
         background: rgba(${color.rgb[0]}, ${color.rgb[1]}, ${color.rgb[2]}, ${color.alpha / 255});
         border: 2px solid ${isSelected ? 'var(--slate-100)' : 'var(--slate-600)'};
         border-radius: 12px;
-        padding: 12px;
+        padding: ${buttonPadding};
         cursor: pointer;
         transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
         position: relative;
-        height: 110px;
+        height: ${buttonHeight};
         display: flex;
         flex-direction: column;
         align-items: center;
@@ -4913,12 +4919,15 @@ function buildCrosshairSettingsOverlay() {
     if (color.isCustom) {
       // Create RGB input container
       const rgbInputs = document.createElement('div');
+      const containerWidth = isMobileMode ? '70%' : '80%';
+      const containerMaxWidth = isMobileMode ? '65px' : '80px';
+      const containerGap = isMobileMode ? '2px' : '3px';
       rgbInputs.style.cssText = `
         display: flex;
         flex-direction: column;
-        gap: 3px;
-        width: 80%;
-        max-width: 80px;
+        gap: ${containerGap};
+        width: ${containerWidth};
+        max-width: ${containerMaxWidth};
       `;
       
       // Create individual RGB inputs
@@ -4929,20 +4938,23 @@ function buildCrosshairSettingsOverlay() {
       rInput.value = isSelected ? currentColor.rgb[0] : '';
       rInput.placeholder = 'R';
       rInput.className = 'bm-custom-rgb-input';
+      const inputPadding = isMobileMode ? '2px 3px' : '3px 4px';
+      const inputHeight = isMobileMode ? '18px' : '22px';
+      const inputFontSize = isMobileMode ? '0.65em' : '0.7em';
       rInput.style.cssText = `
         width: 100%;
-        padding: 3px 4px;
+        padding: ${inputPadding};
         border: 1px solid var(--slate-500);
         border-radius: 4px;
         background: var(--slate-700);
         color: var(--slate-100);
-        font-size: 0.7em;
+        font-size: ${inputFontSize};
         text-align: center;
         outline: none;
         font-weight: 600;
         transition: all 0.2s ease;
         box-sizing: border-box;
-        height: 22px;
+        height: ${inputHeight};
       `;
       rInput.onfocus = () => {
         rInput.style.borderColor = 'var(--blue-500)';
@@ -5089,12 +5101,15 @@ function buildCrosshairSettingsOverlay() {
 
   // Alpha slider section
   const alphaSection = document.createElement('div');
+  const sectionPadding = isMobileMode ? '12px' : '18px';
+  const sectionMargin = isMobileMode ? '14px' : '20px';
+  const sectionBorderRadius = isMobileMode ? '8px' : '12px';
   alphaSection.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
     position: relative;
     z-index: 1;
   `;
@@ -5150,9 +5165,9 @@ function buildCrosshairSettingsOverlay() {
   borderSection.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
     position: relative;
     z-index: 1;
   `;
@@ -5229,9 +5244,9 @@ function buildCrosshairSettingsOverlay() {
   sizeSection.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
     position: relative;
     z-index: 1;
   `;
@@ -5317,9 +5332,9 @@ function buildCrosshairSettingsOverlay() {
   trackerSection.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
     position: relative;
     z-index: 1;
   `;
@@ -5401,9 +5416,9 @@ function buildCrosshairSettingsOverlay() {
   mobileSection.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
     position: relative;
     z-index: 1;
   `;
@@ -5509,9 +5524,9 @@ function buildCrosshairSettingsOverlay() {
   collapseSection.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
     position: relative;
     z-index: 1;
   `;
@@ -5823,9 +5838,9 @@ function buildCrosshairSettingsOverlay() {
   leftOnColorSection.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 12px;
-    padding: 18px;
-    margin-bottom: 20px;
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
     position: relative;
     z-index: 1;
   `;
