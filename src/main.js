@@ -368,6 +368,7 @@ overlayMain.handleDrag('#bm-overlay', '#bm-bar-drag'); // Creates dragging capab
 apiManager.spontaneousResponseListener(overlayMain); // Reads spontaneous fetch responces
 
 observeBlack(); // Observes the black palette color
+observeOpacityButton(); // Observes and adds the Map button above opacity button
 
 // Initialize keyboard shortcuts
 initializeKeyboardShortcuts();
@@ -407,31 +408,68 @@ function observeBlack() {
       const paintPixel = black.parentNode.parentNode.parentNode.parentNode.querySelector('h2');
 
       paintPixel.parentNode?.appendChild(move); // Adds the move button
-      
-      // Add the Map button next to the Move button
-      let mapButton = document.querySelector('#bm-button-map-native');
-      if (!mapButton) {
-        mapButton = document.createElement('button');
-        mapButton.id = 'bm-button-map-native';
-        mapButton.innerHTML = '🗺️';
-        mapButton.className = 'btn btn-soft';
-        mapButton.title = 'Error Map View';
-        mapButton.style.marginLeft = '8px'; // Add some spacing from Move button
-        
-        // Initialize button appearance based on saved state
-        const initialState = getErrorMapEnabled();
-        mapButton.style.background = initialState ? 'linear-gradient(135deg, #10b981, #059669)' : '';
-        
-        mapButton.onclick = function() {
-          toggleErrorMapMode();
-          const isEnabled = getErrorMapEnabled();
-          this.style.background = isEnabled ? 'linear-gradient(135deg, #10b981, #059669)' : '';
-          overlayMain.handleDisplayStatus(`Error Map ${isEnabled ? 'enabled' : 'disabled'}! ${isEnabled ? 'Green=correct, Red=wrong pixels' : 'Back to normal view'}`);
-        };
-        
-        paintPixel.parentNode?.appendChild(mapButton); // Adds the map button next to move
-      }
     }
+  });
+
+  observer.observe(document.body, { childList: true, subtree: true });
+}
+
+/** Observes and adds the Map button above the opacity button
+ * @since 1.0.0
+ */
+function observeOpacityButton() {
+  const observer = new MutationObserver(() => {
+    // Look for the opacity button (has the grid icon and "Alterar opacidade" title)
+    const opacityButton = document.querySelector('button[title="Alterar opacidade"]');
+    if (!opacityButton) return;
+    
+    // Check if we already added our Map button container
+    let mapButtonContainer = document.querySelector('#bm-map-button-container');
+    if (mapButtonContainer) return;
+    
+    // Get the container div (absolute bottom-3 left-3 z-30)
+    const opacityContainer = opacityButton.closest('.absolute.bottom-3.left-3.z-30');
+    if (!opacityContainer) return;
+    
+    // Create a new container for the Map button positioned above the opacity button
+    mapButtonContainer = document.createElement('div');
+    mapButtonContainer.id = 'bm-map-button-container';
+    mapButtonContainer.className = 'fixed z-30';
+    mapButtonContainer.style.bottom = '85px'; // Fixed position above opacity button (approximate)
+    mapButtonContainer.style.left = '12px'; // Fixed position aligned with opacity button
+    
+    // Create the Map button
+    const mapButton = document.createElement('button');
+    mapButton.id = 'bm-button-map-positioned';
+    mapButton.innerHTML = '🗺️';
+    mapButton.className = 'btn btn-lg btn-square sm:btn-xl z-30 shadow-md text-base-content/80';
+    mapButton.title = 'Error Map View';
+    
+    // Initialize button appearance based on saved state
+    const initialState = getErrorMapEnabled();
+    if (initialState) {
+      mapButton.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      mapButton.style.color = 'white';
+    }
+    
+    mapButton.onclick = function() {
+      toggleErrorMapMode();
+      const isEnabled = getErrorMapEnabled();
+      if (isEnabled) {
+        this.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        this.style.color = 'white';
+      } else {
+        this.style.background = '';
+        this.style.color = '';
+      }
+      overlayMain.handleDisplayStatus(`Error Map ${isEnabled ? 'enabled' : 'disabled'}! ${isEnabled ? 'Green=correct, Red=wrong pixels' : 'Back to normal view'}`);
+    };
+    
+    // Add the button to our container
+    mapButtonContainer.appendChild(mapButton);
+    
+    // Insert the Map button container directly into the body with fixed positioning
+    document.body.appendChild(mapButtonContainer);
   });
 
   observer.observe(document.body, { childList: true, subtree: true });
