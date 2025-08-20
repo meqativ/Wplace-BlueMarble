@@ -3276,6 +3276,13 @@ function buildColorFilterOverlay() {
     header.addEventListener('touchstart', (e) => {
       const t = e.touches && e.touches[0];
       if (!t) return;
+      
+      // Check if the touch target is a button - if so, don't start dragging
+      const target = e.target;
+      if (target.tagName === 'BUTTON' || target.closest('button')) {
+        return; // Let the button handle the touch event
+      }
+      
       isDragging = true;
       dragStartX = t.clientX;
       dragStartY = t.clientY;
