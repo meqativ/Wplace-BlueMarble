@@ -2091,14 +2091,19 @@ function buildColorFilterOverlay() {
       position: relative;
       overflow: hidden;
     `;
-    closeButton.onmouseover = () => {
-      closeButton.style.transform = 'translateY(-1px) scale(1.05)';
-      closeButton.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)';
-    };
-    closeButton.onmouseout = () => {
-      closeButton.style.transform = '';
-      closeButton.style.boxShadow = '';
-    };
+    // Detect if device supports touch to avoid hover effects on mobile
+    const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    if (!isTouchDevice) {
+      closeButton.onmouseover = () => {
+        closeButton.style.transform = 'translateY(-1px) scale(1.05)';
+        closeButton.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)';
+      };
+      closeButton.onmouseout = () => {
+        closeButton.style.transform = '';
+        closeButton.style.boxShadow = '';
+      };
+    }
     closeButton.onclick = () => colorFilterOverlay.remove();
 
     // Settings button 
@@ -2121,16 +2126,21 @@ function buildColorFilterOverlay() {
       position: relative;
       overflow: hidden;
     `;
-    settingsButton.onmouseover = () => {
-      settingsButton.style.transform = 'translateY(-1px) scale(1.05)';
-      settingsButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
-      settingsButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
-    };
-    settingsButton.onmouseout = () => {
-      settingsButton.style.transform = '';
-      settingsButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
-      settingsButton.style.boxShadow = '';
-    };
+    // Detect if device supports touch to avoid hover effects on mobile
+    const isTouchDeviceForSettings = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+    
+    if (!isTouchDeviceForSettings) {
+      settingsButton.onmouseover = () => {
+        settingsButton.style.transform = 'translateY(-1px) scale(1.05)';
+        settingsButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+        settingsButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
+      };
+      settingsButton.onmouseout = () => {
+        settingsButton.style.transform = '';
+        settingsButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+        settingsButton.style.boxShadow = '';
+      };
+    }
     settingsButton.onclick = () => buildCrosshairSettingsOverlay();
 
     // Add elements to titleContainer
@@ -4609,14 +4619,19 @@ function buildCrosshairSettingsOverlay() {
     position: relative;
     overflow: hidden;
   `;
-  closeButton.onmouseover = () => {
-    closeButton.style.transform = 'translateY(-1px) scale(1.05)';
-    closeButton.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)';
-  };
-  closeButton.onmouseout = () => {
-    closeButton.style.transform = '';
-    closeButton.style.boxShadow = '';
-  };
+  // Detect if device supports touch to avoid hover effects on mobile
+  const isTouchDevice = 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+  
+  if (!isTouchDevice) {
+    closeButton.onmouseover = () => {
+      closeButton.style.transform = 'translateY(-1px) scale(1.05)';
+      closeButton.style.boxShadow = '0 6px 20px rgba(239, 68, 68, 0.4)';
+    };
+    closeButton.onmouseout = () => {
+      closeButton.style.transform = '';
+      closeButton.style.boxShadow = '';
+    };
+  }
   closeButton.onclick = () => settingsOverlay.remove();
 
   header.appendChild(title);
