@@ -218,37 +218,37 @@ const searchWindowCSS = `
 #skirk-search-draggable .body {
   padding: 10px 14px; overflow: hidden;
 }
-#mars-search-input {
+#skirk-search-input {
   width: 100%; padding: 8px 12px; border-radius: 6px;
   border: 1px solid #475569; background: #0f172a;
   color: #f1f5f9; font: 14px monospace;
   margin-bottom: 10px;
   transition: all 0.2s;
 }
-#mars-search-input:focus { 
+#skirk-search-input:focus { 
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
-#mars-search-input::placeholder { color: #64748b; }
-#mars-search-results {
+#skirk-search-input::placeholder { color: #64748b; }
+#skirk-search-results {
   max-height: 320px; overflow-y: auto;
 }
-#mars-search-results::-webkit-scrollbar {
+#skirk-search-results::-webkit-scrollbar {
   width: 6px;
 }
-#mars-search-results::-webkit-scrollbar-track {
+#skirk-search-results::-webkit-scrollbar-track {
   background: #0f172a;
   border-radius: 3px;
 }
-#mars-search-results::-webkit-scrollbar-thumb {
+#skirk-search-results::-webkit-scrollbar-thumb {
   background: #475569;
   border-radius: 3px;
 }
-#mars-search-results::-webkit-scrollbar-thumb:hover {
+#skirk-search-results::-webkit-scrollbar-thumb:hover {
   background: #64748b;
 }
-.mars-search-result {
+.skirk-search-result {
   padding: 12px; cursor: pointer;
   border-bottom: 1px solid #334155;
   transition: all 0.2s;
@@ -257,32 +257,32 @@ const searchWindowCSS = `
   justify-content: space-between;
   align-items: flex-start;
 }
-.mars-search-result:hover {
+.skirk-search-result:hover {
   background-color: #334155;
   transform: translateX(2px);
 }
-.mars-search-result:last-child {
+.skirk-search-result:last-child {
   border-bottom: none;
 }
-.mars-result-content {
+.skirk-result-content {
   flex: 1;
 }
-.mars-result-name {
+.skirk-result-name {
   font-size: 14px;
   color: #f1f5f9;
   margin-bottom: 4px;
   font-weight: 600;
 }
-.mars-result-address {
+.skirk-result-address {
   font-size: 12px;
   color: #94a3b8;
   line-height: 1.3;
 }
-.mars-result-address.secondary {
+.skirk-result-address.secondary {
   color: #cbd5e1;
   font-weight: 500;
 }
-.mars-favorite-star {
+.skirk-favorite-star {
   color: #64748b;
   font-size: 16px;
   cursor: pointer;
@@ -292,38 +292,38 @@ const searchWindowCSS = `
   user-select: none;
   margin-left: 8px;
 }
-.mars-favorite-star:hover {
+.skirk-favorite-star:hover {
   color: #fbbf24;
   background: rgba(251, 191, 36, 0.1);
   transform: scale(1.1);
 }
-.mars-favorite-star.favorited {
+.skirk-favorite-star.favorited {
   color: #fbbf24;
 }
-.mars-loading, .mars-no-results {
+.skirk-loading, .skirk-no-results {
   padding: 20px;
   text-align: center;
   color: #64748b;
   font-size: 14px;
 }
-.mars-icon {
+.skirk-icon {
   display: inline-block; height: 2em; margin-right: 1ch; vertical-align: middle;
 }
 
 /* Favorites Menu */
-#mars-favorites-menu {
+#skirk-favorites-menu {
   border-top: 1px solid #334155;
   margin-top: 10px;
   padding-top: 10px;
 }
-#mars-favorites-header {
+#skirk-favorites-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-bottom: 8px;
   padding: 0 2px;
 }
-#mars-favorites-title {
+#skirk-favorites-title {
   font-size: 13px;
   font-weight: 600;
   color: #cbd5e1;
@@ -332,17 +332,17 @@ const searchWindowCSS = `
   gap: 6px;
   transition: color 0.2s;
 }
-#mars-favorites-title:hover {
+#skirk-favorites-title:hover {
   color: #f1f5f9;
 }
-#mars-favorites-toggle {
+#skirk-favorites-toggle {
   font-size: 10px;
   transition: transform 0.2s;
 }
-#mars-favorites-toggle.collapsed {
+#skirk-favorites-toggle.collapsed {
   transform: rotate(-90deg);
 }
-#mars-favorites-count {
+#skirk-favorites-count {
   background: #475569;
   color: #f1f5f9;
   border-radius: 10px;
@@ -350,7 +350,7 @@ const searchWindowCSS = `
   font-size: 11px;
   font-weight: 500;
 }
-#mars-clear-favorites {
+#skirk-clear-favorites {
   background: none;
   border: none;
   color: #64748b;
@@ -360,15 +360,15 @@ const searchWindowCSS = `
   border-radius: 4px;
   transition: all 0.2s;
 }
-#mars-clear-favorites:hover {
+#skirk-clear-favorites:hover {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
 }
-#mars-favorites-list {
+#skirk-favorites-list {
   max-height: 150px;
   overflow-y: auto;
 }
-.mars-favorite-item {
+.skirk-favorite-item {
   padding: 8px;
   cursor: pointer;
   border-radius: 6px;
@@ -378,20 +378,20 @@ const searchWindowCSS = `
   justify-content: space-between;
   align-items: center;
 }
-.mars-favorite-item:hover {
+.skirk-favorite-item:hover {
   background: #334155;
 }
-.mars-favorite-item .mars-result-content {
+.skirk-favorite-item .skirk-result-content {
   flex: 1;
 }
-.mars-favorite-item .mars-result-name {
+.skirk-favorite-item .skirk-result-name {
   font-size: 13px;
   margin-bottom: 2px;
 }
-.mars-favorite-item .mars-result-address {
+.skirk-favorite-item .skirk-result-address {
   font-size: 11px;
 }
-.mars-favorite-remove {
+.skirk-favorite-remove {
   color: #64748b;
   font-size: 14px;
   cursor: pointer;
@@ -399,13 +399,13 @@ const searchWindowCSS = `
   border-radius: 3px;
   transition: all 0.2s;
 }
-.mars-favorite-remove:hover {
+.skirk-favorite-remove:hover {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
 }
 
 /* Custom Location Modal */
-#mars-location-modal {
+#skirk-location-modal {
   position: fixed;
   top: 0; left: 0; right: 0; bottom: 0;
   background: rgba(0, 0, 0, 0.7);
@@ -414,7 +414,7 @@ const searchWindowCSS = `
   align-items: center;
   justify-content: center;
 }
-#mars-location-dialog {
+#skirk-location-dialog {
   background: #1e293b;
   color: #f1f5f9;
   border-radius: 10px;
@@ -423,22 +423,22 @@ const searchWindowCSS = `
   min-width: 400px;
   max-width: 90vw;
 }
-#mars-location-dialog h3 {
+#skirk-location-dialog h3 {
   margin: 0 0 16px 0;
   color: #f1f5f9;
   font-size: 18px;
 }
-#mars-location-dialog .form-group {
+#skirk-location-dialog .form-group {
   margin-bottom: 16px;
 }
-#mars-location-dialog label {
+#skirk-location-dialog label {
   display: block;
   margin-bottom: 4px;
   color: #cbd5e1;
   font-size: 14px;
   font-weight: 500;
 }
-#mars-location-dialog input {
+#skirk-location-dialog input {
   width: 100%;
   padding: 8px 12px;
   border: 1px solid #475569;
@@ -448,28 +448,28 @@ const searchWindowCSS = `
   font: 14px monospace;
   transition: all 0.2s;
 }
-#mars-location-dialog input:focus {
+#skirk-location-dialog input:focus {
   outline: none;
   border-color: #3b82f6;
   box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
 }
-#mars-location-dialog input[readonly] {
+#skirk-location-dialog input[readonly] {
   background: #0a0e1a;
   border-color: #374151;
   color: #9ca3af;
   cursor: not-allowed;
 }
-#mars-location-dialog input[readonly]:focus {
+#skirk-location-dialog input[readonly]:focus {
   border-color: #374151;
   box-shadow: none;
 }
-#mars-location-dialog .button-group {
+#skirk-location-dialog .button-group {
   display: flex;
   gap: 8px;
   justify-content: flex-end;
   margin-top: 20px;
 }
-#mars-location-dialog button {
+#skirk-location-dialog button {
   padding: 8px 16px;
   border: none;
   border-radius: 6px;
@@ -477,18 +477,18 @@ const searchWindowCSS = `
   cursor: pointer;
   transition: all 0.2s;
 }
-#mars-location-dialog .btn-primary {
+#skirk-location-dialog .btn-primary {
   background: #3b82f6;
   color: #fff;
 }
-#mars-location-dialog .btn-primary:hover {
+#skirk-location-dialog .btn-primary:hover {
   background: #2563eb;
 }
-#mars-location-dialog .btn-secondary {
+#skirk-location-dialog .btn-secondary {
   background: #475569;
   color: #f1f5f9;
 }
-#mars-location-dialog .btn-secondary:hover {
+#skirk-location-dialog .btn-secondary:hover {
   background: #64748b;
 }
 
@@ -2225,18 +2225,31 @@ function buildColorFilterOverlay() {
     let totalNeedCrosshair = 0;
     let totalWrong = 0;
     
+    // Get excluded colors from localStorage (used for both wrong pixels and main calculation)
+    const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+    
     // Get wrong pixels from tile progress data (only once)
     if (templateManager.tileProgress && templateManager.tileProgress.size > 0) {
       for (const tileStats of templateManager.tileProgress.values()) {
         if (tileStats.colorBreakdown) {
-          for (const colorStats of Object.values(tileStats.colorBreakdown)) {
+          for (const [colorKey, colorStats] of Object.entries(tileStats.colorBreakdown)) {
+            // Skip excluded colors from wrong pixels calculation too
+            if (excludedColors.includes(colorKey)) {
+              continue;
+            }
             totalWrong += colorStats.wrong || 0;
           }
         }
       }
     }
     
-    for (const stats of Object.values(pixelStats)) {
+    for (const [colorKey, stats] of Object.entries(pixelStats)) {
+      // Skip excluded colors from progress calculation
+      if (excludedColors.includes(colorKey)) {
+        consoleLog(`🚫 [Color Filter] Excluding color ${colorKey} from progress calculation`);
+        continue;
+      }
+      
       totalRequired += stats.totalRequired || 0;
       totalPainted += stats.painted || 0;
       totalNeedCrosshair += stats.needsCrosshair || 0;
@@ -2246,11 +2259,12 @@ function buildColorFilterOverlay() {
     let overallProgress, displayPainted, displayRequired;
     
     if (templateManager.getIncludeWrongColorsInProgress()) {
-      // Include wrong colors in progress calculation (wrong pixels count as "painted")
-      displayPainted = totalPainted + totalWrong;
-      displayRequired = totalRequired; // Keep original required, wrong pixels are already part of it
+      // Wrong colors are ALREADY included in totalPainted from calculateRemainingPixelsByColor()
+      // Do NOT add totalWrong again to avoid double counting
+      displayPainted = totalPainted;
+      displayRequired = totalRequired;
       overallProgress = displayRequired > 0 ? Math.round((displayPainted / displayRequired) * 100) : 0;
-      consoleLog(`🎯 [Color Filter] Overall progress (including wrong): ${displayPainted}/${displayRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair, ${totalWrong} wrong included`);
+      consoleLog(`🎯 [Color Filter] Overall progress (including wrong): ${displayPainted}/${displayRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair, ${totalWrong} wrong already included`);
     } else {
       // Standard calculation (exclude wrong colors)
       displayPainted = totalPainted;
@@ -2340,11 +2354,23 @@ function buildColorFilterOverlay() {
         }
         @media (max-width: 520px) { .bmcf-btn { min-width: 100px; height: 36px; font-size: 0.85em; } }
         
+        /* View toggle guards - prevent grid/list overlap */
+        .bmcf-view-container .bmcf-grid { display: grid; }
+        .bmcf-view-container .bmcf-list { display: none; }
+        .bmcf-view-container.list-mode .bmcf-grid { display: none !important; }
+        .bmcf-view-container.list-mode .bmcf-list { display: flex !important; }
+        
         /* Mobile Mode will be applied dynamically via applyMobileModeToColorFilter() */
       `;
       document.head.appendChild(s);
     }
 
+    // Initialize pending excluded colors (copy from applied if not exists)
+    if (!localStorage.getItem('bmcf-excluded-colors-pending')) {
+      const appliedExcluded = localStorage.getItem('bmcf-excluded-colors') || '[]';
+      localStorage.setItem('bmcf-excluded-colors-pending', appliedExcluded);
+    }
+    
     // Create the color filter overlay
     const colorFilterOverlay = document.createElement('div');
     colorFilterOverlay.id = 'bm-color-filter-overlay';
@@ -2446,7 +2472,11 @@ function buildColorFilterOverlay() {
       closeButton.style.boxShadow = '';
     }, { passive: true });
     
-    closeButton.onclick = () => colorFilterOverlay.remove();
+    closeButton.onclick = () => {
+      // Discard pending changes when closing without applying
+      localStorage.removeItem('bmcf-excluded-colors-pending');
+      colorFilterOverlay.remove();
+    };
 
     // Settings button 
     const settingsButton = document.createElement('button');
@@ -2488,8 +2518,117 @@ function buildColorFilterOverlay() {
     }, { passive: true });
     settingsButton.onclick = () => buildCrosshairSettingsOverlay();
 
+    // View toggle button (Grid/List)
+    const viewToggleButton = document.createElement('button');
+    viewToggleButton.innerHTML = '📋'; // List icon
+    viewToggleButton.title = 'Toggle between Grid and List view';
+    viewToggleButton.style.cssText = `
+      background: linear-gradient(135deg, var(--slate-600), var(--slate-700));
+      border: 1px solid var(--slate-500);
+      color: var(--slate-200);
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    `;
+    
+    // State variable for current view mode - restore from localStorage
+    const savedPreference = localStorage.getItem('bmcf-view-preference');
+    let isListView = savedPreference === 'list';
+    
+    // Add hover effects but prevent them on touch devices
+    viewToggleButton.onmouseover = () => {
+      viewToggleButton.style.transform = 'translateY(-1px) scale(1.05)';
+      viewToggleButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+      viewToggleButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
+    };
+    viewToggleButton.onmouseout = () => {
+      viewToggleButton.style.transform = '';
+      viewToggleButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+      viewToggleButton.style.boxShadow = '';
+    };
+    
+    // Prevent hover effects on touch by immediately resetting styles on touchstart
+    viewToggleButton.addEventListener('touchstart', () => {
+      viewToggleButton.style.transform = '';
+      viewToggleButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+      viewToggleButton.style.boxShadow = '';
+    }, { passive: true });
+
+    // Toggle view functionality
+    const toggleView = () => {
+      isListView = !isListView;
+      
+      // Save preference to localStorage
+      localStorage.setItem('bmcf-view-preference', isListView ? 'list' : 'grid');
+      
+      // Use CSS classes to control visibility - this prevents DOM manipulation conflicts
+      if (isListView) {
+        colorViewContainer.classList.add('list-mode');
+        viewToggleButton.innerHTML = '⊞'; // Grid icon
+        viewToggleButton.title = 'Switch to Grid view';
+      } else {
+        colorViewContainer.classList.remove('list-mode');
+        viewToggleButton.innerHTML = '📋'; // List icon
+        viewToggleButton.title = 'Switch to List view';
+      }
+      
+      // Force layout recalculation
+      colorViewContainer.offsetHeight;
+      
+      // Re-apply current filter to the new view
+      if (typeof filterSelect !== 'undefined' && filterSelect.value) {
+        applyFilter(filterSelect.value);
+      }
+      
+      // Re-apply current search to the new view
+      if (typeof searchInput !== 'undefined' && searchInput.value.trim()) {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const currentViewItems = isListView ? 
+          Array.from(colorList.querySelectorAll('[data-color-item]')) : 
+          Array.from(colorGrid.querySelectorAll('[data-color-item]'));
+        
+        currentViewItems.forEach(item => {
+          const colorName = item.getAttribute('data-color-name').toLowerCase();
+          if (colorName.includes(searchTerm)) {
+            item.style.display = 'flex';
+          } else {
+            item.style.display = 'none';
+          }
+        });
+      }
+    };
+
+    viewToggleButton.onclick = toggleView;
+
+    // Initialize view state based on saved preference
+    const initializeViewState = () => {
+      // Use CSS classes for clean view switching
+      if (isListView) {
+        colorViewContainer.classList.add('list-mode');
+        viewToggleButton.innerHTML = '⊞'; // Grid icon
+        viewToggleButton.title = 'Switch to Grid view';
+      } else {
+        colorViewContainer.classList.remove('list-mode');
+        viewToggleButton.innerHTML = '📋'; // List icon
+        viewToggleButton.title = 'Switch to List view';
+      }
+      
+      // Force layout recalculation
+      colorViewContainer.offsetHeight;
+    };
+
     // Add elements to titleContainer
     titleContainer.appendChild(title);
+    titleContainer.appendChild(viewToggleButton);
     titleContainer.appendChild(settingsButton);
     titleContainer.appendChild(closeButton);
 
@@ -2532,7 +2671,7 @@ function buildColorFilterOverlay() {
         </div>
         <div style="font-size: 0.95em; color: var(--bmcf-text-muted); margin-bottom: 16px; line-height: 1.5;">
           ${displayPainted.toLocaleString()} / ${displayRequired.toLocaleString()} pixels painted
-          ${templateManager.getIncludeWrongColorsInProgress() ? ` (includes ${totalWrong.toLocaleString()} wrong)` : ''}
+          ${templateManager.getIncludeWrongColorsInProgress() && totalWrong > 0 ? ` (includes ${totalWrong.toLocaleString()} wrong)` : ''}
         </div>
         <div style="
           width: 100%; height: 12px; background: var(--slate-700); 
@@ -2726,7 +2865,10 @@ function buildColorFilterOverlay() {
     // Search functionality
     const performSearch = (searchTerm) => {
       const term = searchTerm.toLowerCase().trim();
-      const colorItems = colorGrid.querySelectorAll('[data-color-item]');
+      // Get items from both views but only apply to the currently visible view
+      const gridItems = colorGrid.querySelectorAll('[data-color-item]');
+      const listItems = colorList.querySelectorAll('[data-color-item]');
+      const colorItems = isListView ? listItems : gridItems;
       let visibleCount = 0;
 
       colorItems.forEach(item => {
@@ -3010,14 +3152,38 @@ function buildColorFilterOverlay() {
       justify-content: center;
     `;
 
+    // Color list (alternative view)
+    const colorList = document.createElement('div');
+    colorList.className = 'bmcf-list';
+    colorList.style.cssText = `
+      display: none;
+      flex-direction: column;
+      gap: 8px;
+      margin-bottom: 20px;
+    `;
+
+    // Container to hold both grid and list
+    const colorViewContainer = document.createElement('div');
+    colorViewContainer.className = 'bmcf-view-container';
+    colorViewContainer.style.cssText = `
+      position: relative;
+      width: 100%;
+    `;
+    colorViewContainer.appendChild(colorGrid);
+    colorViewContainer.appendChild(colorList);
+
     // Get current template
     const currentTemplate = templateManager.templatesArray[0];
 
     // Create color items
     colorPalette.forEach((colorInfo, index) => {
+      // Flag to prevent sync loops between grid and list
+      let isSyncing = false;
+      
       const colorItem = document.createElement('div');
       colorItem.className = 'bmcf-card';
       const rgb = colorInfo.rgb;
+      const colorKey = `${rgb[0]},${rgb[1]},${rgb[2]}`;
       const isFreeColor = colorInfo.free;
       const isDisabled = currentTemplate.isColorDisabled(rgb);
       const isEnhanced = currentTemplate.isColorEnhanced ? currentTemplate.isColorEnhanced(rgb) : false;
@@ -3166,8 +3332,84 @@ function buildColorFilterOverlay() {
         z-index: 2;
       `;
 
-      // Add pixel statistics display
-      const colorKey = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+      // Exclude from progress icon (top-left corner)
+      const excludeIcon = document.createElement('div');
+      excludeIcon.textContent = "👁️";
+      excludeIcon.title = "Click to exclude/include this color from progress calculation";
+      excludeIcon.style.cssText = `
+        font-size: 0.8em;
+        position: absolute;
+        top: 4px;
+        left: 4px;
+        z-index: 3;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+        background: rgba(0,0,0,0.3);
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+
+      // Check if color is excluded from progress (check both applied and pending)
+      const appliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+      const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(appliedExcluded));
+      const isExcluded = pendingExcluded.includes(colorKey);
+      
+      if (isExcluded) {
+        excludeIcon.textContent = "🚫";
+        excludeIcon.style.opacity = '1';
+        excludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+      }
+
+      excludeIcon.onmouseenter = () => {
+        excludeIcon.style.opacity = '1';
+        excludeIcon.style.transform = 'scale(1.1)';
+      };
+      
+      excludeIcon.onmouseleave = () => {
+        excludeIcon.style.opacity = isExcluded ? '1' : '0.7';
+        excludeIcon.style.transform = 'scale(1)';
+      };
+
+      excludeIcon.onclick = (e) => {
+        e.stopPropagation();
+        const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')));
+        
+        if (pendingExcluded.includes(colorKey)) {
+          // Remove from pending excluded list
+          const newPendingExcluded = pendingExcluded.filter(c => c !== colorKey);
+          localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
+          excludeIcon.textContent = "👁️";
+          excludeIcon.style.background = 'rgba(0,0,0,0.3)';
+          excludeIcon.style.opacity = '0.7';
+          // Also update list icon
+          listExcludeIcon.textContent = "👁️";
+          listExcludeIcon.style.background = 'rgba(0,0,0,0.3)';
+          listExcludeIcon.style.opacity = '0.7';
+        } else {
+          // Add to pending excluded list
+          pendingExcluded.push(colorKey);
+          localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
+          excludeIcon.textContent = "🚫";
+          excludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+          excludeIcon.style.opacity = '1';
+          // Also update list icon
+          listExcludeIcon.textContent = "🚫";
+          listExcludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+          listExcludeIcon.style.opacity = '1';
+        }
+        
+        // Show status message (no automatic refresh)
+        if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+          overlayMain.handleDisplayStatus(`Color ${pendingExcluded.includes(colorKey) ? 'excluded from' : 'included in'} progress calculation - click Apply Colors to confirm`);
+        }
+      };
+
+      // Add pixel statistics display  
       const stats = pixelStats[colorKey];
       const pixelStatsDisplay = document.createElement('div');
       pixelStatsDisplay.className = 'bmcf-stats';
@@ -3275,10 +3517,13 @@ function buildColorFilterOverlay() {
       if (!isFreeColor){
         colorItem.appendChild(dropletIcon);
       }
+      colorItem.appendChild(excludeIcon);
 
       // Color enable/disable click handler (only on click area, not checkbox)
       colorClickArea.onclick = (e) => {
         e.stopPropagation(); // Prevent bubbling
+        if (isSyncing) return; // Prevent sync loops
+        
         const wasDisabled = currentTemplate.isColorDisabled(rgb);
         if (wasDisabled) {
           currentTemplate.enableColor(rgb);
@@ -3286,6 +3531,13 @@ function buildColorFilterOverlay() {
           const overlay = colorClickArea.querySelector('div[style*="position: absolute"]');
           if (overlay) overlay.remove();
           enhancedCheckbox.disabled = false;
+          
+          // Sync to list item
+          isSyncing = true;
+          listItem.style.border = '2px solid #4caf50';
+          listItem.style.opacity = '1';
+          listEnhancedCheckbox.disabled = false;
+          isSyncing = false;
         } else {
           currentTemplate.disableColor(rgb);
           colorItem.style.border = '3px solid #f44336';
@@ -3309,6 +3561,15 @@ function buildColorFilterOverlay() {
           colorClickArea.appendChild(overlay);
           enhancedCheckbox.disabled = true;
           enhancedCheckbox.checked = false;
+          
+          // Sync to list item
+          isSyncing = true;
+          listItem.style.border = '2px solid #f44336';
+          listItem.style.opacity = '0.7';
+          listEnhancedCheckbox.disabled = true;
+          listEnhancedCheckbox.checked = false;
+          listEnhancedLabel.style.color = 'rgba(255,255,255,0.6)';
+          isSyncing = false;
         }
         
         // Refresh template display in real-time
@@ -3342,11 +3603,406 @@ function buildColorFilterOverlay() {
       };
 
       colorGrid.appendChild(colorItem);
+
+      // Create corresponding list item based on the log.txt example
+      const listItem = document.createElement('div');
+      listItem.className = 'bmcf-list-item';
+      
+      // Add data attributes for search functionality
+      listItem.setAttribute('data-color-item', 'true');
+      listItem.setAttribute('data-color-name', colorInfo.name);
+      listItem.setAttribute('data-color-rgb', rgb.join(','));
+      
+      // Copy stats data attributes from grid item to list item
+      if (colorItem.hasAttribute('data-wrong-count')) {
+        listItem.setAttribute('data-wrong-count', colorItem.getAttribute('data-wrong-count'));
+        listItem.setAttribute('data-missing-count', colorItem.getAttribute('data-missing-count'));
+        listItem.setAttribute('data-total-count', colorItem.getAttribute('data-total-count'));
+        listItem.setAttribute('data-painted-count', colorItem.getAttribute('data-painted-count'));
+      }
+      
+      listItem.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px 12px;
+        background: var(--slate-800);
+        border: 2px solid ${isDisabled ? '#f44336' : '#4caf50'};
+        border-radius: 10px;
+        position: relative;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        min-height: 50px;
+        opacity: ${isDisabled ? '0.7' : '1'};
+      `;
+      
+      // Color swatch (small square)
+      const colorSwatch = document.createElement('div');
+      colorSwatch.style.cssText = `
+        width: 32px;
+        height: 32px;
+        background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});
+        border-radius: 6px;
+        border: 2px solid rgba(255,255,255,0.3);
+        flex-shrink: 0;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+      `;
+
+      // Color info container (main content area)
+      const infoContainer = document.createElement('div');
+      infoContainer.style.cssText = `
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: 4px;
+        min-width: 0;
+      `;
+      
+      // Color click area for enable/disable (covers whole item)
+      const listColorClickArea = document.createElement('div');
+      listColorClickArea.style.cssText = `
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        cursor: pointer;
+        z-index: 1;
+      `;
+
+      // Top row: Color name and main stats in the same line
+      const topRow = document.createElement('div');
+      topRow.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9em;
+        line-height: 1.2;
+      `;
+
+      // Color name
+      const listColorName = document.createElement('div');
+      listColorName.textContent = colorInfo.name;
+      listColorName.style.cssText = `
+        font-weight: 600;
+        color: var(--slate-100);
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        max-width: 120px;
+        flex-shrink: 0;
+      `;
+
+      // Stats - get correct values from data attributes
+      let mainStatsText = '';
+      let leftValue = 0;
+      
+      // Get values from data attributes (same as grid item)
+      const totalCount = parseInt(listItem.getAttribute('data-total-count') || '0');
+      const paintedCount = parseInt(listItem.getAttribute('data-painted-count') || '0');
+      const missingCount = parseInt(listItem.getAttribute('data-missing-count') || '0');
+      const wrongCount = parseInt(listItem.getAttribute('data-wrong-count') || '0');
+      
+      if (totalCount > 0) {
+        const percentage = totalCount > 0 ? Math.round(((totalCount - missingCount) / totalCount) * 100) : 0;
+        mainStatsText = `${paintedCount.toLocaleString()}/${totalCount.toLocaleString()} (${percentage}%)`;
+        // Add wrong pixels display if they exist and wrong colors are included in progress
+        if (templateManager.getIncludeWrongColorsInProgress() && wrongCount > 0) {
+          mainStatsText += ` +${wrongCount.toLocaleString()} wrong`;
+        }
+        leftValue = missingCount; // This is the correct "Left" value
+      } else {
+        mainStatsText = 'Not Used';
+        leftValue = 0;
+      }
+
+      // Main stats span
+      const mainStats = document.createElement('span');
+      mainStats.textContent = mainStatsText;
+      mainStats.style.cssText = `
+        color: var(--slate-300);
+        font-size: 0.8em;
+        white-space: nowrap;
+      `;
+
+      // Bottom row: Left status with color coding
+      const bottomRow = document.createElement('div');
+      bottomRow.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        font-size: 0.75em;
+        margin-top: 2px;
+      `;
+
+      if (mainStatsText !== 'Not Used') {
+        const leftStats = document.createElement('span');
+        leftStats.textContent = `${leftValue.toLocaleString()} Left`;
+        leftStats.style.cssText = `
+          color: ${leftValue === 0 ? '#10b981' : '#f59e0b'}; // green if 0, orange if > 0
+          font-weight: 500;
+        `;
+        bottomRow.appendChild(leftStats);
+      }
+
+      topRow.appendChild(listColorName);
+      if (mainStatsText) {
+        topRow.appendChild(mainStats);
+      }
+      
+      infoContainer.appendChild(topRow);
+      if (mainStatsText !== 'Not Used') {
+        infoContainer.appendChild(bottomRow);
+      }
+      
+      // Controls container (right side)
+      const listControlsContainer = document.createElement('div');
+      listControlsContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        z-index: 2;
+        position: relative;
+      `;
+      
+      // Enhanced mode checkbox
+      const listEnhancedCheckbox = document.createElement('input');
+      listEnhancedCheckbox.type = 'checkbox';
+      listEnhancedCheckbox.checked = isEnhanced;
+      listEnhancedCheckbox.disabled = isDisabled;
+      listEnhancedCheckbox.style.cssText = `
+        width: 16px;
+        height: 16px;
+        cursor: pointer;
+        accent-color: #ffd700;
+      `;
+
+      const listEnhancedLabel = document.createElement('label');
+      listEnhancedLabel.textContent = 'Enhanced';
+      listEnhancedLabel.title = 'Enhanced mode - highlights this color on the canvas';
+      listEnhancedLabel.style.cssText = `
+        font-size: 12px;
+        cursor: pointer;
+        color: ${isEnhanced ? '#ffd700' : 'rgba(255,255,255,0.6)'};
+        user-select: none;
+        transition: color 0.2s ease;
+        font-weight: 500;
+      `;
+
+      listEnhancedLabel.onclick = (e) => {
+        e.stopPropagation();
+        if (!listEnhancedCheckbox.disabled) {
+          listEnhancedCheckbox.checked = !listEnhancedCheckbox.checked;
+          listEnhancedCheckbox.onchange(e);
+        }
+      };
+
+      listEnhancedCheckbox.onchange = (e) => {
+        e.stopPropagation();
+        const isNowEnhanced = listEnhancedCheckbox.checked;
+        
+        if (isNowEnhanced) {
+          currentTemplate.enableColorEnhanced(rgb);
+          listEnhancedLabel.style.color = '#ffd700';
+          // Also update grid checkbox
+          enhancedCheckbox.checked = true;
+        } else {
+          currentTemplate.disableColorEnhanced(rgb);
+          listEnhancedLabel.style.color = 'rgba(255,255,255,0.6)';
+          // Also update grid checkbox
+          enhancedCheckbox.checked = false;
+        }
+        
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing enhanced mode:', error);
+        });
+      };
+      
+      // Eyedropper icon for non-free colors
+      if (!isFreeColor) {
+        const listDropletIcon = document.createElement('div');
+        listDropletIcon.innerHTML = '💧';
+        listDropletIcon.title = 'Click to select this color in the palette';
+        listDropletIcon.style.cssText = `
+          font-size: 16px;
+          cursor: pointer;
+          opacity: 0.7;
+          user-select: none;
+          transition: opacity 0.2s ease;
+        `;
+        
+        listDropletIcon.onmouseenter = () => listDropletIcon.style.opacity = '1';
+        listDropletIcon.onmouseleave = () => listDropletIcon.style.opacity = '0.7';
+        
+        listDropletIcon.onclick = (e) => {
+          e.stopPropagation();
+          const colorButtons = document.querySelectorAll(`button[id^="color-"]`);
+          colorButtons.forEach(btn => {
+            const btnStyle = window.getComputedStyle(btn);
+            const btnBg = btnStyle.backgroundColor;
+            const targetColor = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+            if (btnBg === targetColor) {
+              btn.click();
+              if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+                overlayMain.handleDisplayStatus(`Selected color: ${colorInfo.name}`);
+              }
+            }
+          });
+        };
+        
+        listControlsContainer.appendChild(listDropletIcon);
+      }
+      
+      // Exclude from progress icon for list view
+      const listExcludeIcon = document.createElement('div');
+      listExcludeIcon.textContent = "👁️";
+      listExcludeIcon.title = "Click to exclude/include this color from progress calculation";
+      listExcludeIcon.style.cssText = `
+        font-size: 14px;
+        cursor: pointer;
+        opacity: 0.7;
+        transition: all 0.2s ease;
+        background: rgba(0,0,0,0.3);
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      `;
+
+      // Check if color is excluded (check pending changes)
+      const listAppliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+      const listPendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(listAppliedExcluded));
+      const listIsExcluded = listPendingExcluded.includes(colorKey);
+      
+      if (listIsExcluded) {
+        listExcludeIcon.textContent = "🚫";
+        listExcludeIcon.style.opacity = '1';
+        listExcludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+      }
+
+      listExcludeIcon.onmouseenter = () => {
+        listExcludeIcon.style.opacity = '1';
+        listExcludeIcon.style.transform = 'scale(1.1)';
+      };
+      
+      listExcludeIcon.onmouseleave = () => {
+        listExcludeIcon.style.opacity = listIsExcluded ? '1' : '0.7';
+        listExcludeIcon.style.transform = 'scale(1)';
+      };
+
+      listExcludeIcon.onclick = (e) => {
+        e.stopPropagation();
+        const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')));
+        
+        if (pendingExcluded.includes(colorKey)) {
+          // Remove from pending excluded list
+          const newPendingExcluded = pendingExcluded.filter(c => c !== colorKey);
+          localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(newPendingExcluded));
+          listExcludeIcon.textContent = "👁️";
+          listExcludeIcon.style.background = 'rgba(0,0,0,0.3)';
+          listExcludeIcon.style.opacity = '0.7';
+          // Also update grid icon
+          excludeIcon.textContent = "👁️";
+          excludeIcon.style.background = 'rgba(0,0,0,0.3)';
+          excludeIcon.style.opacity = '0.7';
+        } else {
+          // Add to pending excluded list
+          pendingExcluded.push(colorKey);
+          localStorage.setItem('bmcf-excluded-colors-pending', JSON.stringify(pendingExcluded));
+          listExcludeIcon.textContent = "🚫";
+          listExcludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+          listExcludeIcon.style.opacity = '1';
+          // Also update grid icon
+          excludeIcon.textContent = "🚫";
+          excludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+          excludeIcon.style.opacity = '1';
+        }
+        
+        // Show status message (no automatic refresh)
+        if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+          overlayMain.handleDisplayStatus(`Color ${pendingExcluded.includes(colorKey) ? 'excluded from' : 'included in'} progress calculation - click Apply Colors to confirm`);
+        }
+      };
+      
+      listControlsContainer.appendChild(listExcludeIcon);
+      listControlsContainer.appendChild(listEnhancedCheckbox);
+      listControlsContainer.appendChild(listEnhancedLabel);
+      
+      // Assemble the list item
+      listItem.appendChild(colorSwatch);
+      listItem.appendChild(infoContainer);
+      listItem.appendChild(listControlsContainer);
+      listItem.appendChild(listColorClickArea);
+
+      // List item click handler (enable/disable color)
+      listColorClickArea.onclick = (e) => {
+        e.stopPropagation();
+        if (isSyncing) return; // Prevent sync loops
+        
+        const wasDisabled = currentTemplate.isColorDisabled(rgb);
+        if (wasDisabled) {
+          currentTemplate.enableColor(rgb);
+          listItem.style.border = '2px solid #4caf50';
+          listItem.style.opacity = '1';
+          listEnhancedCheckbox.disabled = false;
+          
+          // Sync to grid item
+          isSyncing = true;
+          colorItem.style.border = '3px solid #4caf50';
+          const gridOverlay = colorClickArea.querySelector('div[style*="position: absolute"]');
+          if (gridOverlay) gridOverlay.remove();
+          enhancedCheckbox.disabled = false;
+          isSyncing = false;
+        } else {
+          currentTemplate.disableColor(rgb);
+          listItem.style.border = '2px solid #f44336';
+          listItem.style.opacity = '0.7';
+          listEnhancedCheckbox.disabled = true;
+          listEnhancedCheckbox.checked = false;
+          listEnhancedLabel.style.color = 'rgba(255,255,255,0.6)';
+          
+          // Sync to grid item
+          isSyncing = true;
+          colorItem.style.border = '3px solid #f44336';
+          const gridOverlay = document.createElement('div');
+          gridOverlay.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(244, 67, 54, 0.3);
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+            font-size: 16px;
+          `;
+          gridOverlay.textContent = '✕';
+          colorClickArea.appendChild(gridOverlay);
+          enhancedCheckbox.disabled = true;
+          enhancedCheckbox.checked = false;
+          isSyncing = false;
+        }
+        
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing template:', error);
+        });
+      };
+
+      colorList.appendChild(listItem);
     });
 
     // Filter functionality - defined after color items are created
     const applyFilter = (filterType) => {
-      const colorItems = Array.from(colorGrid.querySelectorAll('[data-color-item]'));
+      const gridItems = Array.from(colorGrid.querySelectorAll('[data-color-item]'));
+      const listItems = Array.from(colorList.querySelectorAll('[data-color-item]'));
+      const colorItems = isListView ? listItems : gridItems;
       
       // Save original order on first filter (if not already saved)
       if (originalOrder.length === 0) {
@@ -3355,10 +4011,10 @@ function buildColorFilterOverlay() {
       
       if (filterType === 'default') {
         // Restore original order and show all items
-        originalOrder.forEach(item => {
+        colorItems.forEach(item => {
           item.style.display = 'flex';
-          colorGrid.appendChild(item);
         });
+        // Don't move elements between containers - they should stay in their original containers
         return;
       }
       
@@ -3407,10 +4063,8 @@ function buildColorFilterOverlay() {
         }
       });
 
-      // Reorder the DOM elements
-      colorItems.forEach(item => {
-        colorGrid.appendChild(item);
-      });
+      // Don't reorder DOM elements between containers to avoid moving items between grid/list
+      // Just ensure visibility - elements should stay in their original containers
     };
 
     // Add event listener for filter select
@@ -3545,13 +4199,30 @@ function buildColorFilterOverlay() {
     
     refreshStatsButton.onclick = () => {
       consoleLog('🔄 [Color Filter] Refreshing statistics...');
+      // Apply pending excluded colors changes
+      const pendingExcluded = localStorage.getItem('bmcf-excluded-colors-pending');
+      if (pendingExcluded) {
+        localStorage.setItem('bmcf-excluded-colors', pendingExcluded);
+        localStorage.removeItem('bmcf-excluded-colors-pending');
+      }
+      // Update mini tracker to reflect excluded colors
+      updateMiniTracker();
       buildColorFilterOverlay(); // Rebuild overlay with fresh data
     };
     applyButton.onclick = async () => {
+      // Apply pending excluded colors changes before closing
+      const pendingExcluded = localStorage.getItem('bmcf-excluded-colors-pending');
+      if (pendingExcluded) {
+        localStorage.setItem('bmcf-excluded-colors', pendingExcluded);
+        localStorage.removeItem('bmcf-excluded-colors-pending');
+      }
+      
       colorFilterOverlay.remove();
       overlayMain.handleDisplayStatus('Applying color filter...');
       
       try {
+        // Update mini tracker to reflect excluded colors
+        updateMiniTracker();
         await refreshTemplateDisplay();
         overlayMain.handleDisplayStatus('Color filter applied successfully!');
       } catch (error) {
@@ -3581,12 +4252,15 @@ function buildColorFilterOverlay() {
     contentContainer.appendChild(enhancedSection);
     contentContainer.appendChild(searchContainer);
     contentContainer.appendChild(filterContainer);
-    contentContainer.appendChild(colorGrid);
+    contentContainer.appendChild(colorViewContainer);
     
     colorFilterOverlay.appendChild(contentContainer);
     colorFilterOverlay.appendChild(footerContainer);
 
     document.body.appendChild(colorFilterOverlay);
+
+    // Initialize view state based on saved preference
+    initializeViewState();
 
     // Apply or remove mobile mode styles based on current setting
     applyMobileModeToColorFilter(!!isMobileMode);
@@ -4585,6 +5259,22 @@ function applyMobileModeToColorFilter(enableMobile) {
         font-size: 0.7em !important; 
         padding: 6px 10px !important; 
       }
+      /* List view styles for mobile */
+      .bmcf-list { 
+        gap: 4px !important; 
+      }
+      .bmcf-list-item { 
+        padding: 6px 8px !important; 
+        min-height: 40px !important;
+        gap: 8px !important;
+      }
+      .bmcf-list-item .info-container { 
+        font-size: 0.8em !important; 
+      }
+      .bmcf-list-item .color-swatch { 
+        width: 24px !important; 
+        height: 24px !important; 
+      }
     `;
     consoleLog('📱 [Dynamic Mobile] Mobile mode styles applied FRESH to Color Filter');
   } else {
@@ -4621,7 +5311,16 @@ function updateMiniTracker() {
   if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
     // Use templateManager.calculateRemainingPixelsByColor() like the main progress bar does
     const pixelStats = templateManager.calculateRemainingPixelsByColor();
-    for (const stats of Object.values(pixelStats)) {
+    
+    // Get excluded colors from localStorage (same as main progress bar)
+    const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+    
+    for (const [colorKey, stats] of Object.entries(pixelStats)) {
+      // Skip excluded colors from mini tracker calculation too
+      if (excludedColors.includes(colorKey)) {
+        continue;
+      }
+      
       totalRequired += stats.totalRequired || 0;
       totalPainted += stats.painted || 0;
       totalNeedCrosshair += stats.needsCrosshair || 0;
@@ -6332,33 +7031,33 @@ function createSearchWindow() {
 <div class="drag-handle"></div>
 <div class="hdr">
   <h3>
-    <img class="mars-icon" src="https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png" alt="Blue Marble">
+    <img class="skirk-icon" src="https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png" alt="Blue Marble">
     Location Search
   </h3>
   <div class="actions">
-    <button id="mars-location-btn">Location</button>
-    <button id="mars-search-close">Close</button>
+    <button id="skirk-location-btn">Location</button>
+    <button id="skirk-search-close">Close</button>
   </div>
 </div>
 <div class="body">
-  <input type="text" id="mars-search-input" placeholder="Search for a place...">
-  <div id="mars-search-results"></div>
-  <div id="mars-favorites-menu" style="display: none;">
-    <div id="mars-favorites-header">
-      <div id="mars-favorites-title" style="cursor: pointer;">
-        <span id="mars-favorites-toggle">▼</span> ⭐ Favorites
-        <span id="mars-favorites-count">0</span>
+  <input type="text" id="skirk-search-input" placeholder="Search for a place...">
+  <div id="skirk-search-results"></div>
+  <div id="skirk-favorites-menu" style="display: none;">
+    <div id="skirk-favorites-header">
+      <div id="skirk-favorites-title" style="cursor: pointer;">
+        <span id="skirk-favorites-toggle">▼</span> ⭐ Favorites
+        <span id="skirk-favorites-count">0</span>
       </div>
 
-      <button id="mars-clear-favorites">Clear All</button>
+      <button id="skirk-clear-favorites">Clear All</button>
     </div>
-    <div id="mars-favorites-list"></div>
+    <div id="skirk-favorites-list"></div>
   </div>
 </div>`;
   document.body.appendChild(searchPanel);
 
   // Close logic
-  searchPanel.querySelector('#mars-search-close').addEventListener('click', () => searchPanel.style.display = 'none');
+  searchPanel.querySelector('#skirk-search-close').addEventListener('click', () => searchPanel.style.display = 'none');
 
   // Favorites management
   const FAVORITES_KEY = 'bm-search-favorites';
@@ -6402,9 +7101,9 @@ function createSearchWindow() {
   
   function updateFavoritesDisplay() {
     const favorites = getFavorites();
-    const favoritesMenu = searchPanel.querySelector('#mars-favorites-menu');
-    const favoritesCount = searchPanel.querySelector('#mars-favorites-count');
-    const favoritesList = searchPanel.querySelector('#mars-favorites-list');
+    const favoritesMenu = searchPanel.querySelector('#skirk-favorites-menu');
+    const favoritesCount = searchPanel.querySelector('#skirk-favorites-count');
+    const favoritesList = searchPanel.querySelector('#skirk-favorites-list');
     
     favoritesCount.textContent = favorites.length;
     
@@ -6414,24 +7113,24 @@ function createSearchWindow() {
       
       favorites.forEach(favorite => {
         const favoriteItem = document.createElement('div');
-        favoriteItem.className = 'mars-favorite-item';
+        favoriteItem.className = 'skirk-favorite-item';
         
         favoriteItem.innerHTML = `
-          <div class="mars-result-content">
-            <div class="mars-result-name">${favorite.primaryName}</div>
-            <div class="mars-result-address">${favorite.secondaryInfo}</div>
+          <div class="skirk-result-content">
+            <div class="skirk-result-name">${favorite.primaryName}</div>
+            <div class="skirk-result-address">${favorite.secondaryInfo}</div>
           </div>
-          <span class="mars-favorite-remove" title="Remove from favorites">×</span>
+          <span class="skirk-favorite-remove" title="Remove from favorites">×</span>
         `;
         
         // Click to navigate
-        favoriteItem.querySelector('.mars-result-content').addEventListener('click', () => {
+        favoriteItem.querySelector('.skirk-result-content').addEventListener('click', () => {
           navigateToLocation(favorite.lat, favorite.lon);
           searchPanel.style.display = 'none';
         });
         
         // Click to remove
-        favoriteItem.querySelector('.mars-favorite-remove').addEventListener('click', (e) => {
+        favoriteItem.querySelector('.skirk-favorite-remove').addEventListener('click', (e) => {
           e.stopPropagation();
           removeFavorite(favorite.lat, favorite.lon);
         });
@@ -6444,7 +7143,7 @@ function createSearchWindow() {
   }
   
   // Clear all favorites
-  searchPanel.querySelector('#mars-clear-favorites').addEventListener('click', () => {
+  searchPanel.querySelector('#skirk-clear-favorites').addEventListener('click', () => {
     if (confirm('Are you sure you want to clear all favorites?')) {
       saveFavorites([]);
     }
@@ -6455,9 +7154,9 @@ function createSearchWindow() {
 
   // Create modals
   const locationModal = document.createElement('div');
-  locationModal.id = 'mars-location-modal';
+  locationModal.id = 'skirk-location-modal';
   locationModal.innerHTML = `
-    <div id="mars-location-dialog">
+    <div id="skirk-location-dialog">
       <h3>Add Custom Location</h3>
       <div class="form-group">
         <label for="location-name">Name:</label>
@@ -6491,7 +7190,7 @@ function createSearchWindow() {
 
 
   // Location button logic
-  searchPanel.querySelector('#mars-location-btn').addEventListener('click', () => {
+  searchPanel.querySelector('#skirk-location-btn').addEventListener('click', () => {
     locationModal.style.display = 'flex';
     locationModal.querySelector('#location-name').focus();
   });
@@ -6589,10 +7288,10 @@ function createSearchWindow() {
 
   // Favorites collapse toggle
   let favoritesCollapsed = false;
-  searchPanel.querySelector('#mars-favorites-title').addEventListener('click', () => {
+  searchPanel.querySelector('#skirk-favorites-title').addEventListener('click', () => {
     favoritesCollapsed = !favoritesCollapsed;
-    const toggle = searchPanel.querySelector('#mars-favorites-toggle');
-    const list = searchPanel.querySelector('#mars-favorites-list');
+    const toggle = searchPanel.querySelector('#skirk-favorites-toggle');
+    const list = searchPanel.querySelector('#skirk-favorites-list');
     
     if (favoritesCollapsed) {
       toggle.classList.add('collapsed');
@@ -6697,8 +7396,8 @@ function createSearchWindow() {
   document.addEventListener("touchcancel", stopDrag);
 
   // Search functionality
-  const searchInput = searchPanel.querySelector('#mars-search-input');
-  const resultsContainer = searchPanel.querySelector('#mars-search-results');
+  const searchInput = searchPanel.querySelector('#skirk-search-input');
+  const resultsContainer = searchPanel.querySelector('#skirk-search-results');
 
   function searchLocation(query) {
     return new Promise((resolve, reject) => {
@@ -6745,7 +7444,7 @@ function createSearchWindow() {
     console.log('Search results received:', results);
     
     if (results.length === 0) {
-      resultsContainer.innerHTML = '<div class="mars-no-results">No results found</div>';
+      resultsContainer.innerHTML = '<div class="skirk-no-results">No results found</div>';
       return;
     }
 
@@ -6766,7 +7465,7 @@ function createSearchWindow() {
       });
       
       const resultItem = document.createElement('div');
-      resultItem.className = 'mars-search-result';
+      resultItem.className = 'skirk-search-result';
 
       // Store lat/lon directly on the element as data attributes
       resultItem.dataset.lat = String(lat || '');
@@ -6785,16 +7484,16 @@ function createSearchWindow() {
       });
 
       resultItem.innerHTML = `
-        <div class="mars-result-content">
-          <div class="mars-result-name">${primaryName}</div>
-          ${secondaryInfo ? `<div class="mars-result-address secondary">${secondaryInfo}</div>` : ''}
-          ${fullAddress ? `<div class="mars-result-address">${fullAddress}</div>` : ''}
+        <div class="skirk-result-content">
+          <div class="skirk-result-name">${primaryName}</div>
+          ${secondaryInfo ? `<div class="skirk-result-address secondary">${secondaryInfo}</div>` : ''}
+          ${fullAddress ? `<div class="skirk-result-address">${fullAddress}</div>` : ''}
         </div>
-        <span class="mars-favorite-star ${isFavorited(lat, lon) ? 'favorited' : ''}" title="Add to favorites">★</span>
+        <span class="skirk-favorite-star ${isFavorited(lat, lon) ? 'favorited' : ''}" title="Add to favorites">★</span>
       `;
 
       // Handle content click (navigation)
-      resultItem.querySelector('.mars-result-content').addEventListener('click', (e) => {
+      resultItem.querySelector('.skirk-result-content').addEventListener('click', (e) => {
         const latStr = e.currentTarget.parentElement.dataset.lat;
         const lonStr = e.currentTarget.parentElement.dataset.lon;
         console.log('=== NAVIGATION DEBUG ===');
@@ -6813,7 +7512,7 @@ function createSearchWindow() {
       });
 
       // Handle star click (favorites)
-      resultItem.querySelector('.mars-favorite-star').addEventListener('click', (e) => {
+      resultItem.querySelector('.skirk-favorite-star').addEventListener('click', (e) => {
         e.stopPropagation();
         const star = e.target;
         const isFav = star.classList.contains('favorited');
@@ -6844,14 +7543,14 @@ function createSearchWindow() {
     const query = searchInput.value.trim();
     if (!query) return;
 
-    resultsContainer.innerHTML = '<div class="mars-loading">Searching...</div>';
+    resultsContainer.innerHTML = '<div class="skirk-loading">Searching...</div>';
 
     try {
       const results = await searchLocation(query);
       displayResults(results);
     } catch (error) {
       consoleError('Search error:', error);
-      resultsContainer.innerHTML = '<div class="mars-no-results">Error searching. Please try again.</div>';
+      resultsContainer.innerHTML = '<div class="skirk-no-results">Error searching. Please try again.</div>';
     }
   }
 
