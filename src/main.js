@@ -4543,6 +4543,19 @@ function buildCrosshairSettingsOverlay() {
     // Create the settings overlay
     const settingsOverlay = document.createElement('div');
     settingsOverlay.id = 'bm-crosshair-settings-overlay';
+    
+    // Check if mobile mode is enabled for compact layout
+    const isMobileMode = getMobileMode();
+    const mobileStyles = isMobileMode ? `
+      max-width: 350px;
+      max-height: 70vh;
+      border-radius: 12px;
+    ` : `
+      max-width: 520px;
+      max-height: 85vh;
+      border-radius: 20px;
+    `;
+    
     settingsOverlay.style.cssText = `
       position: fixed;
       top: 50%;
@@ -4551,10 +4564,8 @@ function buildCrosshairSettingsOverlay() {
       background: #0f172a;
       color: #f1f5f9;
       padding: 0;
-      border-radius: 20px;
+      ${mobileStyles}
       z-index: 9002;
-      max-width: 520px;
-      max-height: 85vh;
       display: flex;
       flex-direction: column;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
@@ -4575,11 +4586,12 @@ function buildCrosshairSettingsOverlay() {
 
   // Header
   const header = document.createElement('div');
+  const headerPadding = isMobileMode ? '8px 12px' : '16px 20px';
   header.style.cssText = `
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px 20px;
+    padding: ${headerPadding};
     border-bottom: 1px solid var(--slate-700);
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     cursor: move;
@@ -4591,9 +4603,10 @@ function buildCrosshairSettingsOverlay() {
 
   const title = document.createElement('h2');
   title.textContent = 'Settings';
+  const titleFontSize = isMobileMode ? '1.2em' : '1.5em';
   title.style.cssText = `
     margin: 0; 
-    font-size: 1.5em; 
+    font-size: ${titleFontSize}; 
     font-weight: 700;
     font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
     text-align: center;
@@ -4649,9 +4662,11 @@ function buildCrosshairSettingsOverlay() {
   // Instructions
   const instructions = document.createElement('p');
   instructions.textContent = 'Select the crosshair color that appears on highlighted template pixels:';
+  const instructionsMargin = isMobileMode ? '0 0 16px 0' : '0 0 24px 0';
+  const instructionsFontSize = isMobileMode ? '0.9em' : '0.95em';
   instructions.style.cssText = `
-    margin: 0 0 24px 0; 
-    font-size: 0.95em; 
+    margin: ${instructionsMargin}; 
+    font-size: ${instructionsFontSize}; 
     color: var(--slate-300); 
     text-align: center;
     font-weight: 500;
@@ -4661,12 +4676,15 @@ function buildCrosshairSettingsOverlay() {
 
   // Current color preview
   const currentColorPreview = document.createElement('div');
+  const previewPadding = isMobileMode ? '12px' : '20px';
+  const previewMargin = isMobileMode ? '16px' : '24px';
+  const previewBorderRadius = isMobileMode ? '12px' : '16px';
   currentColorPreview.style.cssText = `
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     border: 1px solid var(--slate-700);
-    border-radius: 16px;
-    padding: 20px;
-    margin-bottom: 24px;
+    border-radius: ${previewBorderRadius};
+    padding: ${previewPadding};
+    margin-bottom: ${previewMargin};
     text-align: center;
     position: relative;
     overflow: hidden;
@@ -5593,12 +5611,13 @@ function buildCrosshairSettingsOverlay() {
 
   // Create fixed footer with action buttons
   const footerContainer = document.createElement('div');
+  const footerPadding = isMobileMode ? '10px 12px' : '16px 20px';
   footerContainer.style.cssText = `
     display: flex;
     gap: 12px;
     justify-content: center;
     align-items: center;
-    padding: 16px 20px;
+    padding: ${footerPadding};
     border-top: 1px solid var(--slate-700);
     background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
     position: relative;
@@ -5779,11 +5798,12 @@ function buildCrosshairSettingsOverlay() {
 
   // Create scrollable content container for fixed header solution
   const contentContainer = document.createElement('div');
+  const contentPadding = isMobileMode ? '12px' : '20px';
   contentContainer.style.cssText = `
     overflow-y: auto;
     flex: 1;
     min-height: 0;
-    padding: 20px;
+    padding: ${contentPadding};
     position: relative;
     z-index: 1;
   `;
