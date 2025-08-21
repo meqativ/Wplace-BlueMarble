@@ -396,6 +396,7 @@ input[type="file"][id*="template"] {
   grid-template-columns: 1fr auto 1fr;
   align-items: center;
   gap: .5rem;
+  margin-top: 3px;
 
   user-select: none;
 }

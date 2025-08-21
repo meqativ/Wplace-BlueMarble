@@ -706,6 +706,26 @@ observeOpacityButton(); // Observes and adds the Map button above opacity button
 // Initialize keyboard shortcuts
 initializeKeyboardShortcuts();
 
+// Add styles for full charge element
+if (!document.getElementById('bm-fullcharge-styles')) {
+  const style = document.createElement('style');
+  style.id = 'bm-fullcharge-styles';
+  style.textContent = `
+    #bm-user-fullcharge {
+      display: flex;
+      align-items: center;
+    }
+    #bm-user-fullcharge-icon {
+      margin-right: 0px;
+    }
+    #bm-user-fullcharge-content {
+      margin: 0;
+      flex: 1;
+    }
+  `;
+  document.head.appendChild(style);
+}
+
 consoleLog(`%c${name}%c (${version}) userscript has loaded!`, 'color: cornflowerblue;', '');
 
 /** Observe the black color, and add the "Move" button.
@@ -768,7 +788,7 @@ function observeOpacityButton() {
     mapButtonContainer = document.createElement('div');
     mapButtonContainer.id = 'bm-map-button-container';
     mapButtonContainer.className = 'fixed z-30';
-    mapButtonContainer.style.bottom = '85px'; // Fixed position above opacity button (approximate)
+    mapButtonContainer.style.bottom = '230px'; // Fixed position above opacity button (approximate)
     mapButtonContainer.style.left = '12px'; // Fixed position aligned with opacity button
     
     // Create the Map button
@@ -2007,6 +2027,10 @@ function buildOverlayMain() {
         .addDiv({'id': 'bm-user-nextlevel-icon', innerHTML: icons.nextLevelIcon}).buildElement()
         .addP({'id': 'bm-user-nextlevel-content', 'textContent': 'Next level in...'}).buildElement()
       .buildElement()
+      .addDiv({'id': 'bm-user-fullcharge'})
+        .addDiv({'id': 'bm-user-fullcharge-icon', innerHTML: icons.chargeIcon}).buildElement()
+        .addP({'id': 'bm-user-fullcharge-content', 'textContent': 'Full Charge in...'}).buildElement()
+      .buildElement()
     .buildElement()
 
     .addDiv({ id: 'bm-separator' })
@@ -3004,7 +3028,8 @@ function buildColorFilterOverlay() {
     });
 
     // Store original order when color items are created
-    let originalOrder = [];
+    let originalGridOrder = [];
+    let originalListOrder = [];
 
     filterContainer.appendChild(filterLabel);
     filterContainer.appendChild(filterSelect);
@@ -3998,23 +4023,30 @@ function buildColorFilterOverlay() {
       colorList.appendChild(listItem);
     });
 
+    // Initialize original orders immediately after creating all items
+    originalGridOrder = Array.from(colorGrid.querySelectorAll('[data-color-item]'));
+    originalListOrder = Array.from(colorList.querySelectorAll('[data-color-item]'));
+
     // Filter functionality - defined after color items are created
     const applyFilter = (filterType) => {
       const gridItems = Array.from(colorGrid.querySelectorAll('[data-color-item]'));
       const listItems = Array.from(colorList.querySelectorAll('[data-color-item]'));
       const colorItems = isListView ? listItems : gridItems;
       
-      // Save original order on first filter (if not already saved)
-      if (originalOrder.length === 0) {
-        originalOrder = [...colorItems];
-      }
+      // Original orders are already initialized after creating all items
       
       if (filterType === 'default') {
         // Restore original order and show all items
         colorItems.forEach(item => {
           item.style.display = 'flex';
         });
-        // Don't move elements between containers - they should stay in their original containers
+        // Restore original DOM order
+        const container = isListView ? colorList : colorGrid;
+        const originalItems = isListView ? originalListOrder : originalGridOrder;
+        
+        originalItems.forEach(item => {
+          container.appendChild(item);
+        });
         return;
       }
       
@@ -4063,8 +4095,11 @@ function buildColorFilterOverlay() {
         }
       });
 
-      // Don't reorder DOM elements between containers to avoid moving items between grid/list
-      // Just ensure visibility - elements should stay in their original containers
+      // Reorder DOM elements after sorting
+      const container = isListView ? colorList : colorGrid;
+      colorItems.forEach(item => {
+        container.appendChild(item);
+      });
     };
 
     // Add event listener for filter select

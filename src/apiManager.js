@@ -73,9 +73,32 @@ export default class ApiManager {
           }
           this.templateManager.userID = dataJSON['id'];
           
+          // Store paint/cooldown information for external access
+          this.userPaintData = {
+            charges: dataJSON['charges'] || 0,
+            maxCharges: dataJSON['maxCharges'] || 1,
+            nextChargeTime: dataJSON['nextChargeTime'] || null,
+            cooldownMs: dataJSON['cooldownMs'] || null,
+            canPaint: dataJSON['canPaint'] || false,
+            timeUntilNextCharge: null
+          };
+          
+          // Calculate time until next charge if available
+          if (this.userPaintData.nextChargeTime) {
+            const nextChargeTimestamp = new Date(this.userPaintData.nextChargeTime).getTime();
+            const currentTime = Date.now();
+            this.userPaintData.timeUntilNextCharge = Math.max(0, nextChargeTimestamp - currentTime);
+          }
+          
+          // Log paint data for debugging
+          console.log('%cSkirk Marble%c: Paint Data:', 'color: cornflowerblue;', '', this.userPaintData);
+          
           overlay.updateInnerHTML('bm-user-name-content', `<b>Username:</b> ${escapeHTML(dataJSON['name'])}`); // Updates the text content of the username field
           overlay.updateInnerHTML('bm-user-droplets-content', `<b>Droplets:</b> ${new Intl.NumberFormat().format(dataJSON['droplets'])}`); // Updates the text content of the droplets field
           overlay.updateInnerHTML('bm-user-nextlevel-content', `Next level in <b>${new Intl.NumberFormat().format(nextLevelPixels)}</b> pixel${nextLevelPixels == 1 ? '' : 's'}`); // Updates the text content of the next level field
+          
+          // Update full charge countdown
+          this.updateFullChargeInfo(overlay, dataJSON);
           break;
 
         case 'pixel': // Request to retrieve pixel data
@@ -140,5 +163,96 @@ export default class ApiManager {
           break;
       }
     });
+  }
+
+  /** Update full charge information from API data
+   * @param {Overlay} overlay - The Overlay class instance
+   * @param {Object} dataJSON - JSON data from API response
+   * @since 1.0.0
+   */
+  updateFullChargeInfo(overlay, dataJSON) {
+    // Calculate and display full charge countdown
+    if (dataJSON['charges']) {
+      const charges = dataJSON['charges'];
+      const currentCharges = charges['count'] || 0;
+      const maxCharges = charges['max'] || 1;
+      const cooldownMs = charges['cooldownMs'] || 30000; // Default 30 seconds
+      
+      // Calculate charges needed and time to full
+      const chargesNeeded = maxCharges - currentCharges;
+      const timeToFullMs = chargesNeeded * cooldownMs;
+      
+      // Store data for countdown
+      window.skirkChargeData = {
+        current: currentCharges,
+        max: maxCharges,
+        cooldownMs: cooldownMs,
+        timeToFull: timeToFullMs,
+        startTime: Date.now()
+      };
+      
+      // Initial display
+      this.updateFullChargeDisplay(overlay);
+      
+      // Start countdown interval
+      if (window.skirkChargeInterval) {
+        clearInterval(window.skirkChargeInterval);
+      }
+      
+      window.skirkChargeInterval = setInterval(() => {
+        this.updateFullChargeDisplay(overlay);
+      }, 1000); // Update every second
+    } else {
+      // No charge data available
+      overlay.updateInnerHTML('bm-user-fullcharge-content','Full Charge in <b style="color: #6b7280;">N/A</b>');
+    }
+  }
+
+  /** Update the full charge countdown display
+   * @param {Overlay} overlay - The Overlay class instance
+   * @since 1.0.0
+   */
+  updateFullChargeDisplay(overlay) {
+    if (!window.skirkChargeData) return;
+    
+    const data = window.skirkChargeData;
+    const elapsed = Date.now() - data.startTime;
+    const remainingMs = Math.max(0, data.timeToFull - elapsed);
+    
+    // If already at full charges
+    if (data.current >= data.max || remainingMs <= 0) {
+      overlay.updateInnerHTML('bm-user-fullcharge-content', `Full Charge in <b style="color: #10b981;">FULL</b>`);
+      
+      // Clear interval when full
+      if (window.skirkChargeInterval) {
+        clearInterval(window.skirkChargeInterval);
+        window.skirkChargeInterval = null;
+      }
+      return;
+    }
+    
+    // Convert to hours, minutes, seconds
+    const totalSeconds = Math.ceil(remainingMs / 1000);
+    const hours = Math.floor(totalSeconds / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const seconds = totalSeconds % 60;
+    
+    let timeText = '';
+    if (hours > 0) {
+      timeText = `${hours}h ${minutes}m ${seconds}s`;
+    } else if (minutes > 0) {
+      timeText = `${minutes}m ${seconds}s`;
+    } else {
+      timeText = `${seconds}s`;
+    }
+    
+    // Calculate current charges (increases over time)
+    const chargesGained = Math.floor(elapsed / data.cooldownMs);
+    const currentCharges = Math.min(data.current + chargesGained, data.max);
+    const chargesText = `${Math.floor(currentCharges)}/${data.max}`;
+    
+    overlay.updateInnerHTML('bm-user-fullcharge-content', 
+      `Full Charge in <b style="color: #f59e0b;">${timeText}</b> <span style="color: #6b7280; font-size: 0.9em;">(${chargesText})</span>`
+    );
   }
 }
