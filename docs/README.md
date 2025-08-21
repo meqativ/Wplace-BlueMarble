@@ -64,6 +64,7 @@ Save important locations by pasting wplace.live links or entering coordinates ma
 ## Pixel Counter
 
 See directly on the color bar how many pixels are still needed for each specific color, without having to open additional menus.
+<img width="1894" height="153" alt="image" src="https://github.com/user-attachments/assets/fbde6440-d231-49c8-96a3-dab8fe1a9d40" />
 
 ## How to Use
 
