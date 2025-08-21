@@ -95,8 +95,8 @@ div#bm-overlay {
 /* Ensure overlay maintains consistent width when minimized */
 #bm-overlay[style*="padding: 5px"] {
   width: auto !important;
-  max-width: 300px;
-  min-width: 200px;
+  max-width: 100px;
+  min-width: 150px;
 }
 
 /* The Blue Marble image (Old style - commented out in favor of redesign)
@@ -149,6 +149,26 @@ div#bm-overlay {
   text-align: center;
   line-height: 1em;
   padding: 0 !important; /* Overrides the padding in "#bm-overlay button" */
+  background-color: #2190ED !important; /* Force blue background for all bm-help buttons */
+}
+
+/* FORÇA o botão Clear Storage a não herdar CSS do pause-tiles */
+#bm-overlay .bm-help {
+  background-color: #2190ED !important;
+  grid-row: unset !important;
+  grid-column: unset !important;
+  transform: none !important;
+  transition: none !important;
+}
+
+#bm-overlay .bm-help:hover {
+  background-color: #2190ED !important;
+  transform: none !important;
+}
+
+#bm-overlay .bm-help:active {
+  background-color: #2190ED !important;
+  transform: none !important;
 }
 
 /* Pin button */
@@ -496,21 +516,7 @@ div:has(> #bm-input-file-template) > button {
 
 /* Delete button moved to help section - uses .bm-help styles */
 
-/* Clear All Storage button - matches other bm-help buttons styling */
-#bm-overlay button#bm-button-clear-storage {
-  background-color: #2190ED !important;
-  border: white 1px solid !important;
-  color: white !important;
-}
-
-#bm-overlay button#bm-button-clear-storage:hover,
-#bm-overlay button#bm-button-clear-storage:focus-visible {
-  background-color: #2190ED !important;
-}
-
-#bm-overlay button#bm-button-clear-storage:active {
-  background-color: #2190ED !important;
-}
+/* Clear Storage button uses the same bm-help class - SIMPLE! */
 
 /* Row 2: Create, Enable, Disable buttons */
 #bm-button-create  { grid-row: 2; grid-column: 1; }
