@@ -934,6 +934,124 @@ function performDeleteAllTemplates(instance, templateCount, templateText) {
   }
 }
 
+/** Clears all Blue Marble related storage data with confirmation
+ * @param {Object} instance - The overlay instance
+ * @since 1.0.0
+ */
+function clearAllStorage(instance) {
+  showCustomConfirmDialog(
+    'Clear All Storage?',
+    `This will delete ALL Blue Marble data including:\n\n• Templates\n• Settings\n• Color filters\n• Crosshair preferences\n• All cached data\n\nThis action cannot be undone!\n\nAre you sure?`,
+    () => {
+      try {
+        // List of all Blue Marble storage keys
+        const bmStorageKeys = [
+          // Templates
+          'bmTemplates',
+          'bmTemplates_timestamp',
+          
+          // Settings
+          'bmErrorMap',
+          'bmCrosshairColor',
+          'bmCrosshairBorder',
+          'bmCrosshairEnhancedSize',
+          'bmCrosshairThickness',
+          'bmMiniTracker',
+          'bmCollapseMin',
+          'bmMobileMode',
+          'bmTileRefreshPaused',
+          'bmShowLeftOnColor',
+          'bmShowWrongOnColor',
+          'bmQuickfillEnabled',
+          'bmQuickfillPixels',
+          'bmQuickfillSelectedColor',
+          
+          // Color filters
+          'bmcf-excluded-colors',
+          'bmcf-excluded-colors-pending',
+          'bmcf-view-preference',
+          
+          // Enhanced mode
+          'bmEnhanceWrongColors'
+        ];
+        
+        let deletedCount = 0;
+        
+        // Clear localStorage
+        bmStorageKeys.forEach(key => {
+          if (localStorage.getItem(key) !== null) {
+            localStorage.removeItem(key);
+            deletedCount++;
+            console.log(`🧹 Cleared localStorage: ${key}`);
+          }
+        });
+        
+        // Clear TamperMonkey storage (if available)
+        if (typeof GM_deleteValue !== 'undefined') {
+          bmStorageKeys.forEach(key => {
+            try {
+              GM_deleteValue(key);
+              console.log(`🧹 Cleared TamperMonkey: ${key}`);
+            } catch (e) {
+              // Key might not exist, ignore
+            }
+          });
+        }
+        
+        // Clear async GM storage (if available)
+        if (typeof GM !== 'undefined' && GM.deleteValue) {
+          bmStorageKeys.forEach(async (key) => {
+            try {
+              await GM.deleteValue(key);
+              console.log(`🧹 Cleared TamperMonkey async: ${key}`);
+            } catch (e) {
+              // Key might not exist, ignore
+            }
+          });
+        }
+        
+        // Clear template manager data
+        if (templateManager) {
+          templateManager.templatesJSON = null;
+          templateManager.templatesArray = [];
+          templateManager.templatesShouldBeDrawn = false;
+          console.log('🧹 Cleared template manager data');
+        }
+        
+        // Clear any remaining Blue Marble related session storage
+        try {
+          Object.keys(sessionStorage).forEach(key => {
+            if (key.toLowerCase().includes('bm') || key.toLowerCase().includes('bluemarble')) {
+              sessionStorage.removeItem(key);
+              console.log(`🧹 Cleared sessionStorage: ${key}`);
+            }
+          });
+        } catch (e) {
+          console.warn('Could not clear session storage:', e);
+        }
+        
+        instance.handleDisplayStatus(`🧹 Storage cleared! Deleted ${deletedCount} keys. Please refresh the page.`);
+        console.log(`🧹✅ Successfully cleared all Blue Marble storage data (${deletedCount} keys)`);
+        
+        // Suggest page refresh
+        setTimeout(() => {
+          if (confirm('Storage cleared successfully!\n\nRefresh the page to complete the reset?')) {
+            window.location.reload();
+          }
+        }, 2000);
+        
+      } catch (error) {
+        console.error('❌ Error clearing storage:', error);
+        instance.handleDisplayError('Failed to clear storage. Check console for details.');
+      }
+    },
+    () => {
+      // Cancel callback
+      instance.handleDisplayStatus('Storage clearing cancelled');
+    }
+  );
+}
+
 /** Shows a custom confirmation dialog with slate theme
  * @param {string} title - The title of the confirmation dialog
  * @param {string} message - The message to display
@@ -2173,6 +2291,12 @@ function buildOverlayMain() {
           .addButton({'id': 'bm-button-delete-templates', 'className': 'bm-help', innerHTML: icons.deleteIcon, 'title': 'Delete Template'}, (instance, button) => {
             button.addEventListener('click', () => {
               deleteSelectedTemplate(instance);
+            });
+          }).buildElement()
+          // Clear All Storage button next to Delete Template
+          .addButton({'id': 'bm-button-clear-storage', 'className': 'bm-help', innerHTML: icons.clearStorageIcon, 'title': 'Clear All Storage'}, (instance, button) => {
+            button.addEventListener('click', () => {
+              clearAllStorage(instance);
             });
           }).buildElement()
         .buildElement()
