@@ -2330,6 +2330,8 @@ function buildOverlayTabTemplate() {
   .buildOverlay();
 }
 
+
+
 /** Builds and displays the color filter overlay
  * @since 1.0.0
  */
@@ -2774,9 +2776,47 @@ function buildColorFilterOverlay() {
       colorViewContainer.offsetHeight;
     };
 
+    // Compact List button
+    const compactListButton = document.createElement('button');
+    compactListButton.innerHTML = '📌';
+    compactListButton.title = 'Toggle Compact Color List';
+    compactListButton.style.cssText = `
+      background: linear-gradient(135deg, var(--slate-600), var(--slate-700));
+      border: 1px solid var(--slate-500);
+      color: var(--slate-200);
+      width: 36px;
+      height: 36px;
+      border-radius: 12px;
+      cursor: pointer;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      margin-right: 12px;
+      transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+      position: relative;
+      overflow: hidden;
+    `;
+    compactListButton.onmouseover = () => {
+      compactListButton.style.transform = 'translateY(-1px) scale(1.05)';
+      compactListButton.style.background = 'linear-gradient(135deg, var(--slate-500), var(--slate-600))';
+      compactListButton.style.boxShadow = '0 6px 20px rgba(71, 85, 105, 0.3)';
+    };
+    compactListButton.onmouseout = () => {
+      compactListButton.style.transform = '';
+      compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+      compactListButton.style.boxShadow = '';
+    };
+    compactListButton.addEventListener('touchstart', () => {
+      compactListButton.style.transform = '';
+      compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+      compactListButton.style.boxShadow = '';
+    }, { passive: true });
+
     // Add elements to titleContainer
     titleContainer.appendChild(title);
     titleContainer.appendChild(viewToggleButton);
+    titleContainer.appendChild(compactListButton);
     titleContainer.appendChild(settingsButton);
     titleContainer.appendChild(closeButton);
 
@@ -4412,6 +4452,767 @@ function buildColorFilterOverlay() {
     contentContainer.appendChild(searchContainer);
     contentContainer.appendChild(filterContainer);
     contentContainer.appendChild(colorViewContainer);
+
+    // Check if compact list already exists, if so skip its creation
+    let compactList = document.getElementById('bmcf-compact-list');
+    let shouldCreateCompactList = !compactList;
+
+    if (shouldCreateCompactList) {
+      // Create compact color list as separate floating window
+      compactList = document.createElement('div');
+      compactList.id = 'bmcf-compact-list';
+      compactList.style.cssText = `
+      display: none;
+      position: fixed;
+      top: 100px;
+      right: 20px;
+      width: 220px;
+      background: var(--slate-800);
+      border: 1px solid var(--bmcf-border);
+      border-radius: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      z-index: 999999;
+      max-height: 400px;
+      font-family: Inter, system-ui, sans-serif;
+    `;
+    
+    // Set flex layout when visible
+    compactList.setAttribute('data-flex-layout', 'true');
+
+    // Add header to compact list
+    const compactHeader = document.createElement('div');
+    compactHeader.style.cssText = `
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px 12px;
+      background: var(--slate-700);
+      border-bottom: 1px solid var(--bmcf-border);
+      border-radius: 12px 12px 0 0;
+    `;
+    
+    const compactTitle = document.createElement('span');
+    compactTitle.textContent = 'Color Toggle';
+    compactTitle.style.cssText = `
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--bmcf-text);
+    `;
+    
+    const compactCloseBtn = document.createElement('button');
+    compactCloseBtn.innerHTML = '✕';
+    compactCloseBtn.title = 'Close';
+    compactCloseBtn.style.cssText = `
+      background: none;
+      border: none;
+      color: var(--bmcf-text-muted);
+      cursor: pointer;
+      font-size: 14px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      transition: all 0.15s ease;
+    `;
+    compactCloseBtn.onmouseover = () => compactCloseBtn.style.background = 'var(--slate-600)';
+    compactCloseBtn.onmouseout = () => compactCloseBtn.style.background = 'none';
+    compactCloseBtn.onclick = () => {
+      compactList.style.display = 'none';
+      compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+    };
+    
+    compactHeader.appendChild(compactTitle);
+    compactHeader.appendChild(compactCloseBtn);
+    compactList.appendChild(compactHeader);
+
+    // Add sort filter section
+    const compactSortContainer = document.createElement('div');
+    compactSortContainer.style.cssText = `
+      padding: 8px 12px;
+      background: var(--slate-700);
+      border-bottom: 1px solid var(--bmcf-border);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    `;
+    
+    const sortLabel = document.createElement('span');
+    sortLabel.textContent = 'Sort:';
+    sortLabel.style.cssText = `
+      font-size: 11px;
+      color: var(--bmcf-text-muted);
+      min-width: 30px;
+    `;
+    
+    const compactSortSelect = document.createElement('select');
+    compactSortSelect.style.cssText = `
+      flex: 1;
+      padding: 4px 8px;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      background: rgba(0, 0, 0, 0.3);
+      color: white;
+      font-size: 10px;
+      outline: none;
+      cursor: pointer;
+    `;
+    
+    // Sort options
+    const sortOptions = [
+      { value: 'default', text: 'Default Order' },
+      { value: 'name', text: 'By Name' },
+      { value: 'most-missing', text: 'Most Pixels Missing' },
+      { value: 'less-missing', text: 'Less Pixels Missing' },
+      { value: 'remaining', text: 'By Remaining' },
+      { value: 'progress', text: 'By Progress' },
+      { value: 'most-painted', text: 'Most Painted' },
+      { value: 'less-painted', text: 'Less Painted' },
+      { value: 'enhanced', text: 'Enhanced Only' }
+    ];
+    
+    sortOptions.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option.value;
+      optionElement.textContent = option.text;
+      optionElement.style.cssText = `
+        background: #2a2a2a;
+        color: white;
+      `;
+      compactSortSelect.appendChild(optionElement);
+    });
+    
+    compactSortContainer.appendChild(sortLabel);
+    compactSortContainer.appendChild(compactSortSelect);
+    compactList.appendChild(compactSortContainer);
+
+    // Create scrollable content container
+    const compactContent = document.createElement('div');
+    compactContent.style.cssText = `
+      flex: 1;
+      overflow-y: auto;
+      max-height: 340px;
+    `;
+    compactList.appendChild(compactContent);
+
+    // Add drag functionality to compact list
+    let isDraggingCompact = false;
+    let compactDragStartX = 0;
+    let compactDragStartY = 0;
+    let compactInitialLeft = 0;
+    let compactInitialTop = 0;
+
+    compactHeader.style.cursor = 'move';
+    compactHeader.addEventListener('mousedown', (e) => {
+      // Don't start dragging if clicking on close button
+      if (e.target === compactCloseBtn) return;
+      
+      isDraggingCompact = true;
+      compactDragStartX = e.clientX;
+      compactDragStartY = e.clientY;
+      
+      // Get current position
+      const rect = compactList.getBoundingClientRect();
+      compactInitialLeft = rect.left;
+      compactInitialTop = rect.top;
+      
+      // Change cursor and prevent text selection
+      compactHeader.style.cursor = 'grabbing';
+      compactList.style.userSelect = 'none';
+      document.body.style.userSelect = 'none';
+      
+      e.preventDefault();
+    });
+
+    // Mouse move handler for dragging
+    document.addEventListener('mousemove', (e) => {
+      if (!isDraggingCompact) return;
+      
+      const deltaX = e.clientX - compactDragStartX;
+      const deltaY = e.clientY - compactDragStartY;
+      
+      const newLeft = compactInitialLeft + deltaX;
+      const newTop = compactInitialTop + deltaY;
+      
+      // Keep within viewport bounds
+      const maxLeft = window.innerWidth - compactList.offsetWidth;
+      const maxTop = window.innerHeight - compactList.offsetHeight;
+      
+      compactList.style.left = Math.max(0, Math.min(maxLeft, newLeft)) + 'px';
+      compactList.style.top = Math.max(0, Math.min(maxTop, newTop)) + 'px';
+      compactList.style.right = 'auto'; // Remove right positioning
+    });
+
+    // Mouse up handler to stop dragging
+    document.addEventListener('mouseup', () => {
+      if (!isDraggingCompact) return;
+      
+      isDraggingCompact = false;
+      compactHeader.style.cursor = 'move';
+      compactList.style.userSelect = '';
+      document.body.style.userSelect = '';
+    });
+
+    // Touch support for mobile
+    compactHeader.addEventListener('touchstart', (e) => {
+      if (e.target === compactCloseBtn) return;
+      
+      const touch = e.touches[0];
+      isDraggingCompact = true;
+      compactDragStartX = touch.clientX;
+      compactDragStartY = touch.clientY;
+      
+      const rect = compactList.getBoundingClientRect();
+      compactInitialLeft = rect.left;
+      compactInitialTop = rect.top;
+      
+      compactList.style.userSelect = 'none';
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isDraggingCompact) return;
+      
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - compactDragStartX;
+      const deltaY = touch.clientY - compactDragStartY;
+      
+      const newLeft = compactInitialLeft + deltaX;
+      const newTop = compactInitialTop + deltaY;
+      
+      const maxLeft = window.innerWidth - compactList.offsetWidth;
+      const maxTop = window.innerHeight - compactList.offsetHeight;
+      
+      compactList.style.left = Math.max(0, Math.min(maxLeft, newLeft)) + 'px';
+      compactList.style.top = Math.max(0, Math.min(maxTop, newTop)) + 'px';
+      compactList.style.right = 'auto';
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+      if (!isDraggingCompact) return;
+      
+      isDraggingCompact = false;
+      compactList.style.userSelect = '';
+    });
+
+    // Function to apply sort to compact list
+    const applyCompactSort = (sortType) => {
+      const items = Array.from(compactContent.children);
+      const sortedItems = [...items];
+      
+      switch (sortType) {
+        case 'name':
+          sortedItems.sort((a, b) => {
+            const nameA = a.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
+            const nameB = b.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
+            return nameA.localeCompare(nameB);
+          });
+          break;
+          
+        case 'most-missing':
+          sortedItems.sort((a, b) => {
+            const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+            const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+            // Filter out 0/0 colors (no pixels at all)
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+            return remainingB - remainingA; // Descending (more missing first)
+          });
+          break;
+          
+        case 'less-missing':
+          sortedItems.sort((a, b) => {
+            const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+            const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+            // Filter out 0/0 colors (no pixels at all) - put them at the end
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+            return remainingA - remainingB; // Ascending (less missing first)
+          });
+          break;
+          
+        case 'remaining':
+          sortedItems.sort((a, b) => {
+            const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+            const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
+            return remainingB - remainingA; // Descending (more remaining first)
+          });
+          break;
+          
+        case 'progress':
+          sortedItems.sort((a, b) => {
+            const progressA = parseFloat(a.getAttribute('data-progress') || '0');
+            const progressB = parseFloat(b.getAttribute('data-progress') || '0');
+            return progressB - progressA; // Descending (higher progress first)
+          });
+          break;
+          
+        case 'most-painted':
+          sortedItems.sort((a, b) => {
+            const paintedA = parseInt(a.getAttribute('data-painted') || '0');
+            const paintedB = parseInt(b.getAttribute('data-painted') || '0');
+            return paintedB - paintedA; // Descending (more painted first)
+          });
+          break;
+          
+        case 'less-painted':
+          sortedItems.sort((a, b) => {
+            const paintedA = parseInt(a.getAttribute('data-painted') || '0');
+            const paintedB = parseInt(b.getAttribute('data-painted') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+            // Filter out 0/0 colors (no pixels at all) - put them at the end
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+            return paintedA - paintedB; // Ascending (less painted first)
+          });
+          break;
+          
+        case 'enhanced':
+          sortedItems.sort((a, b) => {
+            const enhancedA = a.querySelector('input[type="checkbox"]').checked;
+            const enhancedB = b.querySelector('input[type="checkbox"]').checked;
+            if (enhancedA && !enhancedB) return -1;
+            if (!enhancedA && enhancedB) return 1;
+            return 0;
+          });
+          // Filter to show only enhanced colors
+          sortedItems.forEach(item => {
+            const isEnhanced = item.querySelector('input[type="checkbox"]').checked;
+            item.style.display = isEnhanced ? 'flex' : 'none';
+          });
+          break;
+          
+        case 'default':
+        default:
+          // Show all items and use original order
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
+          // Sort by original index
+          sortedItems.sort((a, b) => {
+            const indexA = parseInt(a.getAttribute('data-original-index') || '0');
+            const indexB = parseInt(b.getAttribute('data-original-index') || '0');
+            return indexA - indexB;
+          });
+          break;
+      }
+      
+      // Clear and re-append sorted items
+      compactContent.innerHTML = '';
+      sortedItems.forEach(item => {
+        if (sortType !== 'enhanced' || item.style.display !== 'none') {
+          compactContent.appendChild(item);
+        }
+      });
+    };
+    
+    // Add sort event listener
+    compactSortSelect.addEventListener('change', () => {
+      applyCompactSort(compactSortSelect.value);
+      // Save sort preference
+      localStorage.setItem('bmcf-compact-sort', compactSortSelect.value);
+    });
+    
+    // Load saved sort preference
+    const savedSort = localStorage.getItem('bmcf-compact-sort') || 'default';
+    compactSortSelect.value = savedSort;
+
+    // Build compact list items
+    utils.colorpalette.forEach((color, index) => {
+      const colorKey = `${color.rgb[0]},${color.rgb[1]},${color.rgb[2]}`;
+      if (index === 0) return; // Skip transparent
+
+      const stats = pixelStats[colorKey] || {};
+
+      // Check if color is currently disabled in template
+      const templateInstance = templateManager.templatesArray?.[0];
+      const isDisabled = templateInstance ? templateInstance.isColorDisabled(color.rgb) : false;
+
+      // Get progress data first
+      const painted = stats.painted || 0;
+      const remaining = stats.needsCrosshair || 0;
+      const totalPixels = painted + remaining; // Real total = painted + remaining
+      const progressPercent = totalPixels > 0 ? Math.round((painted / totalPixels) * 100) : 0;
+
+      const item = document.createElement('div');
+      item.className = 'bmcf-compact-item';
+      item.setAttribute('data-color-rgb', colorKey);
+      item.setAttribute('data-original-index', index.toString());
+      item.setAttribute('data-remaining', remaining.toString());
+      item.setAttribute('data-painted', painted.toString());
+      item.setAttribute('data-total', totalPixels.toString());
+      item.setAttribute('data-progress', progressPercent.toString());
+      item.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border-bottom: 1px solid var(--slate-700);
+        cursor: pointer;
+        transition: background-color 0.15s ease;
+        min-height: 32px;
+        ${isDisabled ? 'opacity: 0.5; background: rgba(244, 67, 54, 0.1);' : ''}
+      `;
+      item.onmouseover = () => item.style.backgroundColor = 'var(--slate-700)';
+      item.onmouseout = () => item.style.backgroundColor = '';
+
+      // Color swatch
+      const swatch = document.createElement('div');
+      swatch.style.cssText = `
+        width: 14px;
+        height: 14px;
+        border-radius: 2px;
+        background: rgb(${color.rgb.join(',')});
+        border: 1px solid rgba(255,255,255,0.2);
+        flex-shrink: 0;
+      `;
+
+      // Color name with progress
+      const name = document.createElement('div');
+      name.className = 'bmcf-compact-name';
+      name.style.cssText = `
+        font-size: 10px;
+        color: var(--bmcf-text);
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+      `;
+      
+      name.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${color.name}</div>
+        <div style="font-size: 8px; color: var(--bmcf-text-muted); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+          ${painted.toLocaleString()}/${totalPixels.toLocaleString()} (${progressPercent}%) | ${remaining.toLocaleString()} left
+        </div>
+      `;
+
+      // Remove separate count display since it's now in the progress line
+
+      // Controls container
+      const controlsContainer = document.createElement('div');
+      controlsContainer.style.cssText = `
+        display: flex;
+        align-items: center;
+        gap: 4px;
+        flex-shrink: 0;
+      `;
+
+      // Enhanced mode checkbox
+      const enhancedCheckbox = document.createElement('input');
+      enhancedCheckbox.type = 'checkbox';
+      enhancedCheckbox.style.cssText = `
+        width: 12px;
+        height: 12px;
+        cursor: pointer;
+      `;
+      enhancedCheckbox.title = 'Enable enhanced mode for this color';
+      
+      // Check if color is currently enhanced
+      if (templateInstance && templateInstance.enhancedColors) {
+        const rgbKey = color.rgb.join(',');
+        enhancedCheckbox.checked = templateInstance.enhancedColors.has(rgbKey);
+      }
+      
+      enhancedCheckbox.onclick = (e) => {
+        e.stopPropagation();
+      };
+      
+      enhancedCheckbox.onchange = (e) => {
+        e.stopPropagation();
+        const currentTemplate = templateManager.templatesArray?.[0];
+        if (!currentTemplate) return;
+        
+        if (enhancedCheckbox.checked) {
+          currentTemplate.enableColorEnhanced(color.rgb);
+          overlayMain.handleDisplayStatus(`Enhanced mode enabled: ${color.name}`);
+        } else {
+          currentTemplate.disableColorEnhanced(color.rgb);
+          overlayMain.handleDisplayStatus(`Enhanced mode disabled: ${color.name}`);
+        }
+        
+        // Sync with main overlay checkboxes
+        const gridItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"]`);
+        const listItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"].bmcf-list-item`);
+        
+        if (gridItem) {
+          const gridCheckbox = gridItem.querySelector('input[type="checkbox"]');
+          if (gridCheckbox) gridCheckbox.checked = enhancedCheckbox.checked;
+        }
+        
+        if (listItem) {
+          const listCheckbox = listItem.querySelector('input[type="checkbox"]');
+          if (listCheckbox) listCheckbox.checked = enhancedCheckbox.checked;
+        }
+        
+        // Refresh template display to save changes persistently
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing enhanced mode from Color Toggle:', error);
+        });
+      };
+
+      // Premium indicator (droplet for premium colors only)
+      const premiumIcon = document.createElement('div');
+      if (!color.free) {
+        premiumIcon.textContent = "💧";
+        premiumIcon.title = "Premium color";
+        premiumIcon.style.cssText = `
+          width: 14px;
+          height: 14px;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 10px;
+          opacity: 0.8;
+          flex-shrink: 0;
+        `;
+      } else {
+        // Empty space for free colors to maintain alignment
+        premiumIcon.style.cssText = `
+          width: 14px;
+          height: 14px;
+          flex-shrink: 0;
+        `;
+      }
+      
+      controlsContainer.appendChild(premiumIcon);
+      controlsContainer.appendChild(enhancedCheckbox);
+
+      // Click handler - directly toggle color using template methods
+      item.onclick = (e) => {
+        e.stopPropagation();
+        
+        // Get current template
+        const currentTemplate = templateManager.templatesArray?.[0];
+        if (!currentTemplate) {
+          overlayMain.handleDisplayStatus(`No template loaded`);
+          return;
+        }
+
+        const rgb = color.rgb;
+        const wasDisabled = currentTemplate.isColorDisabled(rgb);
+        
+        // Find the corresponding grid/list items for visual sync
+        const gridItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"]`);
+        const listItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"].bmcf-list-item`);
+        
+        if (wasDisabled) {
+          // Enable the color
+          currentTemplate.enableColor(rgb);
+          
+          // Update grid item visual
+          if (gridItem) {
+            gridItem.style.border = '3px solid #4caf50';
+            const overlay = gridItem.querySelector('div[style*="position: absolute"]');
+            if (overlay) overlay.remove();
+            const enhancedCheckbox = gridItem.querySelector('input[type="checkbox"]');
+            if (enhancedCheckbox) enhancedCheckbox.disabled = false;
+          }
+          
+          // Update list item visual
+          if (listItem) {
+            listItem.style.border = '2px solid #4caf50';
+            listItem.style.opacity = '1';
+            const listEnhancedCheckbox = listItem.querySelector('input[type="checkbox"]');
+            if (listEnhancedCheckbox) listEnhancedCheckbox.disabled = false;
+          }
+          
+          // Update compact list visual
+          item.style.opacity = '1';
+          item.style.background = '';
+          
+          overlayMain.handleDisplayStatus(`Color enabled: ${color.name}`);
+        } else {
+          // Disable the color
+          currentTemplate.disableColor(rgb);
+          
+          // Update grid item visual
+          if (gridItem) {
+            gridItem.style.border = '3px solid #f44336';
+            // Add disabled overlay
+            const colorClickArea = gridItem.querySelector('[style*="cursor: pointer"]');
+            if (colorClickArea && !colorClickArea.querySelector('div[style*="position: absolute"]')) {
+              const disabledOverlay = document.createElement('div');
+              disabledOverlay.style.cssText = `
+                position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+                background: rgba(0,0,0,0.6); display: flex; align-items: center; justify-content: center;
+                font-size: 24px; color: #f44336; pointer-events: none;
+              `;
+              disabledOverlay.textContent = '✕';
+              colorClickArea.appendChild(disabledOverlay);
+            }
+            const enhancedCheckbox = gridItem.querySelector('input[type="checkbox"]');
+            if (enhancedCheckbox) enhancedCheckbox.disabled = true;
+          }
+          
+          // Update list item visual
+          if (listItem) {
+            listItem.style.border = '2px solid #f44336';
+            listItem.style.opacity = '0.5';
+            const listEnhancedCheckbox = listItem.querySelector('input[type="checkbox"]');
+            if (listEnhancedCheckbox) listEnhancedCheckbox.disabled = true;
+          }
+          
+          // Update compact list visual
+          item.style.opacity = '0.5';
+          item.style.background = 'rgba(244, 67, 54, 0.1)';
+          
+          overlayMain.handleDisplayStatus(`Color disabled: ${color.name}`);
+        }
+
+        // Update progress display after the toggle
+        setTimeout(() => {
+          const freshStats = templateManager.calculateRemainingPixelsByColor();
+          const freshPainted = freshStats[colorKey]?.painted || 0;
+          const freshRemaining = freshStats[colorKey]?.needsCrosshair || 0;
+          
+          // Update the progress line in the name element
+          const freshTotalPixels = freshPainted + freshRemaining;
+          const freshProgressPercent = freshTotalPixels > 0 ? Math.round((freshPainted / freshTotalPixels) * 100) : 0;
+          
+          name.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${color.name}</div>
+            <div style="font-size: 8px; color: var(--bmcf-text-muted); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+              ${freshPainted.toLocaleString()}/${freshTotalPixels.toLocaleString()} (${freshProgressPercent}%) | ${freshRemaining.toLocaleString()} left
+            </div>
+          `;
+        }, 100);
+      };
+
+      item.appendChild(swatch);
+      item.appendChild(name);
+      item.appendChild(controlsContainer);
+      compactContent.appendChild(item);
+    });
+
+    // Apply initial sort
+    applyCompactSort(savedSort);
+
+    // Add compact list to body (separate floating window)
+    document.body.appendChild(compactList);
+    } // End of shouldCreateCompactList
+
+    // Function to update compact list data
+    window.updateCompactListData = function(existingList) {
+      const compactContent = existingList.querySelector('div[style*="overflow-y: auto"]');
+      if (!compactContent) return;
+      
+      // Get fresh data
+      const freshPixelStats = templateManager.calculateRemainingPixelsByColor();
+      const templateInstance = templateManager.templatesArray?.[0];
+      
+      // Update each item
+      utils.colorpalette.forEach((color, index) => {
+        if (index === 0) return; // Skip transparent
+        
+        const colorKey = `${color.rgb[0]},${color.rgb[1]},${color.rgb[2]}`;
+        const item = compactContent.querySelector(`[data-color-rgb="${colorKey}"]`);
+        
+        if (item) {
+          const stats = freshPixelStats[colorKey] || {};
+          const painted = stats.painted || 0;
+          const remaining = stats.needsCrosshair || 0;
+          const totalPixels = painted + remaining;
+          const progressPercent = totalPixels > 0 ? Math.round((painted / totalPixels) * 100) : 0;
+          
+          // Update data attributes for sorting
+          item.setAttribute('data-remaining', remaining.toString());
+          item.setAttribute('data-painted', painted.toString());
+          item.setAttribute('data-total', totalPixels.toString());
+          item.setAttribute('data-progress', progressPercent.toString());
+          
+          // Update progress text
+          const nameDiv = item.querySelector('div[style*="flex: 1"]');
+          if (nameDiv) {
+            nameDiv.innerHTML = `
+              <div style="font-weight: 600; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${color.name}</div>
+              <div style="font-size: 8px; color: var(--bmcf-text-muted); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                ${painted.toLocaleString()}/${totalPixels.toLocaleString()} (${progressPercent}%) | ${remaining.toLocaleString()} left
+              </div>
+            `;
+          }
+          
+          // Update visual state based on template
+          const isDisabled = templateInstance ? templateInstance.isColorDisabled(color.rgb) : false;
+          if (isDisabled) {
+            item.style.opacity = '0.5';
+            item.style.background = 'rgba(244, 67, 54, 0.1)';
+          } else {
+            item.style.opacity = '1';
+            item.style.background = '';
+          }
+          
+          // Update enhanced checkbox
+          const checkbox = item.querySelector('input[type="checkbox"]');
+          if (checkbox && templateInstance && templateInstance.enhancedColors) {
+            const rgbKey = color.rgb.join(',');
+            checkbox.checked = templateInstance.enhancedColors.has(rgbKey);
+          }
+        }
+      });
+    };
+
+    // Add click handler to compact list button
+    compactListButton.onclick = () => {
+      // Check if there's already an existing compact list
+      const existingCompactList = document.getElementById('bmcf-compact-list');
+      
+      if (existingCompactList) {
+        // Reuse existing list
+        const isVisible = existingCompactList.style.display !== 'none';
+        if (isVisible) {
+          existingCompactList.style.display = 'none';
+          compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+        } else {
+          existingCompactList.style.display = 'flex';
+          existingCompactList.style.flexDirection = 'column';
+          compactListButton.style.background = 'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
+          
+          // Update the existing list with fresh data
+          updateCompactListData(existingCompactList);
+        }
+      } else {
+        // Show the newly created list
+        const isVisible = compactList.style.display !== 'none';
+        if (isVisible) {
+          compactList.style.display = 'none';
+          compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+        } else {
+          compactList.style.display = 'flex';
+          compactList.style.flexDirection = 'column';
+          compactListButton.style.background = 'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
+        }
+      }
+    };
+
+    // Set up automatic updates for compact list
+    const originalRefreshTemplateDisplay = window.refreshTemplateDisplay;
+    if (originalRefreshTemplateDisplay && typeof originalRefreshTemplateDisplay === 'function') {
+      window.refreshTemplateDisplay = async function(...args) {
+        const result = await originalRefreshTemplateDisplay.apply(this, args);
+        
+        // Update compact list if it exists and is visible
+        const existingCompactList = document.getElementById('bmcf-compact-list');
+        if (existingCompactList && existingCompactList.style.display !== 'none') {
+          setTimeout(() => {
+            if (window.updateCompactListData) {
+              window.updateCompactListData(existingCompactList);
+            }
+          }, 200); // Small delay to ensure stats are updated
+        }
+        
+        return result;
+      };
+    }
     
     colorFilterOverlay.appendChild(contentContainer);
     colorFilterOverlay.appendChild(footerContainer);
@@ -5683,10 +6484,37 @@ function startLeftBadgesAutoUpdate() {
   }
 }
 
+// Auto-update compact list every 5 seconds if visible
+let compactListAutoUpdateInterval = null;
+
+function startCompactListAutoUpdate() {
+  // Clear existing interval if any
+  if (compactListAutoUpdateInterval) {
+    clearInterval(compactListAutoUpdateInterval);
+  }
+  
+  // Start auto-update interval
+  compactListAutoUpdateInterval = setInterval(() => {
+    const existingCompactList = document.getElementById('bmcf-compact-list');
+    if (existingCompactList && existingCompactList.style.display !== 'none') {
+      // Only update if the list is visible
+      if (window.updateCompactListData) {
+        window.updateCompactListData(existingCompactList);
+        consoleLog('📌 Compact list auto-updated');
+      }
+    }
+  }, 5000); // Update every 5 seconds
+  
+  consoleLog('📌 Compact list auto-update started (every 5 seconds)');
+}
+
 // Start auto-update when page loads
 setTimeout(() => {
   startMiniTrackerAutoUpdate();
   startLeftBadgesAutoUpdate();
+  startCompactListAutoUpdate();
+  
+  // Pin functionality removed - Color Toggle is now just a simple toggle without persistence
 }, 2000); // Start after 2 seconds to let everything initialize
 
 /** Builds and displays the crosshair settings overlay
