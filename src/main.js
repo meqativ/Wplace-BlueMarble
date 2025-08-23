@@ -5279,6 +5279,9 @@ function saveShowLeftOnColorEnabled(enabled) {
     }
     localStorage.setItem('bmShowLeftOnColor', enabledString);
     consoleLog('✅ Show Left-on-Color setting saved:', enabled);
+    
+    // Restart the left badges auto-update system with the new setting
+    startLeftBadgesAutoUpdate();
   } catch (error) {
     consoleError('❌ Failed to save Show Left-on-Color setting:', error);
   }
@@ -5484,13 +5487,6 @@ function updateMiniTracker() {
       totalPainted += stats.painted || 0;
       totalNeedCrosshair += stats.needsCrosshair || 0;
     }
-
-    // Also update native palette badges with per-color LEFT numbers if enabled
-    try {
-      updatePaletteLeftBadges(pixelStats);
-    } catch (e) {
-      consoleWarn('Failed to update palette left badges:', e);
-    }
   }
   
   const progressPercentage = totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0;
@@ -5640,9 +5636,57 @@ function startMiniTrackerAutoUpdate() {
   }
 }
 
+// Auto-update left badges independently of mini tracker
+let leftBadgesAutoUpdateInterval = null;
+
+function updateLeftBadgesOnly() {
+  // Only update if the setting is enabled
+  if (!getShowLeftOnColorEnabled()) return;
+  
+  // Check if templates are available
+  if (!templateManager.templatesArray || templateManager.templatesArray.length === 0) return;
+  
+  try {
+    // Calculate pixel statistics
+    const pixelStats = templateManager.calculateRemainingPixelsByColor();
+    
+    // Update the palette badges
+    updatePaletteLeftBadges(pixelStats);
+    
+    consoleLog('🔢 Left badges auto-updated independently');
+  } catch (error) {
+    consoleWarn('Failed to auto-update left badges:', error);
+  }
+}
+
+function startLeftBadgesAutoUpdate() {
+  // Clear existing interval if any
+  if (leftBadgesAutoUpdateInterval) {
+    clearInterval(leftBadgesAutoUpdateInterval);
+  }
+  
+  // Only start auto-update if left badges are enabled
+  if (getShowLeftOnColorEnabled()) {
+    leftBadgesAutoUpdateInterval = setInterval(() => {
+      const isStillEnabled = getShowLeftOnColorEnabled();
+      if (isStillEnabled) {
+        updateLeftBadgesOnly();
+      } else {
+        // Stop auto-update if disabled
+        clearInterval(leftBadgesAutoUpdateInterval);
+        leftBadgesAutoUpdateInterval = null;
+        consoleLog('🔢 Left badges auto-update stopped (disabled)');
+      }
+    }, 5000); // Update every 5 seconds
+    
+    consoleLog('🔢 Left badges auto-update started (every 5 seconds)');
+  }
+}
+
 // Start auto-update when page loads
 setTimeout(() => {
   startMiniTrackerAutoUpdate();
+  startLeftBadgesAutoUpdate();
 }, 2000); // Start after 2 seconds to let everything initialize
 
 /** Builds and displays the crosshair settings overlay
@@ -6953,7 +6997,7 @@ function buildCrosshairSettingsOverlay() {
       // Apply mobile mode to existing Color Filter overlay dynamically
       applyMobileModeToColorFilter(tempMobileMode);
 
-      // Refresh palette badges after applying settings
+      // Refresh palette badges immediately after applying settings
       try {
         const stats = templateManager.calculateRemainingPixelsByColor();
         updatePaletteLeftBadges(stats);
