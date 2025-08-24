@@ -2278,6 +2278,8 @@ function buildOverlayMain() {
                   btnContainer.style.justifyContent = 'center';
                   btnContainer.style.alignItems = 'center';
                   btnContainer.style.gap = '0';
+                  btnContainer.style.position = 'relative';
+                  btnContainer.style.height = '44px'; // Fixed height to contain the absolute positioned button
                   // clear grid constraints if any
                   btnContainer.style.gridTemplateColumns = 'unset';
                 }
@@ -2302,14 +2304,15 @@ function buildOverlayMain() {
                 colorFilterButton.style.borderRadius = '8px';
                 colorFilterButton.style.animation = 'none';
                 colorFilterButton.style.gridColumn = 'auto';
-                colorFilterButton.style.margin = '6px 0 0';
+                colorFilterButton.style.margin = '6px auto 0';
                 colorFilterButton.style.display = 'flex';
                 colorFilterButton.style.alignItems = 'center';
                 colorFilterButton.style.justifyContent = 'center';
                 colorFilterButton.style.alignSelf = 'center';
-                colorFilterButton.style.position = 'relative';
+                colorFilterButton.style.position = 'absolute';
                 colorFilterButton.style.left = '50%';
                 colorFilterButton.style.transform = 'translateX(-50%)';
+                colorFilterButton.style.zIndex = '1000';
                 // Tweak SVG size
                 const icon = colorFilterButton.querySelector('svg');
                 if (icon) {
@@ -2414,6 +2417,7 @@ function buildOverlayMain() {
                 colorFilterButton.style.justifyContent = '';
                 colorFilterButton.style.position = '';
                 colorFilterButton.style.left = '';
+                colorFilterButton.style.zIndex = '';
 
                 // Reset parent container layout
                 const btnContainer = colorFilterButton.parentElement;
@@ -2422,6 +2426,8 @@ function buildOverlayMain() {
                   btnContainer.style.justifyContent = '';
                   btnContainer.style.alignItems = '';
                   btnContainer.style.gap = '';
+                  btnContainer.style.position = '';
+                  btnContainer.style.height = '';
                   btnContainer.style.gridTemplateColumns = '';
                 }
               }
@@ -6710,7 +6716,7 @@ function updateMiniTracker() {
       consoleWarn('Main overlay not found, skipping mini tracker update');
       return;
     }
-    const isMainMinimized = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px');
+    const isMainMinimized = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px' || mainOverlay.style.width === '72px');
   
   // Hide tracker if disabled OR if collapse is enabled and main is minimized
   if (!trackerEnabled || (collapseEnabled && isMainMinimized)) {
@@ -6784,7 +6790,7 @@ function updateMiniTracker() {
   }
   
   // Style the tracker - COMPACT SLATE THEME (responsive to minimized state)
-  const isMainMinimizedForStyle = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px');
+  const isMainMinimizedForStyle = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px' || mainOverlay.style.width === '72px');
   
   tracker.style.cssText = `
     background: linear-gradient(135deg, #1e293b, #334155);
