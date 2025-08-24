@@ -123,6 +123,10 @@ export default class TemplateManager {
       "whoami": this.name.replace(' ', ''), // Name of userscript without spaces
       "scriptVersion": this.version, // Version of userscript
       "schemaVersion": this.templatesVersion, // Version of JSON schema
+      "createdAt": new Date().toISOString(), // When the JSON was first created
+      "lastModified": new Date().toISOString(), // When it was last modified
+      "templateCount": 0, // Number of templates
+      "totalPixels": 0, // Total pixels across all templates
       "templates": {} // The templates
     };
     
@@ -132,6 +136,28 @@ export default class TemplateManager {
     console.log('  - JSON:', json);
     
     return json;
+  }
+
+  /** Finds a duplicate template by name and pixel count
+   * @param {string} name - The display name to search for
+   * @param {number} pixelCount - The pixel count to match
+   * @returns {string|null} The template key if duplicate found, null otherwise
+   * @since 1.0.0
+   */
+  findDuplicateTemplate(name, pixelCount) {
+    if (!this.templatesJSON?.templates) return null;
+    
+    // Only check for duplicates if both name and pixelCount are valid
+    if (!name || !pixelCount || pixelCount <= 0) return null;
+    
+    for (const [templateKey, templateData] of Object.entries(this.templatesJSON.templates)) {
+      if (templateData.name === name && templateData.pixelCount === pixelCount) {
+        consoleLog(`🔍 Found duplicate template: ${templateKey} (${name}, ${pixelCount} pixels)`);
+        return templateKey;
+      }
+    }
+    
+    return null;
   }
 
   /** Creates the template from the inputed file blob
@@ -149,37 +175,95 @@ export default class TemplateManager {
 
     this.overlay.handleDisplayStatus(`Creating template at ${coords.join(', ')}...`);
 
-    // Creates a new template instance
-    const template = new Template({
+    // Create a temporary template instance to get pixel count for duplicate detection
+    const tempTemplate = new Template({
       displayName: name,
-      sortID: 0, // Object.keys(this.templatesJSON.templates).length || 0, // Uncomment this to enable multiple templates (1/2)
+      sortID: 0, // Temporary sortID
       authorID: numberToEncoded(this.userID || 0, this.encodingBase),
       file: blob,
       coords: coords
     });
-    //template.chunked = await template.createTemplateTiles(this.tileSize); // Chunks the tiles
-    const { templateTiles, templateTilesBuffers } = await template.createTemplateTiles(this.tileSize); // Chunks the tiles
-    template.chunked = templateTiles; // Stores the chunked tile bitmaps
+    const { templateTiles: tempTiles, templateTilesBuffers: tempBuffers } = await tempTemplate.createTemplateTiles(this.tileSize);
+    tempTemplate.chunked = tempTiles;
+
+    // Check for duplicate templates (same name and pixel count)
+    // DEBUG: Log template creation details
+    consoleLog(`🔍 Creating template: "${name}" with ${tempTemplate.pixelCount} pixels`);
+    consoleLog(`🔍 Existing templates:`, Object.keys(this.templatesJSON.templates));
+    
+    // TEMPORARY: Allow disabling duplicate detection for debugging
+    const ENABLE_DUPLICATE_DETECTION = true; // Set to false to disable
+    
+    const duplicateKey = ENABLE_DUPLICATE_DETECTION ? this.findDuplicateTemplate(name, tempTemplate.pixelCount) : null;
+    consoleLog(`🔍 Duplicate check result:`, duplicateKey ? `Found: ${duplicateKey}` : 'No duplicates found');
+    
+    let template, sortID;
+    if (duplicateKey) {
+      // Replace existing template
+      sortID = parseInt(duplicateKey.split(' ')[0]);
+      this.overlay.handleDisplayStatus(`Duplicate detected! Replacing existing template "${name}"...`);
+      consoleLog(`🔄 Replacing duplicate template: ${duplicateKey}`);
+      
+      // Remove old template from array
+      const oldTemplateIndex = this.templatesArray.findIndex(t => `${t.sortID} ${t.authorID}` === duplicateKey);
+      if (oldTemplateIndex !== -1) {
+        this.templatesArray.splice(oldTemplateIndex, 1);
+      }
+      
+      // Remove old template from JSON
+      if (this.templatesJSON.templates[duplicateKey]) {
+        delete this.templatesJSON.templates[duplicateKey];
+        consoleLog(`🗑️ Removed old duplicate template from JSON: ${duplicateKey}`);
+      }
+    } else {
+      // Create new template with next available sortID
+      // Find the highest existing sortID and increment by 1
+      const existingSortIDs = Object.keys(this.templatesJSON.templates).map(key => parseInt(key.split(' ')[0]));
+      sortID = existingSortIDs.length > 0 ? Math.max(...existingSortIDs) + 1 : 0;
+    }
+
+    // Creates the final template instance
+    template = new Template({
+      displayName: name,
+      sortID: sortID,
+      authorID: numberToEncoded(this.userID || 0, this.encodingBase),
+      file: blob,
+      coords: coords
+    });
+    const { templateTiles, templateTilesBuffers } = await template.createTemplateTiles(this.tileSize);
+    template.chunked = templateTiles;
 
     // Appends a child into the templates object
     // The child's name is the number of templates already in the list (sort order) plus the encoded player ID
     this.templatesJSON.templates[`${template.sortID} ${template.authorID}`] = {
       "name": template.displayName, // Display name of template
       "coords": coords.join(', '), // The coords of the template
+      "createdAt": new Date().toISOString(), // When this template was created
+      "pixelCount": template.pixelCount, // Number of pixels in this template
       "enabled": true,
       "disabledColors": template.getDisabledColors(), // Store disabled colors
       "enhancedColors": template.getEnhancedColors(), // Store enhanced colors
       "tiles": templateTilesBuffers // Stores the chunked tile buffers
     };
 
-    this.templatesArray = []; // Remove this to enable multiple templates (2/2)
+    // Update JSON metadata
+    this.templatesJSON.lastModified = new Date().toISOString();
+    this.templatesJSON.templateCount = Object.keys(this.templatesJSON.templates).length;
+    this.templatesJSON.totalPixels = this.templatesArray.reduce((total, t) => total + (t.pixelCount || 0), 0) + template.pixelCount;
+
+    // Initialize templatesArray if it doesn't exist, but don't clear existing templates
+    if (!this.templatesArray) {
+      this.templatesArray = [];
+    }
     this.templatesArray.push(template); // Pushes the Template object instance to the Template Array
 
     // ==================== PIXEL COUNT DISPLAY SYSTEM ====================
     // Display pixel count statistics with internationalized number formatting
     // This provides immediate feedback to users about template complexity and size
     const pixelCountFormatted = new Intl.NumberFormat().format(template.pixelCount);
-    this.overlay.handleDisplayStatus(`Template created at ${coords.join(', ')}! Total pixels: ${pixelCountFormatted}`);
+    const totalTemplates = Object.keys(this.templatesJSON.templates).length;
+    const actionText = duplicateKey ? 'replaced' : 'created';
+    this.overlay.handleDisplayStatus(`Template #${template.sortID} ${actionText} at ${coords.join(', ')}! Total pixels: ${pixelCountFormatted} | Total templates: ${totalTemplates}`);
 
     console.log(Object.keys(this.templatesJSON.templates).length);
     console.log(this.templatesJSON);
@@ -279,6 +363,11 @@ export default class TemplateManager {
         consoleLog(`🗑️ Removed template ${templateKey} from array`);
       }
 
+      // Update JSON metadata after deletion
+      this.templatesJSON.lastModified = new Date().toISOString();
+      this.templatesJSON.templateCount = Object.keys(this.templatesJSON.templates).length;
+      this.templatesJSON.totalPixels = this.templatesArray.reduce((total, t) => total + (t.pixelCount || 0), 0);
+
       // Save updated templates to storage
       this.#storeTemplates();
 
@@ -344,6 +433,15 @@ export default class TemplateManager {
 
     // Retrieves the relavent template tile blobs
     const templatesToDraw = templateArray
+      .filter(template => {
+        // Check if template is enabled
+        const templateKey = `${template.sortID} ${template.authorID}`;
+        const isEnabled = this.isTemplateEnabled(templateKey);
+        if (!isEnabled) {
+          consoleLog(`⏸️ Skipping disabled template: ${templateKey}`);
+        }
+        return isEnabled;
+      })
       .map(template => {
         const matchingTiles = Object.keys(template.chunked).filter(tile =>
           tile.startsWith(tileCoords)
@@ -416,12 +514,13 @@ export default class TemplateManager {
     context.drawImage(tileBitmap, 0, 0, drawSize, drawSize);
 
     // For each template in this tile, draw them.
-    for (const template of templatesToDraw) {
+    for (let i = 0; i < templatesToDraw.length; i++) {
+      const template = templatesToDraw[i];
       console.log(`Template:`);
       console.log(template);
 
-      // Get the current template instance to check for disabled colors
-      const currentTemplate = this.templatesArray?.[0]; // Assuming single template for now
+      // Get the corresponding template instance to check for disabled colors
+      const currentTemplate = templateArray[i]; // Use the correct template from the array
       const hasDisabledColors = currentTemplate && currentTemplate.getDisabledColors().length > 0;
       
                      // Check if any colors have enhanced mode enabled OR if wrong colors should be enhanced
@@ -1290,6 +1389,39 @@ export default class TemplateManager {
    */
   setTemplatesShouldBeDrawn(value) {
     this.templatesShouldBeDrawn = value;
+  }
+
+  /** Enables or disables a specific template by its key
+   * @param {string} templateKey - The template key (e.g., "0 I+`")
+   * @param {boolean} enabled - Whether to enable or disable the template
+   * @since 1.0.0
+   */
+  setTemplateEnabled(templateKey, enabled) {
+    if (!this.templatesJSON?.templates?.[templateKey]) {
+      consoleWarn(`Template not found: ${templateKey}`);
+      return false;
+    }
+
+    // Update JSON
+    this.templatesJSON.templates[templateKey].enabled = enabled;
+    
+    // Update metadata
+    this.templatesJSON.lastModified = new Date().toISOString();
+    
+    // Save to storage
+    this.#storeTemplates();
+    
+    consoleLog(`${enabled ? 'Enabled' : 'Disabled'} template: ${templateKey}`);
+    return true;
+  }
+
+  /** Gets the enabled state of a specific template
+   * @param {string} templateKey - The template key (e.g., "0 I+`")
+   * @returns {boolean} Whether the template is enabled
+   * @since 1.0.0
+   */
+  isTemplateEnabled(templateKey) {
+    return this.templatesJSON?.templates?.[templateKey]?.enabled ?? true;
   }
 
   /** Updates template color filter settings (storage only, filtering applied during draw)

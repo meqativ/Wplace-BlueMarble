@@ -490,11 +490,11 @@ input[type="file"][id*="template"] {
   font-weight: 500;
 }
 
-/* Template buttons container - 3x4 grid layout */
+/* Template buttons container - 3x3 grid layout */
 #bm-contain-buttons-template {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: auto auto auto auto; /* 4 rows: Upload Template, Create+Enable+Disable, Pause Tiles, Color Filter */
+  grid-template-rows: auto auto auto; /* 3 rows: Upload Template, Create+Manage+Pause Tiles, Color Filter */
   align-items: stretch; /* all buttons same height in each row */
   gap: .25rem;
 }
@@ -518,18 +518,20 @@ div:has(> #bm-input-file-template) > button {
 
 /* Clear Storage button uses the same bm-help class - SIMPLE! */
 
-/* Row 2: Create, Enable, Disable buttons */
+/* Row 2: Create, Manage, Pause Tiles buttons */
 #bm-button-create  { grid-row: 2; grid-column: 1; }
-#bm-button-enable  { grid-row: 2; grid-column: 2; }
-#bm-button-disable { grid-row: 2; grid-column: 3; }
-
-/* Row 3: Pause Tiles button (spans all 3 columns) */
+#bm-button-manage  { grid-row: 2; grid-column: 2; }
 #bm-button-pause-tiles {
-  grid-row: 3;
-  grid-column: 1 / span 3;
+  grid-row: 2;
+  grid-column: 3;
   background-color: #50a9f1 !important;
   transition: all 0.3s ease !important;
+  font-size: 0.85rem; /* Slightly smaller text for better fit */
+  padding: .125rem .25rem; /* Reduced horizontal padding */
 }
+
+/* Row 3: Color Filter button */
+#bm-button-color-filter { grid-row: 3; grid-column: 1 / span 3; }
 
 #bm-button-pause-tiles:hover {
   background-color: #f57c00 !important;
@@ -555,12 +557,7 @@ div:has(> #bm-input-file-template) > button {
   background-color: #3d8b40 !important;
 }
 
-/* Row 4: Color Filter button (spans all 3 columns) */
-#bm-button-color-filter {
-  grid-row: 4;
-  grid-column: 1 / span 3;
-  margin-top: 0; /* remove the old margin since we're using grid now */
-}
+/* Color Filter button special styling is already defined above in grid row 3 */
 
 /* All overlay buttons */
 #bm-overlay button {
@@ -575,6 +572,12 @@ div:has(> #bm-input-file-template) > button {
   border-radius: .25rem;
 
   transition: background-color 0.25s;
+  
+  /* Handle text overflow */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0; /* Allow flex items to shrink below content size */
 }
 
 /* All overlay buttons when hovered/focused */

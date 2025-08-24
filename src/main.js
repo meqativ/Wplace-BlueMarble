@@ -1520,6 +1520,16 @@ function deleteSelectedTemplate(instance) {
         white-space: nowrap;
       }
       
+      .bmdt-template-coords {
+        font-size: 0.75em;
+        color: var(--blue-400);
+        font-weight: 500;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        margin-top: 2px;
+      }
+      
       .bmdt-delete-btn {
         background: linear-gradient(135deg, var(--red-500), var(--red-600));
         color: white;
@@ -1694,6 +1704,7 @@ function deleteSelectedTemplate(instance) {
   templateKeys.forEach(templateKey => {
     const template = templates[templateKey];
     const templateName = template.name || `Template ${templateKey}`;
+    const templateCoords = template.coords || 'Unknown location';
     
     const templateItem = document.createElement('div');
     templateItem.className = 'bmdt-template-item';
@@ -1705,12 +1716,31 @@ function deleteSelectedTemplate(instance) {
     nameSpan.className = 'bmdt-template-name';
     nameSpan.textContent = templateName;
     
+    // Extract sortID from template key for more user-friendly display
     const keySpan = document.createElement('div');
     keySpan.className = 'bmdt-template-key';
-    keySpan.textContent = templateKey;
+    const sortID = templateKey.split(' ')[0];
+    keySpan.textContent = `Template ID: ${sortID}`;
+    
+    const coordsSpan = document.createElement('div');
+    coordsSpan.className = 'bmdt-template-coords';
+    
+    // Parse and format coordinates for better readability
+    if (templateCoords && templateCoords !== 'Unknown location') {
+      const coords = templateCoords.split(', ');
+      if (coords.length === 4) {
+        const [tileX, tileY, pX, pY] = coords;
+        coordsSpan.textContent = `📍 Tile ${tileX},${tileY} • Pixel ${pX},${pY}`;
+      } else {
+        coordsSpan.textContent = `📍 ${templateCoords}`;
+      }
+    } else {
+      coordsSpan.textContent = '📍 Unknown location';
+    }
     
     templateInfo.appendChild(nameSpan);
     templateInfo.appendChild(keySpan);
+    templateInfo.appendChild(coordsSpan);
     
     const deleteBtn = document.createElement('button');
     deleteBtn.className = 'bmdt-delete-btn';
@@ -1803,6 +1833,323 @@ function deleteSelectedTemplate(instance) {
   document.body.appendChild(overlay);
 }
 
+/** Shows a comprehensive template management dialog
+ * @param {Object} instance - The overlay instance
+ * @since 1.0.0
+ */
+function showTemplateManageDialog(instance) {
+  const templates = templateManager?.templatesJSON?.templates || {};
+  const templateKeys = Object.keys(templates);
+  
+  if (templateKeys.length === 0) {
+    instance.handleDisplayStatus('No templates found!');
+    return;
+  }
+  
+  // Create management dialog
+  const overlay = document.createElement('div');
+  overlay.id = 'bm-template-manage-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+  
+  const container = document.createElement('div');
+  container.style.cssText = `
+    background: #1e293b;
+    color: #f1f5f9;
+    border-radius: 20px;
+    border: 1px solid #334155;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(16px);
+    max-width: 500px;
+    width: 90%;
+    max-height: 85vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    position: relative;
+  `;
+  
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 20px 24px 16px 24px;
+    border-bottom: 1px solid #334155;
+    background: linear-gradient(135deg, #1e293b, #293548);
+  `;
+  
+  const title = document.createElement('h3');
+  title.textContent = 'Manage Templates';
+  title.style.cssText = `
+    margin: 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  `;
+  
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.cssText = `
+    background: none;
+    border: none;
+    color: #94a3b8;
+    font-size: 24px;
+    cursor: pointer;
+    padding: 0;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    transition: all 0.2s ease;
+  `;
+  closeBtn.onmouseover = () => {
+    closeBtn.style.background = 'rgba(239, 68, 68, 0.1)';
+    closeBtn.style.color = '#ef4444';
+  };
+  closeBtn.onmouseout = () => {
+    closeBtn.style.background = 'none';
+    closeBtn.style.color = '#94a3b8';
+  };
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  
+  // Content
+  const content = document.createElement('div');
+  content.style.cssText = `
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  `;
+  
+  // Template list
+  const templateList = document.createElement('div');
+  templateList.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  `;
+  
+  templateKeys.forEach(templateKey => {
+    const template = templates[templateKey];
+    const templateName = template.name || `Template ${templateKey}`;
+    const templateCoords = template.coords || 'Unknown location';
+    const pixelCount = template.pixelCount || 0;
+    const isEnabled = templateManager.isTemplateEnabled(templateKey);
+    
+    const templateItem = document.createElement('div');
+    templateItem.style.cssText = `
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px;
+      background: #334155;
+      border-radius: 12px;
+      border: 1px solid #475569;
+      transition: all 0.2s ease;
+    `;
+    templateItem.onmouseover = () => {
+      templateItem.style.background = '#3f4b5f';
+      templateItem.style.transform = 'translateY(-1px)';
+    };
+    templateItem.onmouseout = () => {
+      templateItem.style.background = '#334155';
+      templateItem.style.transform = '';
+    };
+    
+    const templateInfo = document.createElement('div');
+    templateInfo.style.cssText = `
+      flex: 1;
+      min-width: 0;
+      margin-right: 16px;
+    `;
+    
+    const nameSpan = document.createElement('div');
+    nameSpan.textContent = templateName;
+    nameSpan.style.cssText = `
+      font-weight: 600;
+      font-size: 1em;
+      color: #f1f5f9;
+      margin-bottom: 4px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    `;
+    
+    const infoSpan = document.createElement('div');
+    infoSpan.textContent = `${new Intl.NumberFormat().format(pixelCount)} pixels`;
+    infoSpan.style.cssText = `
+      font-size: 0.85em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    `;
+    
+    const coordsSpan = document.createElement('div');
+    if (templateCoords && templateCoords !== 'Unknown location') {
+      const coords = templateCoords.split(', ');
+      if (coords.length === 4) {
+        const [tileX, tileY, pX, pY] = coords;
+        coordsSpan.textContent = `📍 Tile ${tileX},${tileY} • Pixel ${pX},${pY}`;
+      } else {
+        coordsSpan.textContent = `📍 ${templateCoords}`;
+      }
+    } else {
+      coordsSpan.textContent = '📍 Unknown location';
+    }
+    coordsSpan.style.cssText = `
+      font-size: 0.75em;
+      color: #60a5fa;
+      font-weight: 500;
+    `;
+    
+    templateInfo.appendChild(nameSpan);
+    templateInfo.appendChild(infoSpan);
+    templateInfo.appendChild(coordsSpan);
+    
+    // Toggle button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.textContent = isEnabled ? 'Enabled' : 'Disabled';
+    toggleBtn.style.cssText = `
+      padding: 8px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.85em;
+      font-weight: 600;
+      transition: all 0.2s ease;
+      min-width: 80px;
+      ${isEnabled 
+        ? 'background: linear-gradient(135deg, #10b981, #059669); color: white;'
+        : 'background: linear-gradient(135deg, #64748b, #475569); color: #e2e8f0;'
+      }
+    `;
+    
+    toggleBtn.onclick = () => {
+      const newState = !templateManager.isTemplateEnabled(templateKey);
+      templateManager.setTemplateEnabled(templateKey, newState);
+      
+      // Update button appearance
+      toggleBtn.textContent = newState ? 'Enabled' : 'Disabled';
+      toggleBtn.style.background = newState 
+        ? 'linear-gradient(135deg, #10b981, #059669)'
+        : 'linear-gradient(135deg, #64748b, #475569)';
+      toggleBtn.style.color = newState ? 'white' : '#e2e8f0';
+      
+      instance.handleDisplayStatus(`${newState ? 'Enabled' : 'Disabled'} template "${templateName}"!`);
+    };
+    
+    templateItem.appendChild(templateInfo);
+    templateItem.appendChild(toggleBtn);
+    templateList.appendChild(templateItem);
+  });
+  
+  content.appendChild(templateList);
+  
+  // Footer with bulk actions
+  const footer = document.createElement('div');
+  footer.style.cssText = `
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    padding: 20px 24px;
+    border-top: 1px solid #334155;
+    background: linear-gradient(135deg, #1e293b, #293548);
+  `;
+  
+  const enableAllBtn = document.createElement('button');
+  enableAllBtn.textContent = 'Enable All';
+  enableAllBtn.style.cssText = `
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #10b981, #059669);
+    color: white;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  `;
+  enableAllBtn.onmouseover = () => {
+    enableAllBtn.style.transform = 'translateY(-2px)';
+    enableAllBtn.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.4)';
+  };
+  enableAllBtn.onmouseout = () => {
+    enableAllBtn.style.transform = '';
+    enableAllBtn.style.boxShadow = '';
+  };
+  enableAllBtn.onclick = () => {
+    templateKeys.forEach(key => templateManager.setTemplateEnabled(key, true));
+    document.body.removeChild(overlay);
+    instance.handleDisplayStatus('Enabled all templates!');
+  };
+  
+  const disableAllBtn = document.createElement('button');
+  disableAllBtn.textContent = 'Disable All';
+  disableAllBtn.style.cssText = `
+    flex: 1;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 12px;
+    background: linear-gradient(135deg, #64748b, #475569);
+    color: #e2e8f0;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  `;
+  disableAllBtn.onmouseover = () => {
+    disableAllBtn.style.transform = 'translateY(-2px)';
+    disableAllBtn.style.boxShadow = '0 8px 25px rgba(100, 116, 139, 0.4)';
+  };
+  disableAllBtn.onmouseout = () => {
+    disableAllBtn.style.transform = '';
+    disableAllBtn.style.boxShadow = '';
+  };
+  disableAllBtn.onclick = () => {
+    templateKeys.forEach(key => templateManager.setTemplateEnabled(key, false));
+    document.body.removeChild(overlay);
+    instance.handleDisplayStatus('Disabled all templates!');
+  };
+  
+  footer.appendChild(enableAllBtn);
+  footer.appendChild(disableAllBtn);
+  
+  // Assemble the interface
+  container.appendChild(header);
+  container.appendChild(content);
+  container.appendChild(footer);
+  overlay.appendChild(container);
+  
+  // Close overlay when clicking outside
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+  
+  // Add to page
+  document.body.appendChild(overlay);
+}
+
 /** Deploys the overlay to the page with minimize/maximize functionality.
  * Creates a responsive overlay UI that can toggle between full-featured and minimized states.
  * 
@@ -1844,8 +2191,8 @@ function buildOverlayMain() {
             const coordsContainer = document.querySelector('#bm-contain-coords');
             const coordsButton = document.querySelector('#bm-button-coords');
             const createButton = document.querySelector('#bm-button-create');
-            const enableButton = document.querySelector('#bm-button-enable');
-            const disableButton = document.querySelector('#bm-button-disable');
+            const manageButton = document.querySelector('#bm-button-manage');
+            const pauseButton = document.querySelector('#bm-button-pause-tiles');
             const deleteTemplatesButton = document.querySelector('#bm-button-delete-templates');
             const coordInputs = document.querySelectorAll('#bm-contain-coords input');
             const colorFilterButton = document.getElementById('bm-button-color-filter');
@@ -1899,14 +2246,14 @@ function buildOverlayMain() {
                 createButton.style.display = 'none';
               }
 
-              // Hide enable templates button
-              if (enableButton) {
-                enableButton.style.display = 'none';
+              // Hide manage templates button
+              if (manageButton) {
+                manageButton.style.display = 'none';
               }
 
-              // Hide disable templates button
-              if (disableButton) {
-                disableButton.style.display = 'none';
+              // Hide pause tiles button
+              if (pauseButton) {
+                pauseButton.style.display = 'none';
               }
 
               // Hide delete templates button
@@ -2026,16 +2373,16 @@ function buildOverlayMain() {
                 createButton.style.marginTop = '';
               }
 
-              // Restore enable button visibility and reset positioning
-              if (enableButton) {
-                enableButton.style.display = '';
-                enableButton.style.marginTop = '';
+              // Restore manage button visibility and reset positioning
+              if (manageButton) {
+                manageButton.style.display = '';
+                manageButton.style.marginTop = '';
               }
 
-              // Restore disable button visibility and reset positioning
-              if (disableButton) {
-                disableButton.style.display = '';
-                disableButton.style.marginTop = '';
+              // Restore pause tiles button visibility and reset positioning
+              if (pauseButton) {
+                pauseButton.style.display = '';
+                pauseButton.style.marginTop = '';
               }
 
               // Restore delete templates button visibility
@@ -2226,19 +2573,12 @@ function buildOverlayMain() {
                       instance.handleDisplayStatus(`Drew to canvas!`);
         }
       }).buildElement()
-      .addButton({'id': 'bm-button-enable', innerHTML: icons.enableIcon + 'Enable'}, (instance, button) => {
+      .addButton({'id': 'bm-button-manage', innerHTML: icons.manageIcon + 'Manage'}, (instance, button) => {
         button.onclick = () => {
-          instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(true);
-          instance.handleDisplayStatus(`Enabled templates!`);
+          showTemplateManageDialog(instance);
         }
       }).buildElement()
-      .addButton({'id': 'bm-button-disable', innerHTML: icons.disableIcon + 'Disable'}, (instance, button) => {
-        button.onclick = () => {
-          instance.apiManager?.templateManager?.setTemplatesShouldBeDrawn(false);
-          instance.handleDisplayStatus(`Disabled templates!`);
-        }
-      }).buildElement()
-      .addButton({'id': 'bm-button-pause-tiles', innerHTML: icons.disableIcon + (isTileRefreshPaused() ? 'Resume Tiles' : 'Pause Tiles')}, (instance, button) => {
+      .addButton({'id': 'bm-button-pause-tiles', innerHTML: (isTileRefreshPaused() ? icons.playIcon : icons.pauseIcon) + (isTileRefreshPaused() ? 'Resume' : 'Pause')}, (instance, button) => {
         // Set initial CSS class based on current pause state
         if (isTileRefreshPaused()) {
           button.classList.add('paused');
@@ -2247,7 +2587,7 @@ function buildOverlayMain() {
           const isPaused = toggleTileRefreshPause(templateManager);
           const cachedCount = getCachedTileCount();
           
-          button.innerHTML = `${icons.disableIcon} ${isPaused ? 'Resume Tiles' : 'Pause Tiles'}${isPaused && cachedCount > 0 ? ` (${cachedCount})` : ''}`;
+          button.innerHTML = `${isPaused ? icons.playIcon : icons.pauseIcon} ${isPaused ? 'Resume' : 'Pause'}${isPaused && cachedCount > 0 ? ` (${cachedCount})` : ''}`;
           
           // Toggle CSS class based on pause state
           if (isPaused) {
@@ -2262,13 +2602,12 @@ function buildOverlayMain() {
           );
         }
       }).buildElement()
-      .buildElement()
-      .buildElement()
       .addButton({'id': 'bm-button-color-filter', innerHTML: icons.colorFilterIcon + 'Color Filter'}, (instance, button) => {
         button.onclick = () => {
           buildColorFilterOverlay();
         }
       }).buildElement()
+      .buildElement() // Close bm-contain-buttons-template
       .addTextarea({'id': overlayMain.outputStatusId, 'placeholder': `Status: Sleeping...\nVersion: ${version}`, 'readOnly': true}).buildElement()
       .addDiv({'id': 'bm-contain-buttons-action'})
         .addDiv({'style': 'display: flex; gap: 6px; align-items: center;'})
@@ -3167,6 +3506,7 @@ function buildColorFilterOverlay() {
     // Filter options
     const filterOptions = [
       { value: 'default', text: 'Default Order' },
+      { value: 'premium', text: 'Premium (Most Missing)' },
       { value: 'enhanced', text: 'Enhanced Colors Only' },
       { value: 'wrong-desc', text: 'Most Wrong Colors' },
       { value: 'wrong-asc', text: 'Least Wrong Colors' },
@@ -4245,6 +4585,24 @@ function buildColorFilterOverlay() {
         const bPercentage = bTotal > 0 ? ((bTotal - bMissing) / bTotal) * 100 : 0;
 
         switch (filterType) {
+          case 'premium': 
+            // Get color RGB from data attributes
+            const aRgb = a.getAttribute('data-color-rgb');
+            const bRgb = b.getAttribute('data-color-rgb');
+            
+            // Find colors in utils.colorpalette
+            const aColor = colorPalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === aRgb);
+            const bColor = colorPalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === bRgb);
+            
+            const aIsPremium = aColor && aColor.free === false;
+            const bIsPremium = bColor && bColor.free === false;
+            
+            // Premium colors first
+            if (aIsPremium && !bIsPremium) return -1;
+            if (!aIsPremium && bIsPremium) return 1;
+            
+            // If both are premium or both are free, sort by most pixels missing
+            return bMissing - aMissing;
           case 'wrong-desc': return bWrong - aWrong;
           case 'wrong-asc': return aWrong - bWrong;
           case 'missing-desc': return bMissing - aMissing;
@@ -4559,6 +4917,7 @@ function buildColorFilterOverlay() {
     const sortOptions = [
       { value: 'default', text: 'Default Order' },
       { value: 'name', text: 'By Name' },
+      { value: 'premium', text: 'Premium (Most Missing)' },
       { value: 'most-missing', text: 'Most Pixels Missing' },
       { value: 'less-missing', text: 'Less Pixels Missing' },
       { value: 'remaining', text: 'By Remaining' },
@@ -4703,6 +5062,37 @@ function buildColorFilterOverlay() {
             const nameA = a.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
             const nameB = b.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
             return nameA.localeCompare(nameB);
+          });
+          break;
+          
+        case 'premium':
+          sortedItems.sort((a, b) => {
+            const colorKeyA = a.getAttribute('data-color-rgb');
+            const colorKeyB = b.getAttribute('data-color-rgb');
+            
+            // Find colors in utils.colorpalette
+            const colorA = utils.colorpalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyA);
+            const colorB = utils.colorpalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyB);
+            
+            const isPremiumA = colorA && colorA.free === false;
+            const isPremiumB = colorB && colorB.free === false;
+            
+            // Premium colors first
+            if (isPremiumA && !isPremiumB) return -1;
+            if (!isPremiumA && isPremiumB) return 1;
+            
+            // If both are premium or both are free, sort by most pixels missing
+            const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+            const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+            // Filter out 0/0 colors (no pixels at all)
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+            return remainingB - remainingA; // Descending (more missing first)
           });
           break;
           
