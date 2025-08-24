@@ -955,6 +955,7 @@ function clearAllStorage(instance) {
           'bmCrosshairColor',
           'bmCrosshairBorder',
           'bmCrosshairEnhancedSize',
+          'bmCrosshairRadius',
           'bmCrosshairThickness',
           'bmMiniTracker',
           'bmCollapseMin',
@@ -2213,7 +2214,7 @@ function buildOverlayMain() {
                 '#bm-contain-userinfo',              // User information section (username, droplets, level)
                 '#bm-overlay #bm-separator',         // Visual separator lines
                 '#bm-contain-automation > *:not(#bm-contain-coords)', // Automation section excluding coordinates
-                '#bm-input-file-template',           // Template file upload interface
+                'div:has(> #bm-input-file-template)', // Template file upload interface container
                 '#bm-contain-buttons-action',        // Action buttons container
                 `#${instance.outputStatusId}`        // Status log textarea for user feedback
               ];
@@ -6302,6 +6303,65 @@ function saveEnhancedSizeEnabled(enabled) {
   }
 }
 
+/** Gets the crosshair radius setting from storage
+ * @returns {number} The crosshair radius value (12-32)
+ * @since 1.0.0 
+ */
+function getCrosshairRadius() {
+  try {
+    let radiusValue = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairRadius', null);
+      if (saved !== null) {
+        radiusValue = JSON.parse(saved);
+      }
+    }
+    
+    // Fallback to localStorage
+    if (radiusValue === null) {
+      const saved = localStorage.getItem('bmCrosshairRadius');
+      if (saved !== null) {
+        radiusValue = JSON.parse(saved);
+      }
+    }
+    
+    if (radiusValue !== null) {
+      // Ensure value is within valid range
+      return Math.max(12, Math.min(32, radiusValue));
+    }
+  } catch (error) {
+    consoleError('Failed to load crosshair radius setting:', error);
+  }
+  
+  return 16; // Default radius (between min 12 and max 32)
+}
+
+/** Saves the crosshair radius setting to storage
+ * @param {number} radius - The crosshair radius value (12-32)
+ * @since 1.0.0 
+ */
+function saveCrosshairRadius(radius) {
+  try {
+    // Ensure value is within valid range
+    const clampedRadius = Math.max(12, Math.min(32, radius));
+    const radiusString = JSON.stringify(clampedRadius);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairRadius', radiusString);
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairRadius', radiusString);
+    
+    consoleLog('✅ Crosshair radius setting saved successfully:', clampedRadius);
+  } catch (error) {
+    consoleError('❌ Failed to save crosshair radius setting:', error);
+  }
+}
+
 /** Gets the mini tracker enabled setting from storage
  * @returns {boolean} Whether mini tracker is enabled
  * @since 1.0.0 
@@ -6639,13 +6699,18 @@ function applyMobileModeToColorFilter(enableMobile) {
  * @since 1.0.0
  */
 function updateMiniTracker() {
-  const trackerEnabled = getMiniTrackerEnabled();
-  const collapseEnabled = getCollapseMinEnabled();
-  const existingTracker = document.getElementById('bm-mini-tracker');
-  
-  // Check if main overlay is minimized
-  const mainOverlay = document.getElementById('bm-overlay');
-  const isMainMinimized = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px');
+  try {
+    const trackerEnabled = getMiniTrackerEnabled();
+    const collapseEnabled = getCollapseMinEnabled();
+    const existingTracker = document.getElementById('bm-mini-tracker');
+    
+    // Check if main overlay is minimized
+    const mainOverlay = document.getElementById('bm-overlay');
+    if (!mainOverlay) {
+      consoleWarn('Main overlay not found, skipping mini tracker update');
+      return;
+    }
+    const isMainMinimized = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px');
   
   // Hide tracker if disabled OR if collapse is enabled and main is minimized
   if (!trackerEnabled || (collapseEnabled && isMainMinimized)) {
@@ -6689,10 +6754,32 @@ function updateMiniTracker() {
     tracker = document.createElement('div');
     tracker.id = 'bm-mini-tracker';
     
-    // Find the Color Filter button to position tracker below it
-    const colorFilterButton = document.getElementById('bm-button-color-filter');
-    if (colorFilterButton && colorFilterButton.parentNode) {
-      colorFilterButton.parentNode.insertBefore(tracker, colorFilterButton.nextSibling);
+    // Find the buttons container to position tracker after it
+    const buttonsContainer = document.getElementById('bm-contain-buttons-template');
+    const mainOverlay = document.getElementById('bm-overlay');
+    
+    if (buttonsContainer && mainOverlay) {
+      try {
+        // Insert tracker after the buttons container but before the status textarea
+        const statusTextarea = document.getElementById(overlayMain.outputStatusId);
+        if (statusTextarea && statusTextarea.parentNode === mainOverlay) {
+          mainOverlay.insertBefore(tracker, statusTextarea);
+        } else if (buttonsContainer.parentNode && buttonsContainer.nextSibling) {
+          // Fallback: insert after buttons container
+          buttonsContainer.parentNode.insertBefore(tracker, buttonsContainer.nextSibling);
+        } else {
+          // Last resort: append to main overlay
+          mainOverlay.appendChild(tracker);
+        }
+      } catch (error) {
+        consoleError('Error inserting mini tracker:', error);
+        // Try to append as fallback
+        try {
+          mainOverlay.appendChild(tracker);
+        } catch (appendError) {
+          consoleError('Failed to append mini tracker:', appendError);
+        }
+      }
     }
   }
   
@@ -6797,6 +6884,18 @@ function updateMiniTracker() {
   document.head.appendChild(style);
   
   consoleLog(`📊 Mini tracker updated: ${totalPainted}/${totalRequired} (${progressPercentage}%) - ${totalNeedCrosshair} need crosshair`);
+  } catch (error) {
+    consoleError('❌ Error updating mini tracker:', error);
+    // Clean up any problematic tracker
+    const problemTracker = document.getElementById('bm-mini-tracker');
+    if (problemTracker) {
+      try {
+        problemTracker.remove();
+      } catch (removeError) {
+        consoleError('Failed to remove problematic tracker:', removeError);
+      }
+    }
+  }
 }
 
 // Auto-update mini tracker every 5 seconds if enabled
@@ -7787,6 +7886,141 @@ function buildCrosshairSettingsOverlay() {
   sizeSection.appendChild(sizeDescription);
   sizeSection.appendChild(sizeToggle);
 
+  // Crosshair Radius section (only show when enhanced size is enabled)
+  const radiusSection = document.createElement('div');
+  radiusSection.style.cssText = `
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
+    position: relative;
+    z-index: 1;
+    transition: opacity 0.3s ease, transform 0.3s ease;
+  `;
+
+  const radiusLabel = document.createElement('div');
+  radiusLabel.textContent = 'Crosshair Radius:';
+  radiusLabel.style.cssText = `
+    font-size: 1em; 
+    margin-bottom: 12px; 
+    color: var(--slate-200);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  `;
+
+  const radiusDescription = document.createElement('div');
+  radiusDescription.textContent = 'Control how far the crosshair extends from the center pixel';
+  radiusDescription.style.cssText = `
+    font-size: 0.9em; 
+    margin-bottom: 16px; 
+    color: var(--slate-300);
+    line-height: 1.4;
+    letter-spacing: -0.005em;
+  `;
+
+  // Get current radius setting
+  let tempRadius = getCrosshairRadius();
+
+  const radiusSliderContainer = document.createElement('div');
+  radiusSliderContainer.style.cssText = `
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 12px;
+  `;
+
+  const radiusSlider = document.createElement('input');
+  radiusSlider.type = 'range';
+  radiusSlider.min = '12';
+  radiusSlider.max = '32';
+  radiusSlider.step = '1';
+  radiusSlider.value = tempRadius;
+  radiusSlider.style.cssText = `
+    flex: 1;
+    height: 6px;
+    background: linear-gradient(90deg, var(--slate-600), var(--slate-500));
+    border-radius: 3px;
+    outline: none;
+    cursor: pointer;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+  `;
+
+  // Style the slider thumb
+  const radiusSliderStyle = document.createElement('style');
+  radiusSliderStyle.textContent = `
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      background: linear-gradient(135deg, var(--slate-300), var(--slate-400));
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--slate-100);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      background: linear-gradient(135deg, var(--slate-300), var(--slate-400));
+      border-radius: 50%;
+      cursor: pointer;
+      border: 2px solid var(--slate-100);
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+    }
+  `;
+  document.head.appendChild(radiusSliderStyle);
+
+  const radiusValue = document.createElement('div');
+  radiusValue.textContent = tempRadius;
+  radiusValue.style.cssText = `
+    font-size: 1em;
+    font-weight: 600;
+    color: var(--slate-100);
+    min-width: 32px;
+    text-align: center;
+    background: var(--slate-700);
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--slate-600);
+  `;
+
+  radiusSlider.oninput = () => {
+    tempRadius = parseInt(radiusSlider.value);
+    radiusValue.textContent = tempRadius;
+    updateCrosshairPreview(tempColor, tempBorderEnabled, tempEnhancedSize);
+  };
+
+  // Update radius section visibility based on enhanced size
+  const updateRadiusVisibility = () => {
+    if (tempEnhancedSize) {
+      radiusSection.style.opacity = '1';
+      radiusSection.style.transform = 'translateY(0)';
+      radiusSection.style.pointerEvents = 'auto';
+    } else {
+      radiusSection.style.opacity = '0.5';
+      radiusSection.style.transform = 'translateY(-10px)';
+      radiusSection.style.pointerEvents = 'none';
+    }
+  };
+
+  // Override the enhanced size checkbox onchange to also update radius visibility
+  const originalSizeOnChange = sizeCheckbox.onchange;
+  sizeCheckbox.onchange = () => {
+    originalSizeOnChange();
+    updateRadiusVisibility();
+  };
+
+  radiusSliderContainer.appendChild(radiusSlider);
+  radiusSliderContainer.appendChild(radiusValue);
+  radiusSection.appendChild(radiusLabel);
+  radiusSection.appendChild(radiusDescription);
+  radiusSection.appendChild(radiusSliderContainer);
+
+  // Initialize radius visibility
+  updateRadiusVisibility();
+
   // Mini tracker section
   const trackerSection = document.createElement('div');
   trackerSection.style.cssText = `
@@ -8147,6 +8381,7 @@ function buildCrosshairSettingsOverlay() {
       JSON.stringify(tempColor) !== JSON.stringify(currentColorSaved) ||
       tempBorderEnabled !== currentBorderSaved ||
       tempEnhancedSize !== getEnhancedSizeEnabled() ||
+      tempRadius !== getCrosshairRadius() ||
       tempMiniTrackerEnabled !== currentTrackerSaved ||
       tempCollapseMinEnabled !== currentCollapseSaved ||
       tempMobileMode !== currentMobileSaved ||
@@ -8207,6 +8442,7 @@ function buildCrosshairSettingsOverlay() {
       saveCrosshairColor(tempColor);
       saveBorderEnabled(tempBorderEnabled);
       saveEnhancedSizeEnabled(tempEnhancedSize);
+      saveCrosshairRadius(tempRadius);
       saveMiniTrackerEnabled(tempMiniTrackerEnabled);
       saveCollapseMinEnabled(tempCollapseMinEnabled);
       saveMobileMode(tempMobileMode);
@@ -8291,6 +8527,7 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(alphaSection);
   contentContainer.appendChild(borderSection);
   contentContainer.appendChild(sizeSection);
+  contentContainer.appendChild(radiusSection);
   contentContainer.appendChild(trackerSection);
   
   // Show Left number on color cards (compact mode)

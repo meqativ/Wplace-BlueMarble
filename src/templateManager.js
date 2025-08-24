@@ -798,15 +798,15 @@ export default class TemplateManager {
                      }
                      if (!painted || isWrongColor) { baseEligible = true; break; }
                    }
-                   if (baseEligible) {
-                     const radius = 16; // expansion radius beyond base
-                     for (let d = 2; d <= radius; d++) {
-                       crosshairOffsets.push([0, -d, 'center']);
-                       crosshairOffsets.push([0, d, 'center']);
-                       crosshairOffsets.push([-d, 0, 'center']);
-                       crosshairOffsets.push([d, 0, 'center']);
-                     }
-                   }
+                                     if (baseEligible) {
+                    const radius = this.getCrosshairRadius(); // dynamic radius from settings
+                    for (let d = 2; d <= radius; d++) {
+                      crosshairOffsets.push([0, -d, 'center']);
+                      crosshairOffsets.push([0, d, 'center']);
+                      crosshairOffsets.push([-d, 0, 'center']);
+                      crosshairOffsets.push([d, 0, 'center']);
+                    }
+                  }
                  }
                  
                  for (const [dx, dy, type] of crosshairOffsets) {
@@ -2032,6 +2032,41 @@ export default class TemplateManager {
        rgb: [255, 0, 0],
        alpha: 255
      };
+   }
+
+   /** Gets the saved crosshair radius from storage
+    * @returns {number} The crosshair radius value (12-32)
+    * @since 1.0.0 
+    */
+   getCrosshairRadius() {
+     try {
+       let radiusValue = null;
+       
+       // Try TamperMonkey storage first
+       if (typeof GM_getValue !== 'undefined') {
+         const saved = GM_getValue('bmCrosshairRadius', null);
+         if (saved !== null) {
+           radiusValue = JSON.parse(saved);
+         }
+       }
+       
+       // Fallback to localStorage
+       if (radiusValue === null) {
+         const saved = localStorage.getItem('bmCrosshairRadius');
+         if (saved !== null) {
+           radiusValue = JSON.parse(saved);
+         }
+       }
+       
+       if (radiusValue !== null) {
+         // Ensure value is within valid range
+         return Math.max(12, Math.min(32, radiusValue));
+       }
+     } catch (error) {
+       console.warn('Failed to load crosshair radius:', error);
+     }
+     
+     return 16; // Default radius (between min 12 and max 32)
    }
 
 
