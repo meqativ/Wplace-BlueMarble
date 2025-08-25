@@ -6,7 +6,7 @@ import Overlay from './Overlay.js';
 import Observers from './observers.js';
 import ApiManager from './apiManager.js';
 import TemplateManager from './templateManager.js';
-import { consoleLog, consoleWarn, consoleError } from './utils.js';
+import { consoleLog, consoleWarn, consoleError, canvasPosToLatLng } from './utils.js';
 import * as icons from './icons.js';
 import { initializeTileRefreshPause, toggleTileRefreshPause, isTileRefreshPaused, getCachedTileCount } from './tileManager.js';
 import * as Settings from './settingsManager.js';
@@ -681,6 +681,8 @@ async function migrateAndValidateStorage() {
   }
 }
 
+
+
 // Load templates on startup
 Promise.resolve(migrateAndValidateStorage()).then(() => loadTemplates());
 
@@ -772,8 +774,8 @@ function observeBlack() {
  */
 function observeOpacityButton() {
   const observer = new MutationObserver(() => {
-    // Look for the opacity button (has the grid icon and "Alterar opacidade" title)
-    const opacityButton = document.querySelector('button[title="Alterar opacidade"]');
+    // Look for the opacity button (supports both languages)
+    const opacityButton = document.querySelector('button[title="Toggle art opacity"], button[title="Alterar opacidade"]');
     if (!opacityButton) return;
     
     // Check if we already added our Map button container
@@ -2027,6 +2029,14 @@ function showTemplateManageDialog(instance) {
     templateInfo.appendChild(infoSpan);
     templateInfo.appendChild(coordsSpan);
     
+    // Button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    `;
+    
     // Toggle button
     const toggleBtn = document.createElement('button');
     toggleBtn.textContent = isEnabled ? 'Enabled' : 'Disabled';
@@ -2059,8 +2069,69 @@ function showTemplateManageDialog(instance) {
       instance.handleDisplayStatus(`${newState ? 'Enabled' : 'Disabled'} template "${templateName}"!`);
     };
     
+    // Fly button
+    const flyBtn = document.createElement('button');
+    flyBtn.innerHTML = icons.pinIcon;
+    flyBtn.title = 'Fly to template coordinates';
+    flyBtn.style.cssText = `
+      padding: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+    `;
+    
+    flyBtn.onmouseover = () => {
+      flyBtn.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)';
+      flyBtn.style.transform = 'translateY(-1px)';
+    };
+    
+    flyBtn.onmouseout = () => {
+      flyBtn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+      flyBtn.style.transform = '';
+    };
+    
+    flyBtn.onclick = () => {
+      if (templateCoords && templateCoords !== 'Unknown location') {
+        const coords = templateCoords.split(', ');
+        if (coords.length === 4) {
+          const [tileX, tileY, pX, pY] = coords.map(coord => parseInt(coord.trim(), 10));
+          const coordinates = [tileX, tileY, pX, pY];
+          
+          // Convert to lat/lng
+          const latLng = canvasPosToLatLng(coordinates);
+          
+          if (latLng) {
+            const teleportUrl = `https://wplace.live/?lat=${latLng.lat}&lng=${latLng.lng}&zoom=14.202666470770193`;
+            
+            // Open in same tab to teleport
+            window.location.href = teleportUrl;
+            
+            instance.handleDisplayStatus(`🚀 Flying to "${templateName}" at ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}!`);
+          } else {
+            instance.handleDisplayStatus('❌ Unable to convert coordinates to location!');
+          }
+        } else {
+          instance.handleDisplayStatus('❌ Invalid coordinate format!');
+        }
+      } else {
+        instance.handleDisplayStatus('❌ No coordinates available for this template!');
+      }
+    };
+    
+
+    buttonContainer.appendChild(flyBtn);
+    buttonContainer.appendChild(toggleBtn);
+    
     templateItem.appendChild(templateInfo);
-    templateItem.appendChild(toggleBtn);
+    templateItem.appendChild(buttonContainer);
     templateList.appendChild(templateItem);
   });
   
@@ -6706,12 +6777,12 @@ function applyMobileModeToColorFilter(enableMobile) {
  */
 function updateMiniTracker() {
   try {
-    const trackerEnabled = getMiniTrackerEnabled();
-    const collapseEnabled = getCollapseMinEnabled();
-    const existingTracker = document.getElementById('bm-mini-tracker');
-    
-    // Check if main overlay is minimized
-    const mainOverlay = document.getElementById('bm-overlay');
+  const trackerEnabled = getMiniTrackerEnabled();
+  const collapseEnabled = getCollapseMinEnabled();
+  const existingTracker = document.getElementById('bm-mini-tracker');
+  
+  // Check if main overlay is minimized
+  const mainOverlay = document.getElementById('bm-overlay');
     if (!mainOverlay) {
       consoleWarn('Main overlay not found, skipping mini tracker update');
       return;

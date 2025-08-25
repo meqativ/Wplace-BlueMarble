@@ -127,6 +127,34 @@ export function base64ToUint8(base64) {
   return array;
 }
 
+/** Converts a 4 element array of coordinates into map longitude and latitude
+ * @param {number[]} coordinates A 4 element array of coordinates (Tile X, Tile Y, Pixel X, Pixel Y)
+ * @returns {{lng: number, lat: number} | undefined} A lngLat object or undefined if an error occurred e.g. malformed coordinates data
+ * @since 1.0.0
+ */
+export function canvasPosToLatLng(coordinates) {
+  // Function provided by courtesy of CloudBurst
+  if (coordinates.length !== 4) { return undefined; }
+  
+  let actualX = (coordinates[0] * 1000) + coordinates[2];
+  let actualY = (coordinates[1] * 1000) + coordinates[3];
+
+  const mapSize = 2048000;
+
+  let x = actualX / mapSize;
+  let y = actualY / mapSize;
+
+  function inverseO_(n) { return 360 * x - 180; }
+  function inverseN_(n) { return (Math.atan(Math.exp(Math.PI - 2 * Math.PI * n)) - Math.PI / 4) * 360 / Math.PI; }
+
+  return {
+    lng: inverseO_(x),
+    lat: inverseN_(y)
+  };
+}
+
+
+
 /** The color palette used by wplace.live
  * @since 0.78.0
  * @examples
