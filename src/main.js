@@ -5047,6 +5047,7 @@ function buildColorFilterOverlay() {
     
     compactLeftSection.appendChild(compactCollapseArrow);
     compactLeftSection.appendChild(compactTitle);
+
     
     const compactCloseBtn = document.createElement('button');
     compactCloseBtn.innerHTML = '✕';
@@ -5238,6 +5239,93 @@ function buildColorFilterOverlay() {
     compactSearchContainer.appendChild(searchInput);
     compactSearchContainer.appendChild(clearSearchBtn);
     compactCollapsibleContent.appendChild(compactSearchContainer);
+
+    // Add bulk action buttons above sort
+    const compactBulkContainer = document.createElement('div');
+    compactBulkContainer.style.cssText = `
+      padding: 3px 8px;
+      background: var(--slate-700);
+      border-bottom: 1px solid var(--bmcf-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 4px;
+    `;
+    
+    const disableAllBtn = document.createElement('button');
+    disableAllBtn.textContent = 'Disable All';
+    disableAllBtn.style.cssText = `
+      background: #dc2626;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    `;
+    disableAllBtn.addEventListener('mouseenter', () => disableAllBtn.style.background = '#b91c1c');
+    disableAllBtn.addEventListener('mouseleave', () => disableAllBtn.style.background = '#dc2626');
+    
+    const enableAllBtn = document.createElement('button');
+    enableAllBtn.textContent = 'Enable All';
+    enableAllBtn.style.cssText = `
+      background: #16a34a;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 10px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-weight: 500;
+    `;
+    enableAllBtn.addEventListener('mouseenter', () => enableAllBtn.style.background = '#15803d');
+    enableAllBtn.addEventListener('mouseleave', () => enableAllBtn.style.background = '#16a34a');
+    
+    // Add click handlers usando a lógica que já existe
+    disableAllBtn.addEventListener('click', () => {
+      const currentTemplate = templateManager.templatesArray?.[0];
+      if (!currentTemplate) return;
+      
+      // Usar a mesma lógica que já existe no código para desabilitar cores
+      const items = compactContent.querySelectorAll('.bmcf-compact-item');
+      items.forEach(item => {
+        const colorRgb = item.getAttribute('data-color-rgb');
+        if (colorRgb) {
+          const [r, g, b] = colorRgb.split(',').map(Number);
+          if (!currentTemplate.isColorDisabled([r, g, b])) {
+            currentTemplate.disableColor([r, g, b]);
+            item.style.opacity = '0.5';
+            item.style.background = 'rgba(244, 67, 54, 0.1)';
+          }
+        }
+      });
+    });
+    
+    enableAllBtn.addEventListener('click', () => {
+      const currentTemplate = templateManager.templatesArray?.[0];
+      if (!currentTemplate) return;
+      
+      // Usar a mesma lógica que já existe no código para habilitar cores
+      const items = compactContent.querySelectorAll('.bmcf-compact-item');
+      items.forEach(item => {
+        const colorRgb = item.getAttribute('data-color-rgb');
+        if (colorRgb) {
+          const [r, g, b] = colorRgb.split(',').map(Number);
+          if (currentTemplate.isColorDisabled([r, g, b])) {
+            currentTemplate.enableColor([r, g, b]);
+            item.style.opacity = '1';
+            item.style.background = '';
+          }
+        }
+      });
+    });
+    
+    compactBulkContainer.appendChild(disableAllBtn);
+    compactBulkContainer.appendChild(enableAllBtn);
+    compactCollapsibleContent.appendChild(compactBulkContainer);
 
     // Add sort filter section
     const compactSortContainer = document.createElement('div');
