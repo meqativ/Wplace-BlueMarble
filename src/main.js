@@ -4985,8 +4985,10 @@ function buildColorFilterOverlay() {
       border-radius: 12px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.6);
       z-index: 999999;
-      max-height: 400px;
       font-family: Inter, system-ui, sans-serif;
+      flex-direction: column;
+      min-height: auto;
+      max-height: none;
     `;
     
     // Set flex layout when visible
@@ -5002,7 +5004,36 @@ function buildColorFilterOverlay() {
       background: var(--slate-700);
       border-bottom: 1px solid var(--bmcf-border);
       border-radius: 12px 12px 0 0;
+      transition: border-radius 0.3s ease, border-bottom 0.3s ease;
     `;
+    
+    // Create left section with title and collapse arrow
+    const compactLeftSection = document.createElement('div');
+    compactLeftSection.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
+    
+    const compactCollapseArrow = document.createElement('span');
+    compactCollapseArrow.innerHTML = '▼';
+    compactCollapseArrow.style.cssText = `
+      font-size: 10px;
+      color: var(--bmcf-text-muted);
+      transition: transform 0.2s ease;
+      user-select: none;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: 3px;
+    `;
+    
+    // Hover effect for arrow only
+    compactCollapseArrow.addEventListener('mouseenter', () => {
+      compactCollapseArrow.style.background = 'var(--slate-600)';
+    });
+    compactCollapseArrow.addEventListener('mouseleave', () => {
+      compactCollapseArrow.style.background = 'none';
+    });
     
     const compactTitle = document.createElement('span');
     compactTitle.textContent = 'Color Toggle';
@@ -5010,7 +5041,12 @@ function buildColorFilterOverlay() {
       font-size: 12px;
       font-weight: 600;
       color: var(--bmcf-text);
+      user-select: none;
+      cursor: default;
     `;
+    
+    compactLeftSection.appendChild(compactCollapseArrow);
+    compactLeftSection.appendChild(compactTitle);
     
     const compactCloseBtn = document.createElement('button');
     compactCloseBtn.innerHTML = '✕';
@@ -5032,9 +5068,97 @@ function buildColorFilterOverlay() {
       compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
     };
     
-    compactHeader.appendChild(compactTitle);
+    compactHeader.appendChild(compactLeftSection);
     compactHeader.appendChild(compactCloseBtn);
     compactList.appendChild(compactHeader);
+
+    // Create collapsible content container
+    const compactCollapsibleContent = document.createElement('div');
+    compactCollapsibleContent.style.cssText = `
+      display: block;
+      transition: height 0.3s ease, opacity 0.2s ease;
+      overflow: hidden;
+      border-radius: 0 0 12px 12px;
+      position: relative;
+      z-index: 1;
+    `;
+    compactList.appendChild(compactCollapsibleContent);
+
+    // Load collapse state from localStorage
+    const COMPACT_COLLAPSE_KEY = 'bmcf-compact-collapsed';
+    let isCollapsed = localStorage.getItem(COMPACT_COLLAPSE_KEY) === 'true';
+
+    // Apply initial collapse state
+    if (isCollapsed) {
+      compactCollapsibleContent.style.height = '0px';
+      compactCollapsibleContent.style.opacity = '0';
+      compactCollapsibleContent.style.pointerEvents = 'none';
+      compactCollapseArrow.style.transform = 'rotate(-90deg)';
+      // Fix border radius when collapsed
+      compactHeader.style.borderRadius = '12px';
+      compactHeader.style.borderBottom = 'none';
+    } else {
+      compactCollapsibleContent.style.height = 'auto';
+      compactCollapsibleContent.style.opacity = '1';
+      compactCollapsibleContent.style.pointerEvents = 'auto';
+      // Restore original border radius when expanded
+      compactHeader.style.borderRadius = '12px 12px 0 0';
+      compactHeader.style.borderBottom = '1px solid var(--bmcf-border)';
+    }
+
+    // Add collapse functionality - only on arrow click
+    compactCollapseArrow.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent dragging when clicking to collapse
+      
+      isCollapsed = !isCollapsed;
+      localStorage.setItem(COMPACT_COLLAPSE_KEY, isCollapsed.toString());
+      
+      if (isCollapsed) {
+        // Get the natural height first
+        compactCollapsibleContent.style.height = 'auto';
+        const naturalHeight = compactCollapsibleContent.offsetHeight;
+        compactCollapsibleContent.style.height = naturalHeight + 'px';
+        
+        // Force a reflow to establish the starting height
+        compactCollapsibleContent.offsetHeight;
+        
+        // Then animate to collapsed state
+        requestAnimationFrame(() => {
+          compactCollapsibleContent.style.height = '0px';
+          compactCollapsibleContent.style.opacity = '0';
+          compactCollapsibleContent.style.pointerEvents = 'none';
+          compactCollapseArrow.style.transform = 'rotate(-90deg)';
+          // Fix border radius when collapsing
+          compactHeader.style.borderRadius = '12px';
+          compactHeader.style.borderBottom = 'none';
+        });
+      } else {
+        // First remove pointer-events and set opacity to start expanding
+        compactCollapsibleContent.style.pointerEvents = 'auto';
+        compactCollapsibleContent.style.opacity = '1';
+        
+        // Get the natural height by temporarily setting height to auto
+        const tempHeight = compactCollapsibleContent.style.height;
+        compactCollapsibleContent.style.height = 'auto';
+        const naturalHeight = compactCollapsibleContent.offsetHeight;
+        compactCollapsibleContent.style.height = tempHeight;
+        
+        // Force reflow and animate to natural height
+        compactCollapsibleContent.offsetHeight;
+        compactCollapsibleContent.style.height = naturalHeight + 'px';
+        compactCollapseArrow.style.transform = 'rotate(0deg)';
+        // Restore border radius when expanding
+        compactHeader.style.borderRadius = '12px 12px 0 0';
+        compactHeader.style.borderBottom = '1px solid var(--bmcf-border)';
+        
+        // After transition, set to auto for dynamic resizing
+        setTimeout(() => {
+          if (!isCollapsed) {
+            compactCollapsibleContent.style.height = 'auto';
+          }
+        }, 300);
+      }
+    });
 
     // Add search bar section
     const compactSearchContainer = document.createElement('div');
@@ -5113,7 +5237,7 @@ function buildColorFilterOverlay() {
     
     compactSearchContainer.appendChild(searchInput);
     compactSearchContainer.appendChild(clearSearchBtn);
-    compactList.appendChild(compactSearchContainer);
+    compactCollapsibleContent.appendChild(compactSearchContainer);
 
     // Add sort filter section
     const compactSortContainer = document.createElement('div');
@@ -5174,16 +5298,16 @@ function buildColorFilterOverlay() {
     
     compactSortContainer.appendChild(sortLabel);
     compactSortContainer.appendChild(compactSortSelect);
-    compactList.appendChild(compactSortContainer);
+    compactCollapsibleContent.appendChild(compactSortContainer);
 
     // Create scrollable content container
     const compactContent = document.createElement('div');
     compactContent.style.cssText = `
-      flex: 1;
       overflow-y: auto;
-      max-height: 340px;
+      max-height: 300px;
+      min-height: 0;
     `;
-    compactList.appendChild(compactContent);
+    compactCollapsibleContent.appendChild(compactContent);
 
     // Add drag functionality to compact list
     let isDraggingCompact = false;
@@ -5194,8 +5318,8 @@ function buildColorFilterOverlay() {
 
     compactHeader.style.cursor = 'move';
     compactHeader.addEventListener('mousedown', (e) => {
-      // Don't start dragging if clicking on close button
-      if (e.target === compactCloseBtn) return;
+      // Don't start dragging if clicking on close button or collapse arrow
+      if (e.target === compactCloseBtn || e.target === compactCollapseArrow) return;
       
       isDraggingCompact = true;
       compactDragStartX = e.clientX;
