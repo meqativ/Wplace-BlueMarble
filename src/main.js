@@ -4959,6 +4959,85 @@ function buildColorFilterOverlay() {
     compactHeader.appendChild(compactCloseBtn);
     compactList.appendChild(compactHeader);
 
+    // Add search bar section
+    const compactSearchContainer = document.createElement('div');
+    compactSearchContainer.style.cssText = `
+      padding: 6px 12px;
+      background: var(--slate-700);
+      border-bottom: 1px solid var(--bmcf-border);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
+    
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search colors...';
+    searchInput.style.cssText = `
+      flex: 1;
+      padding: 4px 8px;
+      background: var(--slate-600);
+      border: 1px solid var(--slate-500);
+      border-radius: 4px;
+      color: var(--bmcf-text);
+      font-size: 11px;
+      height: 24px;
+      outline: none;
+      transition: all 0.2s ease;
+    `;
+    
+    // Search input focus/blur effects
+    searchInput.addEventListener('focus', () => {
+      searchInput.style.borderColor = 'var(--blue-400)';
+      searchInput.style.background = 'var(--slate-550)';
+    });
+    
+    searchInput.addEventListener('blur', () => {
+      searchInput.style.borderColor = 'var(--slate-500)';
+      searchInput.style.background = 'var(--slate-600)';
+    });
+    
+    // Clear search button
+    const clearSearchBtn = document.createElement('button');
+    clearSearchBtn.innerHTML = '✕';
+    clearSearchBtn.title = 'Clear search';
+    clearSearchBtn.style.cssText = `
+      background: none;
+      border: none;
+      color: var(--bmcf-text-muted);
+      cursor: pointer;
+      font-size: 10px;
+      padding: 2px;
+      border-radius: 3px;
+      width: 20px;
+      height: 20px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+      opacity: 0.7;
+    `;
+    
+    clearSearchBtn.addEventListener('mouseenter', () => {
+      clearSearchBtn.style.background = 'var(--slate-600)';
+      clearSearchBtn.style.opacity = '1';
+    });
+    
+    clearSearchBtn.addEventListener('mouseleave', () => {
+      clearSearchBtn.style.background = 'none';
+      clearSearchBtn.style.opacity = '0.7';
+    });
+    
+    clearSearchBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
+    });
+    
+    compactSearchContainer.appendChild(searchInput);
+    compactSearchContainer.appendChild(clearSearchBtn);
+    compactList.appendChild(compactSearchContainer);
+
     // Add sort filter section
     const compactSortContainer = document.createElement('div');
     compactSortContainer.style.cssText = `
@@ -5564,6 +5643,67 @@ function buildColorFilterOverlay() {
 
     // Apply initial sort
     applyCompactSort(savedSort);
+    
+    // Add search functionality
+    const applySearch = (searchTerm) => {
+      const items = Array.from(compactContent.children);
+      const term = searchTerm.toLowerCase().trim();
+      
+      let visibleCount = 0;
+      items.forEach(item => {
+        // Skip the no-results message element
+        if (item.classList.contains('no-results-msg')) return;
+        
+        const colorNameElement = item.querySelector('.bmcf-compact-name');
+        const colorName = colorNameElement?.textContent.toLowerCase() || '';
+        const isVisible = term === '' || colorName.includes(term);
+        
+        item.style.display = isVisible ? 'flex' : 'none';
+        if (isVisible) visibleCount++;
+      });
+      
+      // Show "No results" message if no colors match
+      let noResultsMsg = compactContent.querySelector('.no-results-msg');
+      if (visibleCount === 0 && term !== '') {
+        if (!noResultsMsg) {
+          noResultsMsg = document.createElement('div');
+          noResultsMsg.className = 'no-results-msg';
+          noResultsMsg.style.cssText = `
+            padding: 20px;
+            text-align: center;
+            color: var(--bmcf-text-muted);
+            font-size: 12px;
+            font-style: italic;
+          `;
+          noResultsMsg.textContent = 'No colors found';
+          compactContent.appendChild(noResultsMsg);
+        }
+        noResultsMsg.style.display = 'block';
+      } else if (noResultsMsg) {
+        noResultsMsg.style.display = 'none';
+      }
+    };
+    
+    // Add search input event listener
+    searchInput.addEventListener('input', (e) => {
+      applySearch(e.target.value);
+    });
+    
+    // Add keyboard shortcut for search (Ctrl+F)
+    compactList.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+      
+      // Escape to clear search
+      if (e.key === 'Escape' && document.activeElement === searchInput) {
+        searchInput.value = '';
+        applySearch('');
+        searchInput.blur();
+      }
+    });
 
     // Add compact list to body (separate floating window)
     document.body.appendChild(compactList);
