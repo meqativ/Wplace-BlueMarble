@@ -9016,8 +9016,14 @@ function createSearchWindow() {
   
   function getFavorites() {
     try {
-      return JSON.parse(localStorage.getItem(FAVORITES_KEY) || '[]');
-    } catch {
+      const stored = localStorage.getItem(FAVORITES_KEY);
+      if (stored === null || stored === undefined) {
+        return [];
+      }
+      const parsed = JSON.parse(stored);
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      console.error('Error getting favorites:', error);
       return [];
     }
   }
