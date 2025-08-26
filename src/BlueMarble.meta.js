@@ -18,6 +18,8 @@
 // @grant        GM_getValue
 // @grant        GM_xmlhttpRequest
 // @connect      nominatim.openstreetmap.org
+// @connect      wplace.live
+// @connect      wplace.lol
 // @resource     CSS-BM-File https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/382f35bad0bafeb82b7ad693a31dfcfd37c6b286/dist/BlueMarble.user.css
 // ==/UserScript==
 

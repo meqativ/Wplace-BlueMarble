@@ -1289,7 +1289,8 @@ export default class TemplateManager {
           const sortID = Number(templateKeyArray?.[0]); // Sort ID of the template
           const authorID = templateKeyArray?.[1] || '0'; // User ID of the person who exported the template
           const displayName = templateValue.name || `Template ${sortID || ''}`; // Display name of the template
-          //const coords = templateValue?.coords?.split(',').map(Number); // "1,2,3,4" -> [1, 2, 3, 4]
+          const coords = templateValue?.coords?.split(', ').map(Number); // "1, 2, 3, 4" -> [1, 2, 3, 4]
+          console.log(`🔍 Debug - Loading template "${displayName}" with coords:`, coords);
           const tilesbase64 = templateValue.tiles;
           const templateTiles = {}; // Stores the template bitmap tiles for each tile.
           let totalPixelCount = 0; // Calculate total pixels across all tiles
@@ -1342,7 +1343,7 @@ export default class TemplateManager {
             displayName: displayName,
             sortID: sortID || this.templatesArray?.length || 0,
             authorID: authorID || '',
-            //coords: coords
+            coords: coords
           });
           template.chunked = templateTiles;
           template.pixelCount = totalPixelCount; // Set the calculated pixel count
@@ -2563,5 +2564,149 @@ export default class TemplateManager {
     }
     
     return wrongPixels;
+  }
+
+  /** Build a screenshot covering the active template's pixel area by fetching raw tiles and composing them.
+   * The screenshot shows the current board (not overlay) for the area from the template's top-left pixel
+   * to its bottom-right pixel, snapped to tile boundaries as needed.
+   * @param {string} tileServerBase - Base URL to the tile server (ending with /tiles)
+   * @param {[number, number, number, number]} templateCoords - [tileX, tileY, pixelX, pixelY]
+   * @param {[number, number]} sizePx - [width, height] in template pixels to capture
+   * @returns {Promise<Blob>} PNG blob of the composed screenshot
+   */
+  async buildTemplateAreaScreenshot(tileServerBase, templateCoords, sizePx) {
+    try {
+      const active = this.templatesArray?.[0];
+      if (!active || !Array.isArray(templateCoords) || templateCoords.length < 4) {
+        throw new Error('Missing template or coordinates');
+      }
+      const tx = Number(templateCoords[0]);
+      const ty = Number(templateCoords[1]);
+      const px = Number(templateCoords[2]);
+      const py = Number(templateCoords[3]);
+      const width = Number(sizePx?.[0] ?? active.imageWidth ?? 0);
+      const height = Number(sizePx?.[1] ?? active.imageHeight ?? 0);
+      if (!Number.isFinite(tx) || !Number.isFinite(ty) || width <= 0 || height <= 0) {
+        throw new Error('Invalid screenshot dimensions or coords');
+      }
+
+      // Compose in board pixel space (no drawMult scaling)
+      const tileSize = this.tileSize || 1000;
+
+      // Compute the bounding box in board pixel space
+      const startX = tx * tileSize + px;
+      const startY = ty * tileSize + py;
+      const endX = startX + width;
+      const endY = startY + height;
+
+      // Determine all tile coordinates we need to fetch
+      const tileStartX = Math.floor(startX / tileSize);
+      const tileStartY = Math.floor(startY / tileSize);
+      const tileEndX = Math.floor((endX - 1) / tileSize);
+      const tileEndY = Math.floor((endY - 1) / tileSize);
+
+      const canvasW = endX - startX;
+      const canvasH = endY - startY;
+      const canvas = new OffscreenCanvas(canvasW, canvasH);
+      const ctx = canvas.getContext('2d', { willReadFrequently: true });
+      ctx.imageSmoothingEnabled = false;
+      ctx.clearRect(0, 0, canvasW, canvasH);
+
+      // Helper to fetch a tile PNG via GM (caller runs in userscript env)
+      const fetchTile = (x, y) => new Promise((resolve, reject) => {
+        try {
+          const url = `${tileServerBase}/${x}/${y}.png`;
+          // Try GM first
+          if (typeof GM_xmlhttpRequest === 'function') {
+            GM_xmlhttpRequest({
+              method: 'GET',
+              url,
+              responseType: 'blob',
+              onload: (res) => {
+                if (res.status >= 200 && res.status < 300 && res.response) {
+                  resolve(res.response);
+                } else {
+                  // Fallback via Image if GM blocked
+                  const img = new Image();
+                  img.crossOrigin = 'anonymous';
+                  img.onload = async () => {
+                    try {
+                      const c = new OffscreenCanvas(img.width, img.height);
+                      const cx = c.getContext('2d');
+                      cx.imageSmoothingEnabled = false;
+                      cx.drawImage(img, 0, 0);
+                      const b = await c.convertToBlob({ type: 'image/png' });
+                      resolve(b);
+                    } catch (e) { reject(e); }
+                  };
+                  img.onerror = () => reject(new Error('Tile fetch failed (img)'));
+                  img.src = url;
+                }
+              },
+              onerror: () => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = async () => {
+                  try {
+                    const c = new OffscreenCanvas(img.width, img.height);
+                    const cx = c.getContext('2d');
+                    cx.imageSmoothingEnabled = false;
+                    cx.drawImage(img, 0, 0);
+                    const b = await c.convertToBlob({ type: 'image/png' });
+                    resolve(b);
+                  } catch (e) { reject(e); }
+                };
+                img.onerror = () => reject(new Error('Tile fetch failed (img)'));
+                img.src = url;
+              }
+            });
+          } else {
+            const img = new Image();
+            img.crossOrigin = 'anonymous';
+            img.onload = async () => {
+              try {
+                const c = new OffscreenCanvas(img.width, img.height);
+                const cx = c.getContext('2d');
+                cx.imageSmoothingEnabled = false;
+                cx.drawImage(img, 0, 0);
+                const b = await c.convertToBlob({ type: 'image/png' });
+                resolve(b);
+              } catch (e) { reject(e); }
+            };
+            img.onerror = () => reject(new Error('Tile fetch failed (img)'));
+            img.src = url;
+          }
+        } catch (e) { reject(e); }
+      });
+
+      // Iterate required tiles and draw only overlapping regions
+      for (let tyIdx = tileStartY; tyIdx <= tileEndY; tyIdx++) {
+        for (let txIdx = tileStartX; txIdx <= tileEndX; txIdx++) {
+          const tileBlob = await fetchTile(txIdx, tyIdx);
+          const bitmap = await createImageBitmap(tileBlob);
+          // Compute overlap with our screenshot area in board pixels
+          const tileOriginX = txIdx * tileSize;
+          const tileOriginY = tyIdx * tileSize;
+          const srcX = Math.max(0, startX - tileOriginX);
+          const srcY = Math.max(0, startY - tileOriginY);
+          const dstX = Math.max(0, tileOriginX - startX);
+          const dstY = Math.max(0, tileOriginY - startY);
+          const drawW = Math.min(tileSize - srcX, canvasW - dstX);
+          const drawH = Math.min(tileSize - srcY, canvasH - dstY);
+          if (drawW > 0 && drawH > 0) {
+            ctx.drawImage(
+              bitmap,
+              srcX, srcY, drawW, drawH,
+              dstX, dstY, drawW, drawH
+            );
+          }
+        }
+      }
+
+      return await canvas.convertToBlob({ type: 'image/png' });
+    } catch (e) {
+      console.warn('Failed to build template area screenshot', e);
+      throw e;
+    }
   }
 }

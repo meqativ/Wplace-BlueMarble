@@ -18,6 +18,7 @@ export default class ApiManager {
     this.disableAll = false; // Should the entire userscript be disabled?
     this.coordsTilePixel = []; // Contains the last detected tile/pixel coordinate pair requested
     this.templateCoordsTilePixel = []; // Contains the last "enabled" template coords
+    this.tileServerBase = null; // Remember last seen tile server base URL
   }
 
   /** Determines if the spontaneously recieved response is something we want.
@@ -144,6 +145,17 @@ export default class ApiManager {
           // Runs only if the tile has the template
           let tileCoordsTile = data['endpoint'].split('/');
           tileCoordsTile = [parseInt(tileCoordsTile[tileCoordsTile.length - 2]), parseInt(tileCoordsTile[tileCoordsTile.length - 1].replace('.png', ''))];
+
+          // Persist tile server base URL for screenshot pulls
+          try {
+            const endpointFull = data['endpoint'] || '';
+            const parts = endpointFull.split('?')[0].split('/');
+            const idx = parts.lastIndexOf('tiles');
+            if (idx > 0) {
+              const base = parts.slice(0, idx + 1).join('/');
+              this.tileServerBase = base; // e.g., https://wplace.live/api/files/s0/tiles
+            }
+          } catch (_) {}
           
           const blobUUID = data['blobID'];
           const blobData = data['blobData'];

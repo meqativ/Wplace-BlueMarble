@@ -84,6 +84,10 @@ export default class Template {
     const imageWidth = bitmap.width;
     const imageHeight = bitmap.height;
     
+    // Persist original image dimensions for later calculations (e.g., screenshots)
+    this.imageWidth = imageWidth;
+    this.imageHeight = imageHeight;
+    
     // Calculate total pixel count using standard width × height formula
     // TODO: Use non-transparent pixels instead of basic width times height
     const totalPixels = imageWidth * imageHeight;

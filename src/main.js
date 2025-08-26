@@ -2704,6 +2704,83 @@ function buildOverlayMain() {
               }
             });
           }).buildElement()
+          .addButton({'id': 'bm-button-screenshot', 'className': 'bm-help', 'innerHTML': '📸', 'title': 'Screenshot current template area (auto-detects coordinates)'},
+            (instance, button) => {
+              button.addEventListener('click', async () => {
+                try {
+                  // Get active template and auto-detect coordinates
+                  const t = templateManager.templatesArray?.[0];
+                  console.log('🔍 Debug - Active template:', t);
+                  console.log('🔍 Debug - Template coords:', t?.coords);
+                  if (!t) {
+                    instance.handleDisplayError('No template loaded.');
+                    return;
+                  }
+                  
+                  // Auto-detect coordinates from active template
+                  if (!t.coords || t.coords.length !== 4) {
+                    console.log('❌ Debug - Template coords issue:', { coords: t.coords, length: t.coords?.length });
+                    instance.handleDisplayError('Template coordinates not available. Create a template first.');
+                    return;
+                  }
+                  
+                  const [tx, ty, px, py] = t.coords;
+                  if (!Number.isFinite(tx) || !Number.isFinite(ty) || !Number.isFinite(px) || !Number.isFinite(py)) {
+                    instance.handleDisplayError('Invalid template coordinates detected.');
+                    return;
+                  }
+                  if (!t.imageWidth || !t.imageHeight) {
+                    // Attempt to infer from chunked tiles if missing
+                    try {
+                      const tiles = Object.keys(t.chunked || {});
+                      if (tiles.length > 0) {
+                        let minScaledX = Infinity, minScaledY = Infinity, maxScaledX = 0, maxScaledY = 0;
+                        const scale = templateManager.drawMult || 3;
+                        const tileSizeScaled = (templateManager.tileSize || 1000) * scale;
+                        for (const key of tiles) {
+                          const bmp = t.chunked[key];
+                          const [tX, tY, pX, pY] = key.split(',').map(Number);
+                          const startX = tX * tileSizeScaled + pX * scale;
+                          const startY = tY * tileSizeScaled + pY * scale;
+                          const endX = startX + bmp.width;
+                          const endY = startY + bmp.height;
+                          if (startX < minScaledX) minScaledX = startX;
+                          if (startY < minScaledY) minScaledY = startY;
+                          if (endX > maxScaledX) maxScaledX = endX;
+                          if (endY > maxScaledY) maxScaledY = endY;
+                        }
+                        t.imageWidth = Math.round((maxScaledX - minScaledX) / scale);
+                        t.imageHeight = Math.round((maxScaledY - minScaledY) / scale);
+                      }
+                    } catch (_) {}
+                  }
+                  if (!t.imageWidth || !t.imageHeight) {
+                    instance.handleDisplayError('Template size unavailable; create or reload the template first.');
+                    return;
+                  }
+                  const base = apiManager?.tileServerBase;
+                  if (!base) {
+                    instance.handleDisplayError('Tile server not detected yet; open the board to load tiles.');
+                    return;
+                  }
+                  const blob = await templateManager.buildTemplateAreaScreenshot(base, [tx, ty, px, py], [t.imageWidth, t.imageHeight]);
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  const ts = new Date().toISOString().replace(/[:.]/g,'-');
+                  a.download = `wplace_template_area_${String(tx).padStart(4,'0')},${String(ty).padStart(4,'0')}_${ts}.png`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  setTimeout(() => URL.revokeObjectURL(url), 1000);
+                  instance.handleDisplayStatus(`📸 Saved template area screenshot!\nLocation: Tile ${tx},${ty} • Pixel ${px},${py}\nSize: ${t.imageWidth}×${t.imageHeight}px`);
+                } catch (e) {
+                  console.error(e);
+                  instance.handleDisplayError('Failed to create screenshot');
+                }
+              });
+            }
+          ).buildElement()
           // Moved delete button here as a small action next to Location Search
           .addButton({'id': 'bm-button-delete-templates', 'className': 'bm-help', innerHTML: icons.deleteIcon, 'title': 'Delete Template'}, (instance, button) => {
             button.addEventListener('click', () => {
