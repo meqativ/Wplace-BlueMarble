@@ -5607,11 +5607,14 @@ function buildColorFilterOverlay() {
 
     // Function to apply sort to compact list
     const applyCompactSort = (sortType) => {
-      const items = Array.from(compactContent.children);
-      const sortedItems = [...items];
+      const sortedItems = [...allCompactItems];
       
       switch (sortType) {
         case 'name':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const nameA = a.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
             const nameB = b.querySelector('.bmcf-compact-name div').textContent.toLowerCase();
@@ -5620,6 +5623,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'premium':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const colorKeyA = a.getAttribute('data-color-rgb');
             const colorKeyB = b.getAttribute('data-color-rgb');
@@ -5651,6 +5658,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'most-missing':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
             const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
@@ -5667,6 +5678,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'less-missing':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
             const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
@@ -5683,6 +5698,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'remaining':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
             const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
@@ -5691,6 +5710,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'progress':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const progressA = parseFloat(a.getAttribute('data-progress') || '0');
             const progressB = parseFloat(b.getAttribute('data-progress') || '0');
@@ -5699,6 +5722,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'most-painted':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const paintedA = parseInt(a.getAttribute('data-painted') || '0');
             const paintedB = parseInt(b.getAttribute('data-painted') || '0');
@@ -5707,6 +5734,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'less-painted':
+          // Show all items first
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const paintedA = parseInt(a.getAttribute('data-painted') || '0');
             const paintedB = parseInt(b.getAttribute('data-painted') || '0');
@@ -5723,6 +5754,10 @@ function buildColorFilterOverlay() {
           break;
           
         case 'enhanced':
+          // First show all items, then sort enhanced ones to top
+          sortedItems.forEach(item => {
+            item.style.display = 'flex';
+          });
           sortedItems.sort((a, b) => {
             const enhancedA = a.querySelector('input[type="checkbox"]').checked;
             const enhancedB = b.querySelector('input[type="checkbox"]').checked;
@@ -5752,12 +5787,10 @@ function buildColorFilterOverlay() {
           break;
       }
       
-      // Clear and re-append sorted items
+      // Clear and re-append all sorted items
       compactContent.innerHTML = '';
       sortedItems.forEach(item => {
-        if (sortType !== 'enhanced' || item.style.display !== 'none') {
-          compactContent.appendChild(item);
-        }
+        compactContent.appendChild(item);
       });
     };
     
@@ -5771,6 +5804,9 @@ function buildColorFilterOverlay() {
     // Load saved sort preference
     const savedSort = localStorage.getItem('bmcf-compact-sort') || 'default';
     compactSortSelect.value = savedSort;
+
+    // Store reference to all original items for sorting
+    let allCompactItems = [];
 
     // Build compact list items
     utils.colorpalette.forEach((color, index) => {
@@ -6036,6 +6072,7 @@ function buildColorFilterOverlay() {
       item.appendChild(name);
       item.appendChild(controlsContainer);
       compactContent.appendChild(item);
+      allCompactItems.push(item);
     });
 
     // Apply initial sort
