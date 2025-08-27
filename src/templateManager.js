@@ -52,6 +52,11 @@ export default class TemplateManager {
     this.drawMult = 3; // The enlarged size for each pixel. E.g. when "3", a 1x1 pixel becomes a 1x1 pixel inside a 3x3 area. MUST BE ODD
     this.tileProgress = new Map(); // Tracks per-tile progress stats {painted, required, wrong}
     
+    // Smart Template Detection Properties
+    this.currentlyDisplayedTemplates = new Set(); // Tracks which templates are currently being rendered
+    this.lastDisplayedCount = 0; // Tracks the last count of displayed templates
+    this.smartDetectionEnabled = true; // Whether smart detection is enabled
+    
     // Error Map Mode Properties (ported from lurk)
     this.errorMapEnabled = false; // Whether to show green/red overlay for correct/wrong pixels
     this.showCorrectPixels = true; // Show green overlay for correct pixels
@@ -472,6 +477,25 @@ export default class TemplateManager {
 
     if (templateCount > 0) {
       
+      // SMART DETECTION: Track which templates are currently being displayed
+      this.currentlyDisplayedTemplates.clear();
+      for (const template of templateArray) {
+        const templateKey = `${template.sortID} ${template.authorID}`;
+        if (this.isTemplateEnabled(templateKey)) {
+          // Check if this template has tiles matching current coordinates
+          const matchingTiles = Object.keys(template.chunked).filter(tile =>
+            tile.startsWith(tileCoords)
+          );
+          if (matchingTiles.length > 0) {
+            this.currentlyDisplayedTemplates.add(templateKey);
+            consoleLog(`🎯 [Smart Detection] Template actively displayed: ${template.displayName}`);
+          }
+        }
+      }
+      
+      this.lastDisplayedCount = this.currentlyDisplayedTemplates.size;
+      consoleLog(`🧠 [Smart Detection] Currently displaying ${this.lastDisplayedCount} templates`);
+      
       // Calculate total pixel count for templates actively being displayed in this tile
       const totalPixels = templateArray
         .filter(template => {
@@ -494,6 +518,9 @@ export default class TemplateManager {
       );
     } else {
       this.overlay.handleDisplayStatus(`Displaying ${templateCount} templates.`);
+      this.currentlyDisplayedTemplates.clear();
+      this.lastDisplayedCount = 0;
+      consoleLog(`🧠 [Smart Detection] No templates displayed`);
     }
     
     const tileBitmap = await createImageBitmap(tileBlob);
@@ -1412,8 +1439,55 @@ export default class TemplateManager {
     // Save to storage
     this.#storeTemplates();
     
-    consoleLog(`${enabled ? 'Enabled' : 'Disabled'} template: ${templateKey}`);
+    // CRITICAL FIX: Clear tile progress cache when template enabled state changes
+    // This prevents disabled template data from leaking into progress calculations
+    this.clearTileProgressCache();
+    
+    consoleLog(`${enabled ? 'Enabled' : 'Disabled'} template: ${templateKey} - cleared tile progress cache`);
     return true;
+  }
+
+  /** Clears the tile progress cache to prevent data leakage between enabled/disabled templates
+   * This ensures that progress calculations only include data from currently enabled templates
+   * @since 1.0.0
+   */
+  clearTileProgressCache() {
+    const oldSize = this.tileProgress.size;
+    this.tileProgress.clear();
+    consoleLog(`🧹 [Cache Clear] Cleared ${oldSize} tile progress entries to prevent template data leakage`);
+  }
+
+  /** Enables or disables smart template detection
+   * When enabled, progress automatically shows only for templates currently being displayed
+   * @param {boolean} enabled - Whether to enable smart detection
+   * @since 1.0.0
+   */
+  setSmartDetectionEnabled(enabled) {
+    this.smartDetectionEnabled = enabled;
+    consoleLog(`🧠 [Smart Detection] ${enabled ? 'Enabled' : 'Disabled'} smart template detection`);
+    
+    // Clear cache to force recalculation with new detection mode
+    this.clearTileProgressCache();
+  }
+
+  /** Gets the current smart detection enabled state
+   * @returns {boolean} Whether smart detection is enabled
+   * @since 1.0.0
+   */
+  getSmartDetectionEnabled() {
+    return this.smartDetectionEnabled;
+  }
+
+  /** Gets information about currently displayed templates
+   * @returns {Object} Information about displayed templates
+   * @since 1.0.0
+   */
+  getDisplayedTemplatesInfo() {
+    return {
+      count: this.lastDisplayedCount,
+      templates: Array.from(this.currentlyDisplayedTemplates),
+      smartDetectionActive: this.smartDetectionEnabled && this.lastDisplayedCount === 1
+    };
   }
 
   /** Gets the enabled state of a specific template
@@ -1506,19 +1580,76 @@ export default class TemplateManager {
    * @returns {Object} Object with color keys mapping to { totalRequired, painted, needsCrosshair, percentage }
    * @since 1.0.0
    */
-  calculateRemainingPixelsByColor(templateIndex = 0) {
+  calculateRemainingPixelsByColor(templateIndex = 0, onlyEnabledTemplates = true) {
     consoleLog('🎯 [Enhanced Pixel Analysis] Starting calculation for template index:', templateIndex);
     
-    if (!this.templatesArray || !this.templatesArray[templateIndex]) {
-      consoleWarn('🚨 [Enhanced Pixel Analysis] No template available');
-      return {};
+    // SMART DETECTION: Use only currently displayed templates if smart detection is enabled and only 1 template is displayed
+    let useSmartDetection = false;
+    let smartTemplateKeys = new Set();
+    
+    if (this.smartDetectionEnabled && this.lastDisplayedCount === 1 && this.currentlyDisplayedTemplates.size === 1) {
+      useSmartDetection = true;
+      smartTemplateKeys = new Set(this.currentlyDisplayedTemplates);
+      consoleLog(`🧠 [Smart Detection] Using smart detection - showing progress for actively displayed template only`);
+      for (const templateKey of smartTemplateKeys) {
+        const template = this.templatesArray.find(t => `${t.sortID} ${t.authorID}` === templateKey);
+        if (template) {
+          consoleLog(`🎯 [Smart Detection] Target template: ${template.displayName}`);
+        }
+      }
     }
-
-    const template = this.templatesArray[templateIndex];
-    consoleLog('🎯 [Enhanced Pixel Analysis] Template found:', template.displayName);
+    
+    // NEW: Get list of enabled templates for filtering
+    const enabledTemplateKeys = useSmartDetection ? smartTemplateKeys : new Set();
+    
+    if (!useSmartDetection && onlyEnabledTemplates && this.templatesArray) {
+      for (const template of this.templatesArray) {
+        const templateKey = `${template.sortID} ${template.authorID}`;
+        if (this.isTemplateEnabled(templateKey)) {
+          enabledTemplateKeys.add(templateKey);
+          consoleLog(`✅ [Progress Filter] Including enabled template: ${templateKey} (${template.displayName})`);
+        } else {
+          consoleLog(`❌ [Progress Filter] Excluding disabled template: ${templateKey} (${template.displayName})`);
+        }
+      }
+      
+      if (enabledTemplateKeys.size === 0) {
+        consoleWarn('🚨 [Enhanced Pixel Analysis] No enabled templates found');
+        return {};
+      }
+      
+      consoleLog(`🎯 [Progress Filter] Will calculate progress for ${enabledTemplateKeys.size} enabled templates only`);
+    }
+    
+    // NEW: Find the first enabled template to use as reference instead of using templateIndex
+    let template = null;
+    if (onlyEnabledTemplates && enabledTemplateKeys.size > 0) {
+      // Use the first enabled template as reference
+      for (const templateCandidate of this.templatesArray) {
+        const templateKey = `${templateCandidate.sortID} ${templateCandidate.authorID}`;
+        if (enabledTemplateKeys.has(templateKey)) {
+          template = templateCandidate;
+          consoleLog(`🎯 [Enhanced Pixel Analysis] Using enabled template as reference: ${template.displayName}`);
+          break;
+        }
+      }
+      
+      if (!template) {
+        consoleWarn('🚨 [Enhanced Pixel Analysis] No enabled template found for reference');
+        return {};
+      }
+    } else {
+      // Fallback to original logic for backward compatibility
+      if (!this.templatesArray || !this.templatesArray[templateIndex]) {
+        consoleWarn('🚨 [Enhanced Pixel Analysis] No template available');
+        return {};
+      }
+      template = this.templatesArray[templateIndex];
+      consoleLog('🎯 [Enhanced Pixel Analysis] Template found (fallback):', template.displayName);
+    }
     
           // Using fresh tile data for accurate analysis (no cache)
-      consoleLog('🔄 [Enhanced Pixel Analysis] Using fresh tile analysis for accuracy');
+      consoleLog('🔄 [Enhanced Pixel Analysis] Using fresh tile analysis for accuracy (enabled templates filtering:', onlyEnabledTemplates, ')');
     
     try {
       // Check if we have tile-based progress data (from Storage fork logic)
@@ -1535,6 +1666,44 @@ export default class TemplateManager {
         const realColorStats = {}; // Real per-color statistics from tile analysis
         
         for (const [tileKey, stats] of this.tileProgress.entries()) {
+          // NEW: Filter tiles by enabled templates only
+          let shouldIncludeTile = true;
+          
+          if (onlyEnabledTemplates && enabledTemplateKeys.size > 0) {
+            // Check if this tile belongs to any enabled template
+            shouldIncludeTile = false;
+            
+            // Extract tile coordinates for template matching
+            const [tileX, tileY] = tileKey.split(',').map(coord => parseInt(coord));
+            
+            for (const template of this.templatesArray) {
+              const templateKey = `${template.sortID} ${template.authorID}`;
+              
+              // Only check enabled templates
+              if (!enabledTemplateKeys.has(templateKey)) continue;
+              
+              // Check if this tile intersects with any template chunks
+              if (template.chunked) {
+                for (const chunkKey of Object.keys(template.chunked)) {
+                  const [chunkTileX, chunkTileY] = chunkKey.split(',').map(coord => parseInt(coord));
+                  
+                  if (chunkTileX === tileX && chunkTileY === tileY) {
+                    shouldIncludeTile = true;
+                    consoleLog(`🎯 [Progress Filter] Including tile ${tileKey} from enabled template: ${template.displayName}`);
+                    break;
+                  }
+                }
+              }
+              
+              if (shouldIncludeTile) break;
+            }
+            
+            if (!shouldIncludeTile) {
+              consoleLog(`🚫 [Progress Filter] Excluding tile ${tileKey} (belongs to disabled template)`);
+              continue;
+            }
+          }
+          
           totalPainted += stats.painted || 0;
           totalRequired += stats.required || 0;  
           totalWrong += stats.wrong || 0;
@@ -1552,10 +1721,10 @@ export default class TemplateManager {
           }
         }
         
-        consoleLog(`📊 [Enhanced Pixel Analysis] Aggregated from ${this.tileProgress.size} tiles:`);
-        consoleLog(`   Total painted: ${totalPainted}`);
-        consoleLog(`   Total required: ${totalRequired}`);
-        consoleLog(`   Total wrong: ${totalWrong}`);
+        consoleLog(`📊 [Enhanced Pixel Analysis] Aggregated from ${this.tileProgress.size} tiles (filtering: ${onlyEnabledTemplates ? 'enabled only' : 'all templates'}):`);
+        consoleLog(`   Total painted: ${totalPainted.toLocaleString()}`);
+        consoleLog(`   Total required: ${totalRequired.toLocaleString()}`);
+        consoleLog(`   Total wrong: ${totalWrong.toLocaleString()}`);
         consoleLog(`🎨 [Real Color Stats] Found ${Object.keys(realColorStats).length} colors with precise data`);
         
         // Use template's color palette to break down by color

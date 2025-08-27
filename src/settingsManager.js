@@ -370,3 +370,58 @@ export function saveTileRefreshPaused(paused) {
     consoleError('Failed to save tile refresh pause setting:', error);
   }
 }
+
+/** Gets the smart template detection setting from storage
+ * @returns {boolean} Whether smart detection is enabled
+ * @since 1.0.0
+ */
+export function getSmartDetectionEnabled() {
+  try {
+    let smartDetectionEnabled = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmSmartDetectionEnabled', null);
+      if (saved !== null) smartDetectionEnabled = JSON.parse(saved);
+    }
+    
+    // Fallback to localStorage
+    if (smartDetectionEnabled === null) {
+      const saved = localStorage.getItem('bmSmartDetectionEnabled');
+      if (saved !== null) smartDetectionEnabled = JSON.parse(saved);
+    }
+    
+    if (smartDetectionEnabled !== null) {
+      consoleLog('🧠 Smart detection setting loaded:', smartDetectionEnabled);
+      return smartDetectionEnabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load smart detection setting:', error);
+  }
+  
+  // Default to enabled
+  consoleLog('🧠 Using default smart detection setting: true');
+  return true;
+}
+
+/** Saves the smart template detection setting to storage
+ * @param {boolean} enabled - Whether smart detection should be enabled
+ * @since 1.0.0
+ */
+export function saveSmartDetectionEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmSmartDetectionEnabled', enabledString);
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmSmartDetectionEnabled', enabledString);
+    
+    consoleLog('🧠 Smart detection setting saved:', enabled);
+  } catch (error) {
+    consoleError('Failed to save smart detection setting:', error);
+  }
+}

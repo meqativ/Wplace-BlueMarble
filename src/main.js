@@ -534,6 +534,10 @@ overlayMain.setApiManager(apiManager); // Sets the API manager
 // Load wrong color settings
 templateManager.loadWrongColorSettings();
 
+// Load smart detection settings
+import { getSmartDetectionEnabled } from './settingsManager.js';
+templateManager.setSmartDetectionEnabled(getSmartDetectionEnabled());
+
 // Load templates with fallback system
 async function loadTemplates() {
   let storageTemplates = {};
@@ -2854,7 +2858,7 @@ function buildColorFilterOverlay() {
     
     // Get enhanced pixel analysis data
     consoleLog('🎯 [Color Filter] Calculating pixel statistics...');
-    const pixelStats = templateManager.calculateRemainingPixelsByColor();
+    const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
     consoleLog('🎯 [Color Filter] Pixel statistics received:', pixelStats);
     // Update native palette badges as well (if settings enabled)
     try {
@@ -2872,9 +2876,46 @@ function buildColorFilterOverlay() {
     // Get excluded colors from localStorage (used for both wrong pixels and main calculation)
     const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
     
-    // Get wrong pixels from tile progress data (only once)
+    // Get wrong pixels from tile progress data (only once) - FILTERED BY ENABLED TEMPLATES
     if (templateManager.tileProgress && templateManager.tileProgress.size > 0) {
-      for (const tileStats of templateManager.tileProgress.values()) {
+      // Get list of enabled templates for filtering (same logic as calculateRemainingPixelsByColor)
+      const enabledTemplateKeys = new Set();
+      if (templateManager.templatesArray) {
+        for (const template of templateManager.templatesArray) {
+          const templateKey = `${template.sortID} ${template.authorID}`;
+          if (templateManager.isTemplateEnabled(templateKey)) {
+            enabledTemplateKeys.add(templateKey);
+          }
+        }
+      }
+      
+      for (const [tileKey, tileStats] of templateManager.tileProgress.entries()) {
+        // Filter tiles by enabled templates only (same logic as calculateRemainingPixelsByColor)
+        let shouldIncludeTile = true;
+        
+        if (enabledTemplateKeys.size > 0) {
+          shouldIncludeTile = false;
+          const [tileX, tileY] = tileKey.split(',').map(coord => parseInt(coord));
+          
+          for (const template of templateManager.templatesArray) {
+            const templateKey = `${template.sortID} ${template.authorID}`;
+            if (!enabledTemplateKeys.has(templateKey)) continue;
+            
+            if (template.chunked) {
+              for (const chunkKey of Object.keys(template.chunked)) {
+                const [chunkTileX, chunkTileY] = chunkKey.split(',').map(coord => parseInt(coord));
+                if (chunkTileX === tileX && chunkTileY === tileY) {
+                  shouldIncludeTile = true;
+                  break;
+                }
+              }
+            }
+            if (shouldIncludeTile) break;
+          }
+        }
+        
+        if (!shouldIncludeTile) continue;
+        
         if (tileStats.colorBreakdown) {
           for (const [colorKey, colorStats] of Object.entries(tileStats.colorBreakdown)) {
             // Skip excluded colors from wrong pixels calculation too
@@ -4099,10 +4140,47 @@ function buildColorFilterOverlay() {
       pixelStatsDisplay.className = 'bmcf-stats';
       
       if (stats && stats.totalRequired > 0) {
-        // Get wrong pixels for this specific color from tile progress data
+        // Get wrong pixels for this specific color from tile progress data - FILTERED BY ENABLED TEMPLATES
         let wrongPixelsForColor = 0;
         if (templateManager.tileProgress && templateManager.tileProgress.size > 0) {
-          for (const tileStats of templateManager.tileProgress.values()) {
+          // Same filtering logic as above
+          const enabledTemplateKeys = new Set();
+          if (templateManager.templatesArray) {
+            for (const template of templateManager.templatesArray) {
+              const templateKey = `${template.sortID} ${template.authorID}`;
+              if (templateManager.isTemplateEnabled(templateKey)) {
+                enabledTemplateKeys.add(templateKey);
+              }
+            }
+          }
+          
+          for (const [tileKey, tileStats] of templateManager.tileProgress.entries()) {
+            // Filter tiles by enabled templates only
+            let shouldIncludeTile = true;
+            
+            if (enabledTemplateKeys.size > 0) {
+              shouldIncludeTile = false;
+              const [tileX, tileY] = tileKey.split(',').map(coord => parseInt(coord));
+              
+              for (const template of templateManager.templatesArray) {
+                const templateKey = `${template.sortID} ${template.authorID}`;
+                if (!enabledTemplateKeys.has(templateKey)) continue;
+                
+                if (template.chunked) {
+                  for (const chunkKey of Object.keys(template.chunked)) {
+                    const [chunkTileX, chunkTileY] = chunkKey.split(',').map(coord => parseInt(coord));
+                    if (chunkTileX === tileX && chunkTileY === tileY) {
+                      shouldIncludeTile = true;
+                      break;
+                    }
+                  }
+                }
+                if (shouldIncludeTile) break;
+              }
+            }
+            
+            if (!shouldIncludeTile) continue;
+            
             if (tileStats.colorBreakdown && tileStats.colorBreakdown[colorKey]) {
               wrongPixelsForColor += tileStats.colorBreakdown[colorKey].wrong || 0;
             }
@@ -5907,7 +5985,7 @@ function buildColorFilterOverlay() {
 
         // Update progress display after the toggle
         setTimeout(() => {
-          const freshStats = templateManager.calculateRemainingPixelsByColor();
+          const freshStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
           const freshPainted = freshStats[colorKey]?.painted || 0;
           const freshRemaining = freshStats[colorKey]?.needsCrosshair || 0;
           
@@ -5978,6 +6056,22 @@ function buildColorFilterOverlay() {
       applySearch(e.target.value);
     });
     
+    // Prevent any interference with spacebar and other keys
+    searchInput.addEventListener('keydown', (e) => {
+      // Allow all normal typing including spacebar
+      e.stopPropagation();
+    });
+
+    searchInput.addEventListener('keyup', (e) => {
+      // Allow all normal typing including spacebar
+      e.stopPropagation();
+    });
+
+    searchInput.addEventListener('keypress', (e) => {
+      // Allow all normal typing including spacebar
+      e.stopPropagation();
+    });
+    
     // Add keyboard shortcut for search (Ctrl+F)
     compactList.addEventListener('keydown', (e) => {
       if (e.ctrlKey && e.key === 'f') {
@@ -6004,7 +6098,7 @@ function buildColorFilterOverlay() {
       if (!compactContent) return;
       
       // Get fresh data
-      const freshPixelStats = templateManager.calculateRemainingPixelsByColor();
+      const freshPixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
       const templateInstance = templateManager.templatesArray?.[0];
       
       // Update each item
@@ -7234,7 +7328,7 @@ function updateMiniTracker() {
   
   if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
     // Use templateManager.calculateRemainingPixelsByColor() like the main progress bar does
-    const pixelStats = templateManager.calculateRemainingPixelsByColor();
+    const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
     
     // Get excluded colors from localStorage (same as main progress bar)
     const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
@@ -7444,7 +7538,7 @@ function updateLeftBadgesOnly() {
   
   try {
     // Calculate pixel statistics
-    const pixelStats = templateManager.calculateRemainingPixelsByColor();
+    const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
     
     // Update the palette badges
     updatePaletteLeftBadges(pixelStats);
@@ -8959,7 +9053,7 @@ function buildCrosshairSettingsOverlay() {
 
       // Refresh palette badges immediately after applying settings
       try {
-        const stats = templateManager.calculateRemainingPixelsByColor();
+        const stats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
         updatePaletteLeftBadges(stats);
       } catch (e) {
         consoleWarn('Failed to refresh palette left badges after apply:', e);
