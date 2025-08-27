@@ -2712,8 +2712,38 @@ function buildOverlayMain() {
             (instance, button) => {
               button.addEventListener('click', async () => {
                 try {
-                  // Get active template and auto-detect coordinates
-                  const t = templateManager.templatesArray?.[0];
+                  // SMART DETECTION: Get currently displayed template or first enabled template
+                  let t = null;
+                  
+                  if (templateManager.smartDetectionEnabled && templateManager.currentlyDisplayedTemplates.size === 1) {
+                    // Use the currently displayed template for screenshot
+                    const displayedTemplateKey = Array.from(templateManager.currentlyDisplayedTemplates)[0];
+                    t = templateManager.templatesArray.find(template => `${template.sortID} ${template.authorID}` === displayedTemplateKey);
+                    if (t) {
+                      console.log('📸 [Smart Screenshot Button] Using actively displayed template:', t.displayName);
+                    }
+                  }
+                  
+                  // Fallback: Use first enabled template
+                  if (!t && templateManager.templatesArray) {
+                    for (const template of templateManager.templatesArray) {
+                      const templateKey = `${template.sortID} ${template.authorID}`;
+                      if (templateManager.isTemplateEnabled(templateKey)) {
+                        t = template;
+                        console.log('📸 [Smart Screenshot Button] Using first enabled template:', t.displayName);
+                        break;
+                      }
+                    }
+                  }
+                  
+                  // Final fallback: Use first template (backward compatibility)
+                  if (!t) {
+                    t = templateManager.templatesArray?.[0];
+                    if (t) {
+                      console.log('📸 [Smart Screenshot Button] Using fallback template:', t.displayName);
+                    }
+                  }
+                  
                   console.log('🔍 Debug - Active template:', t);
                   console.log('🔍 Debug - Template coords:', t?.coords);
                   if (!t) {

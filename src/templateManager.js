@@ -2745,7 +2745,38 @@ export default class TemplateManager {
    */
   async buildTemplateAreaScreenshot(tileServerBase, templateCoords, sizePx) {
     try {
-      const active = this.templatesArray?.[0];
+      // SMART DETECTION: Use currently displayed template or first enabled template
+      let active = null;
+      
+      if (this.smartDetectionEnabled && this.currentlyDisplayedTemplates.size === 1) {
+        // Use the currently displayed template for screenshot
+        const displayedTemplateKey = Array.from(this.currentlyDisplayedTemplates)[0];
+        active = this.templatesArray.find(t => `${t.sortID} ${t.authorID}` === displayedTemplateKey);
+        if (active) {
+          consoleLog(`📸 [Smart Screenshot] Using actively displayed template: ${active.displayName}`);
+        }
+      }
+      
+      // Fallback: Use first enabled template
+      if (!active && this.templatesArray) {
+        for (const template of this.templatesArray) {
+          const templateKey = `${template.sortID} ${template.authorID}`;
+          if (this.isTemplateEnabled(templateKey)) {
+            active = template;
+            consoleLog(`📸 [Smart Screenshot] Using first enabled template: ${active.displayName}`);
+            break;
+          }
+        }
+      }
+      
+      // Final fallback: Use first template (backward compatibility)
+      if (!active) {
+        active = this.templatesArray?.[0];
+        if (active) {
+          consoleLog(`📸 [Smart Screenshot] Using fallback template: ${active.displayName}`);
+        }
+      }
+      
       if (!active || !Array.isArray(templateCoords) || templateCoords.length < 4) {
         throw new Error('Missing template or coordinates');
       }
