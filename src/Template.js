@@ -88,13 +88,44 @@ export default class Template {
     this.imageWidth = imageWidth;
     this.imageHeight = imageHeight;
     
-    // Calculate total pixel count using standard width × height formula
-    // TODO: Use non-transparent pixels instead of basic width times height
+    // Calculate pixel counts - total and valid (non-transparent)
     const totalPixels = imageWidth * imageHeight;
-    // console.log(`Template pixel analysis - Dimensions: ${imageWidth}×${imageHeight} = ${totalPixels.toLocaleString()} pixels`);
+    let validPixels = 0;
+    let transparentPixels = 0;
     
-    // Store pixel count in instance property for access by template manager and UI components
+    // Count valid pixels by analyzing the image data
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = imageWidth;
+    tempCanvas.height = imageHeight;
+    const tempCtx = tempCanvas.getContext('2d');
+    tempCtx.imageSmoothingEnabled = false;
+    
+    if (bitmap.canvas) {
+      // Fallback method - use canvas directly
+      tempCtx.drawImage(bitmap.canvas, 0, 0);
+    } else {
+      // Standard method - use bitmap
+      tempCtx.drawImage(bitmap, 0, 0);
+    }
+    
+    const imageData = tempCtx.getImageData(0, 0, imageWidth, imageHeight);
+    const data = imageData.data;
+    
+    for (let i = 0; i < data.length; i += 4) {
+      const alpha = data[i + 3];
+      if (alpha >= 64) { // Non-transparent pixel (alpha >= 64 like in template analysis)
+        validPixels++;
+      } else {
+        transparentPixels++;
+      }
+    }
+    
+    // console.log(`Template pixel analysis - Dimensions: ${imageWidth}×${imageHeight}, Valid: ${validPixels.toLocaleString()}, Transparent: ${transparentPixels.toLocaleString()}`);
+    
+    // Store pixel counts in instance properties
     this.pixelCount = totalPixels;
+    this.validPixelCount = validPixels;
+    this.transparentPixelCount = transparentPixels;
 
     const templateTiles = {}; // Holds the template tiles
     const templateTilesBuffers = {}; // Holds the buffers of the template tiles
@@ -519,7 +550,7 @@ export default class Template {
         console.group(`🎯 [CROSSHAIR GENERATION] Using OLD LOGIC from templateManager.js`);
         console.log(`Template pixels: ${templatePixels.size}`);
         console.log(`Border enabled: ${borderEnabled}`);
-        console.log(`Image dimensions: ${width}x${height}`);
+        // console.log(`Image dimensions: ${width}x${height}`);
         
         for (let y = 0; y < height; y++) {
           for (let x = 0; x < width; x++) {

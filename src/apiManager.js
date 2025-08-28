@@ -95,6 +95,11 @@ export default class ApiManager {
           console.log('%cSkirk Marble%c: Paint Data:', 'color: cornflowerblue;', '', this.userPaintData);
           
           overlay.updateInnerHTML('bm-user-name-content', `<b>Username:</b> ${escapeHTML(dataJSON['name'])}`); // Updates the text content of the username field
+          try {
+            const show = JSON.parse(localStorage.getItem('bmShowUsername') ?? 'true');
+            const el = document.getElementById('bm-user-name');
+            if (el) el.style.display = show ? '' : 'none';
+          } catch(_) {}
           overlay.updateInnerHTML('bm-user-droplets-content', `<b>Droplets:</b> ${new Intl.NumberFormat().format(dataJSON['droplets'])}`); // Updates the text content of the droplets field
           overlay.updateInnerHTML('bm-user-nextlevel-content', `Next level in <b>${new Intl.NumberFormat().format(nextLevelPixels)}</b> pixel${nextLevelPixels == 1 ? '' : 's'}`); // Updates the text content of the next level field
           

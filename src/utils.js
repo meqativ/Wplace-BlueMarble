@@ -165,6 +165,7 @@ export function canvasPosToLatLng(coordinates) {
 export const colorpalette = [
   {
     "name": "Transparent",
+    // Keep rgb as [0,0,0] for palette index consistency but mark as transparent
     "rgb": [0, 0, 0],
     "free": true
   },

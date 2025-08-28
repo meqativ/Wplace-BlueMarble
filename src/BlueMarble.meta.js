@@ -20,7 +20,7 @@
 // @connect      nominatim.openstreetmap.org
 // @connect      wplace.live
 // @connect      wplace.lol
-// @resource     CSS-BM-File https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/026bd31993479717c49a735513e1692ce0a334bd/dist/BlueMarble.user.css
+// @resource     CSS-BM-File http://127.0.0.1:8000/BlueMarble.user.css
 // ==/UserScript==
 
 // Wplace  --> https://wplace.live

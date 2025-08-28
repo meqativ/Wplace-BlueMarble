@@ -505,6 +505,11 @@ div:has(> #bm-input-file-template) {
   grid-row: 1;
 }
 
+/* Row 3: Color Filter (spans all 3 columns - full width) */
+#bm-button-color-filter {
+  grid-column: 1 / span 3;
+}
+
 div:has(> #bm-input-file-template) > button {
   width: 100%;
   height: 100%;
@@ -530,9 +535,7 @@ div:has(> #bm-input-file-template) > button {
   padding: .125rem .25rem; /* Reduced horizontal padding */
 }
 
-/* Row 3: Color Filter button (spans 2 columns), Import button (1 column) */
-#bm-button-color-filter { grid-row: 3; grid-column: 1 / span 2; }
-#bm-button-import { grid-row: 3; grid-column: 3; }
+/* Row 3: Color Filter button spans all 3 columns (defined above) */
 
 #bm-button-pause-tiles:hover {
   background-color: #f57c00 !important;

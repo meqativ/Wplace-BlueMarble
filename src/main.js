@@ -2205,20 +2205,72 @@ function showTemplateManageDialog(instance) {
       margin-right: 16px;
     `;
     
-    const nameSpan = document.createElement('div');
-    nameSpan.textContent = templateName;
-    nameSpan.style.cssText = `
+    // Name + pencil (inline rename)
+    const nameRow = document.createElement('div');
+    nameRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px;';
+    const renameBtn = document.createElement('button');
+    renameBtn.innerHTML = icons.pencilIcon;
+    renameBtn.title = 'Rename template';
+    renameBtn.style.cssText = `
+      padding: 6px; border: 1px solid #475569; border-radius: 8px; cursor: pointer;
+      background: #1f2937; color: #e2e8f0; min-width: 32px; height: 32px; display:flex; align-items:center; justify-content:center;`;
+    const nameLabel = document.createElement('div');
+    nameLabel.textContent = templateName;
+    nameLabel.style.cssText = `
       font-weight: 600;
       font-size: 1em;
       color: #f1f5f9;
-      margin-bottom: 4px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+      flex: 1;
+      padding: 4px 6px;
+      border-radius: 6px;
     `;
+    const startInlineRename = () => {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = nameLabel.textContent || '';
+      input.style.cssText = `
+        width: 100%; font-weight: 600; font-size: 1em; color: #f1f5f9;
+        border: 1px solid #475569; background: #1f2937; border-radius: 6px; padding: 6px 10px; outline: none;`;
+      const finish = async (commit) => {
+        const newVal = input.value.trim();
+        nameRow.replaceChild(nameLabel, input);
+        if (!commit) return; // cancel
+        if (!newVal || newVal === nameLabel.textContent) return;
+        const ok = await templateManager.renameTemplate(templateKey, newVal);
+        if (ok) {
+          nameLabel.textContent = newVal;
+          instance.handleDisplayStatus(`Renamed to "${newVal}"`);
+        } else {
+          instance.handleDisplayError('Failed to rename template');
+        }
+      };
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') finish(true);
+        else if (ev.key === 'Escape') finish(false);
+        ev.stopPropagation();
+      });
+      input.addEventListener('blur', () => finish(true));
+      nameRow.replaceChild(input, nameLabel);
+      setTimeout(() => { input.focus(); input.select(); }, 0);
+    };
+    renameBtn.onclick = (e) => { e.stopPropagation(); startInlineRename(); };
+    nameLabel.onclick = (e) => { e.stopPropagation(); startInlineRename(); };
+    nameRow.appendChild(renameBtn);
+    nameRow.appendChild(nameLabel);
     
     const infoSpan = document.createElement('div');
-    infoSpan.textContent = `${new Intl.NumberFormat().format(pixelCount)} pixels`;
+    const validPixelCount = template.validPixelCount || pixelCount; // Fallback for older templates
+    const transparentPixelCount = template.transparentPixelCount || 0;
+    
+    if (validPixelCount !== pixelCount && transparentPixelCount > 0) {
+      infoSpan.textContent = `${new Intl.NumberFormat().format(pixelCount)} pixels (${new Intl.NumberFormat().format(validPixelCount)} valid)`;
+    } else {
+      infoSpan.textContent = `${new Intl.NumberFormat().format(pixelCount)} pixels`;
+    }
+    
     infoSpan.style.cssText = `
       font-size: 0.85em;
       color: #94a3b8;
@@ -2243,7 +2295,7 @@ function showTemplateManageDialog(instance) {
       font-weight: 500;
     `;
     
-    templateInfo.appendChild(nameSpan);
+    templateInfo.appendChild(nameRow);
     templateInfo.appendChild(infoSpan);
     templateInfo.appendChild(coordsSpan);
     
@@ -2388,11 +2440,48 @@ function showTemplateManageDialog(instance) {
   
     content.appendChild(templateList);
   
-
+  // Footer with actions that keep dialog open
+  const footer = document.createElement('div');
+  footer.style.cssText = `
+    display: flex; gap: 12px; padding: 12px 16px; border-top: 1px solid #334155;
+    background: #1b2433; position: sticky; bottom: 0; justify-content: center; align-items: center;`
+  ;
+  const enableAllBtn = document.createElement('button');
+  enableAllBtn.textContent = 'Enable All';
+  enableAllBtn.style.cssText = `padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: linear-gradient(135deg,#10b981,#059669); color: white;`;
+  enableAllBtn.onclick = () => {
+    Object.keys(templates).forEach(k => templateManager.setTemplateEnabled(k, true));
+    instance.handleDisplayStatus('Enabled all templates');
+    // Update visible buttons text/colors
+    content.querySelectorAll('button').forEach(btn => {
+      if (btn.textContent === 'Disabled' || btn.textContent === 'Enabled') {
+        btn.textContent = 'Enabled';
+        btn.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+        btn.style.color = 'white';
+      }
+    });
+  };
+  const disableAllBtn = document.createElement('button');
+  disableAllBtn.textContent = 'Disable All';
+  disableAllBtn.style.cssText = `padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; background: linear-gradient(135deg,#64748b,#475569); color: #e2e8f0;`;
+  disableAllBtn.onclick = () => {
+    Object.keys(templates).forEach(k => templateManager.setTemplateEnabled(k, false));
+    instance.handleDisplayStatus('Disabled all templates');
+    content.querySelectorAll('button').forEach(btn => {
+      if (btn.textContent === 'Disabled' || btn.textContent === 'Enabled') {
+        btn.textContent = 'Disabled';
+        btn.style.background = 'linear-gradient(135deg, #64748b, #475569)';
+        btn.style.color = '#e2e8f0';
+      }
+    });
+  };
+  footer.appendChild(enableAllBtn);
+  footer.appendChild(disableAllBtn);
   
   // Assemble the interface
   container.appendChild(header);
   container.appendChild(content);
+  container.appendChild(footer);
   overlay.appendChild(container);
 
   // Close overlay when clicking outside
@@ -2759,6 +2848,7 @@ function buildOverlayMain() {
         .addP({'id': 'bm-user-fullcharge-content', 'textContent': 'Full Charge in...'}).buildElement()
       .buildElement()
     .buildElement()
+    
 
     .addDiv({ id: 'bm-separator' })
       .addHr().buildElement()
@@ -2933,7 +3023,7 @@ function buildOverlayMain() {
                   
                   // Auto-detect coordinates from active template
                   if (!t.coords || t.coords.length !== 4) {
-                    console.log('❌ Debug - Template coords issue:', { coords: t.coords, length: t.coords?.length });
+                    // console.log('❌ Debug - Template coords issue:', { coords: t.coords, length: t.coords?.length });
                     instance.handleDisplayError('Template coordinates not available. Create a template first.');
                     return;
                   }
@@ -2943,6 +3033,7 @@ function buildOverlayMain() {
                     instance.handleDisplayError('Invalid template coordinates detected.');
                     return;
                   }
+                  
                   if (!t.imageWidth || !t.imageHeight) {
                     // Attempt to infer from chunked tiles if missing
                     try {
@@ -5820,8 +5911,8 @@ function buildColorFilterOverlay() {
             const colorKeyB = b.getAttribute('data-color-rgb');
             
             // Find colors in utils.colorpalette
-            const colorA = utils.colorpalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyA);
-            const colorB = utils.colorpalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyB);
+            const colorA = utils.colorpalette.find(c => c.name !== 'Transparent' && `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyA);
+            const colorB = utils.colorpalette.find(c => c.name !== 'Transparent' && `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyB);
             
             const isPremiumA = colorA && colorA.free === false;
             const isPremiumB = colorB && colorB.free === false;
@@ -9381,6 +9472,35 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(colorGrid);
   contentContainer.appendChild(alphaSection);
   contentContainer.appendChild(borderSection);
+
+  // Username visibility setting
+  const usernameSection = document.createElement('div');
+  usernameSection.style.cssText = `
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
+    position: relative;
+    z-index: 1;`;
+  const usernameLabel = document.createElement('label');
+  usernameLabel.style.cssText = 'display:flex; align-items:center; gap:10px; cursor:pointer; user-select:none;';
+  const usernameCheckbox = document.createElement('input');
+  usernameCheckbox.type = 'checkbox';
+  try { usernameCheckbox.checked = JSON.parse(localStorage.getItem('bmShowUsername') ?? 'true'); } catch(_) { usernameCheckbox.checked = true; }
+  const usernameText = document.createElement('span');
+  usernameText.textContent = 'Show Username in main window';
+  usernameText.style.cssText = 'color: var(--slate-200); font-weight:600;';
+  usernameCheckbox.onchange = () => {
+    const next = !!usernameCheckbox.checked;
+    localStorage.setItem('bmShowUsername', JSON.stringify(next));
+    const el = document.getElementById('bm-user-name');
+    if (el) el.style.display = next ? '' : 'none';
+  };
+  usernameLabel.appendChild(usernameCheckbox);
+  usernameLabel.appendChild(usernameText);
+  usernameSection.appendChild(usernameLabel);
+  contentContainer.appendChild(usernameSection);
   contentContainer.appendChild(sizeSection);
   contentContainer.appendChild(radiusSection);
   contentContainer.appendChild(trackerSection);

@@ -244,7 +244,9 @@ export default class TemplateManager {
       "name": template.displayName, // Display name of template
       "coords": coords.join(', '), // The coords of the template
       "createdAt": new Date().toISOString(), // When this template was created
-      "pixelCount": template.pixelCount, // Number of pixels in this template
+      "pixelCount": template.pixelCount, // Total number of pixels in this template
+      "validPixelCount": template.validPixelCount, // Number of non-transparent pixels
+      "transparentPixelCount": template.transparentPixelCount, // Number of transparent pixels
       "enabled": true,
       "disabledColors": template.getDisabledColors(), // Store disabled colors
       "enhancedColors": template.getEnhancedColors(), // Store enhanced colors
@@ -1488,6 +1490,38 @@ export default class TemplateManager {
     consoleLog(`${enabled ? 'Enabled' : 'Disabled'} template: ${templateKey} - cleared tile progress cache`);
     return true;
   }
+
+  /** Rename a template and persist the change
+   * @param {string} templateKey
+   * @param {string} newName
+   * @since 1.0.0
+   */
+  async renameTemplate(templateKey, newName) {
+    try {
+      if (!this.templatesJSON?.templates?.[templateKey]) return false;
+      const safeName = String(newName || '').trim();
+      if (!safeName) return false;
+
+      this.templatesJSON.templates[templateKey].name = safeName;
+      this.templatesJSON.lastModified = new Date().toISOString();
+
+      // Update in-memory Template instance if present
+      const [sortIdStr, authorId] = templateKey.split(' ');
+      const sortId = parseInt(sortIdStr, 10);
+      const idx = this.templatesArray?.findIndex(t => t.sortID === sortId && t.authorID === authorId) ?? -1;
+      if (idx !== -1) {
+        this.templatesArray[idx].displayName = safeName;
+      }
+
+      await this.#storeTemplates();
+      return true;
+    } catch (e) {
+      consoleError('Failed to rename template', e);
+      return false;
+    }
+  }
+
+
 
   /** Clears the tile progress cache to prevent data leakage between enabled/disabled templates
    * This ensures that progress calculations only include data from currently enabled templates
@@ -3008,7 +3042,7 @@ export default class TemplateManager {
         const tilesbase64 = this.templatesJSON.templates[newKey].tiles;
         const templateTiles = {};
         let totalPixelCount = 0;
-
+        
         for (const [tile, b64] of Object.entries(tilesbase64)) {
           const templateUint8Array = base64ToUint8(b64);
           const templateBlob = new Blob([templateUint8Array], { type: "image/png" });
@@ -3057,17 +3091,22 @@ export default class TemplateManager {
           template.setEnhancedColors(this.templatesJSON.templates[newKey].enhancedColors);
         }
 
-        // Check if template already exists in templatesArray to avoid duplicates
-        const existingIndex = this.templatesArray.findIndex(t => 
-          t.sortID === template.sortID && t.authorID === template.authorID
-        );
+        // FIXED: Check if template already exists in templatesArray using the newKey (which is unique)
+        // instead of just sortID + authorID (which can collide for different templates)
+        const existingIndex = this.templatesArray.findIndex(t => {
+          const existingKey = `${t.sortID} ${t.authorID}`;
+          return existingKey === newKey;
+        });
+        
+        console.log(`🔍 [Import] Template "${displayName}" - sortID: ${template.sortID}, authorID: "${template.authorID}", newKey: "${newKey}"`);
+        console.log(`🔍 [Import] Existing template check - found at index: ${existingIndex}`);
         
         if (existingIndex !== -1) {
-          // Replace existing template
+          // Replace existing template with same exact key
           this.templatesArray[existingIndex] = template;
           console.log(`🔄 [Import] Replaced existing template at index ${existingIndex}: ${newKey}`);
         } else {
-          // Add new template
+          // Add new template - each template gets its own array entry
           this.templatesArray.push(template);
           console.log(`➕ [Import] Added new template: ${newKey}`);
         }
