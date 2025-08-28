@@ -67,6 +67,9 @@ export default class TemplateManager {
     this.includeWrongColorsInProgress = false; // Include wrong color pixels in progress calculation
     this.enhanceWrongColors = false; // Use crosshair enhance on wrong colors
     
+    // Load wrong color settings from storage on initialization
+    this.loadWrongColorSettings();
+    
     // Template
     this.canvasTemplate = null; // Our canvas
     this.canvasTemplateZoomed = null; // The template when zoomed out
@@ -458,10 +461,7 @@ export default class TemplateManager {
     // Returns early if no templates should be drawn
     if (!this.templatesShouldBeDrawn) {return tileBlob;}
 
-    // Load wrong color settings if not already loaded
-    if (this.includeWrongColorsInProgress === undefined) {
-      this.loadWrongColorSettings();
-    }
+    // Wrong color settings are now loaded in constructor, no need to check here
 
     const drawSize = this.tileSize * this.drawMult; // Calculate draw multiplier for scaling
 
@@ -1431,15 +1431,9 @@ export default class TemplateManager {
             template.setEnhancedColors(enhancedColors);
           }
           
-          // Load wrong color settings if they exist
-          if (templateValue.includeWrongColorsInProgress !== undefined) {
-            this.includeWrongColorsInProgress = templateValue.includeWrongColorsInProgress;
-            console.log(`🎯 [Template Load] Restored includeWrongColorsInProgress: ${this.includeWrongColorsInProgress}`);
-          }
-          if (templateValue.enhanceWrongColors !== undefined) {
-            this.enhanceWrongColors = templateValue.enhanceWrongColors;
-            console.log(`🎯 [Template Load] Restored enhanceWrongColors: ${this.enhanceWrongColors}`);
-          }
+          // Wrong color settings are now managed globally, not per template
+          // These settings should not be overridden during template loading
+          // The settings are loaded from storage in the constructor and should persist
           
           this.templatesArray.push(template);
           console.log(this.templatesArray);
@@ -1600,9 +1594,7 @@ export default class TemplateManager {
           // ONLY save the color settings, keep original tiles unchanged
           this.templatesJSON.templates[templateKey].disabledColors = template.getDisabledColors();
           this.templatesJSON.templates[templateKey].enhancedColors = template.getEnhancedColors();
-          // Also save wrong color settings as part of template data
-          this.templatesJSON.templates[templateKey].includeWrongColorsInProgress = this.includeWrongColorsInProgress;
-          this.templatesJSON.templates[templateKey].enhanceWrongColors = this.enhanceWrongColors;
+          // Wrong color settings are now managed globally, not saved per template
           consoleLog('JSON updated with new filter settings (settings only, tiles unchanged)');
         }
       }
@@ -2380,14 +2372,8 @@ export default class TemplateManager {
     this.includeWrongColorsInProgress = include;
     console.log(`🎯 [Wrong Colors] Include wrong colors in progress: ${include}`);
     
-    // Save to template data (same way as enhanced colors)
-    try {
-      await this.updateTemplateWithColorFilter();
-      console.log(`🎯 [Wrong Colors] Settings saved to template data`);
-    } catch (error) {
-      console.warn(`🎯 [Wrong Colors] Failed to save to template data, using fallback:`, error);
-      this.saveWrongColorSettings(); // Fallback
-    }
+    // Always save to storage directly - simpler and more reliable
+    this.saveWrongColorSettings();
   }
 
   /** Gets whether wrong colors should be included in progress calculation
@@ -2395,7 +2381,6 @@ export default class TemplateManager {
    * @since 1.0.0
    */
   getIncludeWrongColorsInProgress() {
-    // console.log(`🎯 [Debug] getIncludeWrongColorsInProgress returning: ${this.includeWrongColorsInProgress}`);
     return this.includeWrongColorsInProgress;
   }
 
@@ -2407,24 +2392,18 @@ export default class TemplateManager {
     this.enhanceWrongColors = enhance;
     console.log(`🎯 [Wrong Colors] Enhance wrong colors: ${enhance}`);
     
-    // Save to template data (same way as enhanced colors)
-    try {
-      await this.updateTemplateWithColorFilter();
-      console.log(`🎯 [Wrong Colors] Settings saved to template data`);
-    } catch (error) {
-      console.warn(`🎯 [Wrong Colors] Failed to save to template data, using fallback:`, error);
-      this.saveWrongColorSettings(); // Fallback
-    }
+    // Always save to storage directly - simpler and more reliable
+    this.saveWrongColorSettings();
     
-         // Clear debug logs when toggling
-     this._loggedWrongColors = new Set();
-     this._loggedEnhancedPixels = new Set();
-     this._wrongPixelsToEnhance = null;
-     this._loggedWrongEnhanced = false;
+    // Clear debug logs when toggling
+    this._loggedWrongColors = new Set();
+    this._loggedEnhancedPixels = new Set();
+    this._wrongPixelsToEnhance = null;
+    this._loggedWrongEnhanced = false;
     
     // Force template redraw to apply enhanced mode changes
     if (this.templatesArray && this.templatesArray.length > 0) {
-      consoleLog(`🎯 [Wrong Colors] Forcing template redraw to apply enhanced mode changes`);
+      console.log(`🎯 [Wrong Colors] Forcing template redraw to apply enhanced mode changes`);
       this.setTemplatesShouldBeDrawn(false);
       setTimeout(() => {
         this.setTemplatesShouldBeDrawn(true);
@@ -2459,33 +2438,43 @@ export default class TemplateManager {
    */
   loadWrongColorSettings() {
     try {
-      console.log(`🎯 [Debug] Loading wrong color settings...`);
-      console.log(`🎯 [Debug] Before loading - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
-      
       // Try TamperMonkey storage first
       if (typeof GM_getValue !== 'undefined') {
-        const includeWrong = GM_getValue('bmIncludeWrongColors', false);
-        const enhanceWrong = GM_getValue('bmEnhanceWrongColors', false);
-        console.log(`🎯 [Debug] TamperMonkey values - Include: ${includeWrong}, Enhance: ${enhanceWrong}`);
-        this.includeWrongColorsInProgress = includeWrong;
-        this.enhanceWrongColors = enhanceWrong;
-        console.log(`🎯 [Wrong Colors] Loaded settings from TamperMonkey - Include: ${includeWrong}, Enhance: ${enhanceWrong}`);
-        return;
+        const includeWrongRaw = GM_getValue('bmIncludeWrongColors', null);
+        const enhanceWrongRaw = GM_getValue('bmEnhanceWrongColors', null);
+        
+        // Check if TamperMonkey has valid values (not null and not 'null' string)
+        const hasValidInclude = includeWrongRaw !== null && includeWrongRaw !== 'null';
+        const hasValidEnhance = enhanceWrongRaw !== null && enhanceWrongRaw !== 'null';
+        
+        if (hasValidInclude) {
+          this.includeWrongColorsInProgress = JSON.parse(includeWrongRaw);
+        }
+        if (hasValidEnhance) {
+          this.enhanceWrongColors = JSON.parse(enhanceWrongRaw);
+        }
+        
+        // Only return if BOTH values were found in TamperMonkey
+        if (hasValidInclude && hasValidEnhance) {
+          return;
+        }
       }
       
       // Fallback to localStorage
       const includeWrongRaw = localStorage.getItem('bmIncludeWrongColors');
       const enhanceWrongRaw = localStorage.getItem('bmEnhanceWrongColors');
-      console.log(`🎯 [Debug] localStorage raw values - Include: '${includeWrongRaw}', Enhance: '${enhanceWrongRaw}'`);
       
-      const includeWrong = includeWrongRaw === 'true';
-      const enhanceWrong = enhanceWrongRaw === 'true';
-      this.includeWrongColorsInProgress = includeWrong;
-      this.enhanceWrongColors = enhanceWrong;
-      console.log(`🎯 [Wrong Colors] Loaded settings from localStorage - Include: ${includeWrong}, Enhance: ${enhanceWrong}`);
-      console.log(`🎯 [Debug] After loading - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+      if (includeWrongRaw !== null) {
+        this.includeWrongColorsInProgress = JSON.parse(includeWrongRaw);
+      }
+      if (enhanceWrongRaw !== null) {
+        this.enhanceWrongColors = JSON.parse(enhanceWrongRaw);
+      }
     } catch (error) {
-      console.warn('Failed to load wrong color settings:', error);
+      console.error('❌ [Wrong Colors] Error loading settings:', error);
+      // If there's an error parsing, reset to defaults
+      this.includeWrongColorsInProgress = false;
+      this.enhanceWrongColors = false;
     }
   }
 
@@ -2494,22 +2483,18 @@ export default class TemplateManager {
    */
   saveWrongColorSettings() {
     try {
-      console.log(`🎯 [Debug] Saving wrong color settings - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
-      
       // Try TamperMonkey storage first
       if (typeof GM_setValue !== 'undefined') {
-        GM_setValue('bmIncludeWrongColors', this.includeWrongColorsInProgress);
-        GM_setValue('bmEnhanceWrongColors', this.enhanceWrongColors);
-        console.log(`🎯 [Wrong Colors] Settings saved to TamperMonkey storage - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+        GM_setValue('bmIncludeWrongColors', JSON.stringify(this.includeWrongColorsInProgress));
+        GM_setValue('bmEnhanceWrongColors', JSON.stringify(this.enhanceWrongColors));
         return;
       }
       
       // Fallback to localStorage
-      localStorage.setItem('bmIncludeWrongColors', this.includeWrongColorsInProgress.toString());
-      localStorage.setItem('bmEnhanceWrongColors', this.enhanceWrongColors.toString());
-      console.log(`🎯 [Wrong Colors] Settings saved to localStorage - Include: ${this.includeWrongColorsInProgress}, Enhance: ${this.enhanceWrongColors}`);
+      localStorage.setItem('bmIncludeWrongColors', JSON.stringify(this.includeWrongColorsInProgress));
+      localStorage.setItem('bmEnhanceWrongColors', JSON.stringify(this.enhanceWrongColors));
     } catch (error) {
-      console.error('Failed to save wrong color settings:', error);
+      console.error('❌ [Wrong Colors] Failed to save settings:', error);
     }
   }
 
