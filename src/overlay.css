@@ -490,11 +490,11 @@ input[type="file"][id*="template"] {
   font-weight: 500;
 }
 
-/* Template buttons container - 3x3 grid layout */
+/* Template buttons container - 3x4 grid layout */
 #bm-contain-buttons-template {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
-  grid-template-rows: auto auto auto; /* 3 rows: Upload Template, Create+Manage+Pause Tiles, Color Filter */
+  grid-template-rows: auto auto auto auto; /* 4 rows: Upload Template, Create+Manage+Pause Tiles, Color Filter+Import */
   align-items: stretch; /* all buttons same height in each row */
   gap: .25rem;
 }
@@ -530,8 +530,9 @@ div:has(> #bm-input-file-template) > button {
   padding: .125rem .25rem; /* Reduced horizontal padding */
 }
 
-/* Row 3: Color Filter button */
-#bm-button-color-filter { grid-row: 3; grid-column: 1 / span 3; }
+/* Row 3: Color Filter button (spans 2 columns), Import button (1 column) */
+#bm-button-color-filter { grid-row: 3; grid-column: 1 / span 2; }
+#bm-button-import { grid-row: 3; grid-column: 3; }
 
 #bm-button-pause-tiles:hover {
   background-color: #f57c00 !important;

@@ -1209,7 +1209,7 @@ export default class TemplateManager {
 
           if (this.showWrongPixels) {
             // Use blur dark red as marker for wrong pixel
-            context.fillStyle = "rgba(128, 0, 0, 0.6)";
+            context.fillStyle = "rgba(255, 0, 0, 0.8)";
             for (const { x, y, color, unpainted } of wrongMap) {
               if (isDisable(color)) {continue;}
               if (unpainted) {

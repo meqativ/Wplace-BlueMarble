@@ -164,51 +164,66 @@ inject(() => {
 const cssOverlay = GM_getResourceText("CSS-BM-File");
 GM_addStyle(cssOverlay);
 
-// Add Search Window CSS with Slate Theme
+// Add Search Window CSS with Slate Theme (refined UI + centered spawn)
 const searchWindowCSS = `
 #skirk-search-draggable {
-  position: fixed; right: 75px; top: 440px; z-index: 2147483646;
-  width: min(420px,90vw); max-height: 500px;
-  background: #1e293b; color: #f1f5f9; border-radius: 10px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  position: fixed; z-index: 2147483646;
+  top: 50%; left: 50%; transform: translate(-50%, -50%);
+  width: min(480px,94vw); max-height: min(70vh, 600px);
+  background: rgba(30, 41, 59, 0.92); color: #f1f5f9; border-radius: 14px;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7), 0 0 0 1px rgba(255, 255, 255, 0.05);
   border: 1px solid #334155;
-  font: 14px/1.4 Roboto Mono, monospace, Arial;
+  backdrop-filter: blur(14px);
+  font: 14px/1.5 Roboto Mono, monospace, Arial;
   display: none;
   flex-direction: column;
   min-width: 300px;
   will-change: transform;
+  overflow: hidden;
 }
 #skirk-search-draggable .drag-handle {
-  margin-bottom: 0.5em;
-  background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="5" height="5"><circle cx="3" cy="3" r="1.5" fill="%23475569" /></svg>') repeat;
+  margin-bottom: 0.4em;
+  background: linear-gradient(135deg, rgba(71,85,105,0.6), rgba(100,116,139,0.55));
   cursor: grab;
   width: 100%;
-  height: 1.2em;
-  border-radius: 10px 10px 0 0;
+  height: 28px;
+  border-radius: 14px 14px 0 0;
+  opacity: 0.95;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 #skirk-search-draggable.dragging .drag-handle {
   cursor: grabbing;
 }
+#skirk-search-draggable .drag-handle::before {
+  content: '';
+  width: 56px;
+  height: 6px;
+  border-radius: 6px;
+  background: linear-gradient(90deg, #94a3b8, #cbd5e1);
+  opacity: 0.7;
+}
 #skirk-search-draggable .hdr {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 10px 14px 0 14px;
+  padding: 12px 16px 0 16px;
 }
 #skirk-search-draggable .hdr h3 {
-  margin: 0; font-size: 17px; font-weight: 700; letter-spacing: 0.07em;
-  display: flex; align-items: center; gap: 0.5em;
-  color: #f1f5f9;
+  margin: 0; font-size: 18px; font-weight: 800; letter-spacing: 0.04em;
+  display: flex; align-items: center; gap: 0.6em;
+  color: #f8fafc;
 }
 #skirk-search-draggable .hdr .actions {
-  display: flex; gap: 10px;
+  display: flex; gap: 8px;
 }
 #skirk-search-draggable .hdr button {
-  border: none; padding: 6px 10px; border-radius: 7px;
-  background: #475569; color: #f1f5f9; font: 14px monospace;
+  border: 1px solid #475569; padding: 8px 10px; border-radius: 8px;
+  background: #334155; color: #f1f5f9; font: 13px monospace;
   cursor: pointer;
-  transition: all 0.18s;
+  transition: all 0.18s ease;
 }
 #skirk-search-draggable .hdr button:hover { 
-  background: #64748b; 
+  background: #475569; 
   transform: translateY(-1px);
 }
 #skirk-search-draggable .hdr button:active { 
@@ -216,23 +231,23 @@ const searchWindowCSS = `
   transform: translateY(0px);
 }
 #skirk-search-draggable .body {
-  padding: 10px 14px; overflow: hidden;
+  padding: 12px 16px 16px 16px; overflow: hidden;
 }
 #skirk-search-input {
-  width: 100%; padding: 8px 12px; border-radius: 6px;
-  border: 1px solid #475569; background: #0f172a;
+  width: 100%; padding: 12px 14px; border-radius: 10px;
+  border: 1px solid #475569; background: #0b1222;
   color: #f1f5f9; font: 14px monospace;
-  margin-bottom: 10px;
-  transition: all 0.2s;
+  margin-bottom: 12px;
+  transition: all 0.2s ease;
 }
 #skirk-search-input:focus { 
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 #skirk-search-input::placeholder { color: #64748b; }
 #skirk-search-results {
-  max-height: 320px; overflow-y: auto;
+  max-height: 360px; overflow-y: auto; overflow-x: hidden;
 }
 #skirk-search-results::-webkit-scrollbar {
   width: 6px;
@@ -250,33 +265,34 @@ const searchWindowCSS = `
 }
 .skirk-search-result {
   padding: 12px; cursor: pointer;
-  border-bottom: 1px solid #334155;
-  transition: all 0.2s;
+  border: 1px solid transparent;
+  border-radius: 10px;
+  transition: all 0.2s ease;
   position: relative;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
+  gap: 8px;
+  overflow: hidden;
 }
 .skirk-search-result:hover {
-  background-color: #334155;
+  background-color: rgba(51, 65, 85, 0.55);
+  border-color: #334155;
   transform: translateX(2px);
 }
-.skirk-search-result:last-child {
-  border-bottom: none;
-}
 .skirk-result-content {
-  flex: 1;
+  flex: 1; min-width: 0; overflow: hidden;
 }
 .skirk-result-name {
-  font-size: 14px;
+  font-size: 15px;
   color: #f1f5f9;
   margin-bottom: 4px;
-  font-weight: 600;
+  font-weight: 700;
 }
 .skirk-result-address {
   font-size: 12px;
   color: #94a3b8;
-  line-height: 1.3;
+  line-height: 1.3; overflow-wrap: anywhere; word-break: break-word;
 }
 .skirk-result-address.secondary {
   color: #cbd5e1;
@@ -284,11 +300,11 @@ const searchWindowCSS = `
 }
 .skirk-favorite-star {
   color: #64748b;
-  font-size: 16px;
+  font-size: 18px;
   cursor: pointer;
-  padding: 4px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
   user-select: none;
   margin-left: 8px;
 }
@@ -313,8 +329,8 @@ const searchWindowCSS = `
 /* Favorites Menu */
 #skirk-favorites-menu {
   border-top: 1px solid #334155;
-  margin-top: 10px;
-  padding-top: 10px;
+  margin-top: 12px;
+  padding-top: 12px;
 }
 #skirk-favorites-header {
   display: flex;
@@ -325,7 +341,7 @@ const searchWindowCSS = `
 }
 #skirk-favorites-title {
   font-size: 13px;
-  font-weight: 600;
+  font-weight: 700;
   color: #cbd5e1;
   display: flex;
   align-items: center;
@@ -352,34 +368,50 @@ const searchWindowCSS = `
 }
 #skirk-clear-favorites {
   background: none;
-  border: none;
-  color: #64748b;
+  border: 1px solid #475569;
+  color: #cbd5e1;
   cursor: pointer;
   font-size: 11px;
-  padding: 2px 6px;
-  border-radius: 4px;
-  transition: all 0.2s;
+  padding: 4px 8px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 #skirk-clear-favorites:hover {
   color: #ef4444;
   background: rgba(239, 68, 68, 0.1);
 }
 #skirk-favorites-list {
-  max-height: 150px;
+  max-height: 200px;
   overflow-y: auto;
 }
+.skirk-favorites-filter {
+  width: 100%;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid #475569;
+  background: #0b1222;
+  color: #f1f5f9;
+  font: 12px monospace;
+  margin: 8px 0 6px 0;
+  transition: all 0.2s ease;
+}
+.skirk-favorites-filter:focus {
+  outline: none;
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59,130,246,0.12);
+}
 .skirk-favorite-item {
-  padding: 8px;
+  padding: 10px;
   cursor: pointer;
-  border-radius: 6px;
-  margin-bottom: 2px;
-  transition: all 0.2s;
+  border-radius: 8px;
+  margin-bottom: 4px;
+  transition: all 0.2s ease;
   display: flex;
   justify-content: space-between;
   align-items: center;
 }
 .skirk-favorite-item:hover {
-  background: #334155;
+  background: rgba(51, 65, 85, 0.55);
 }
 .skirk-favorite-item .skirk-result-content {
   flex: 1;
@@ -392,12 +424,12 @@ const searchWindowCSS = `
   font-size: 11px;
 }
 .skirk-favorite-remove {
-  color: #64748b;
+  color: #94a3b8;
   font-size: 14px;
   cursor: pointer;
-  padding: 2px;
-  border-radius: 3px;
-  transition: all 0.2s;
+  padding: 4px 6px;
+  border-radius: 6px;
+  transition: all 0.2s ease;
 }
 .skirk-favorite-remove:hover {
   color: #ef4444;
@@ -415,13 +447,15 @@ const searchWindowCSS = `
   justify-content: center;
 }
 #skirk-location-dialog {
-  background: #1e293b;
+  background: rgba(30,41,59,0.96);
   color: #f1f5f9;
-  border-radius: 10px;
+  border-radius: 14px;
   border: 1px solid #334155;
   padding: 20px;
-  min-width: 400px;
+  min-width: 420px;
   max-width: 90vw;
+  box-shadow: 0 25px 50px -12px rgba(0,0,0,0.7), 0 0 0 1px rgba(255,255,255,0.05);
+  backdrop-filter: blur(12px);
 }
 #skirk-location-dialog h3 {
   margin: 0 0 16px 0;
@@ -440,18 +474,18 @@ const searchWindowCSS = `
 }
 #skirk-location-dialog input {
   width: 100%;
-  padding: 8px 12px;
+  padding: 10px 12px;
   border: 1px solid #475569;
-  background: #0f172a;
+  background: #0b1222;
   color: #f1f5f9;
-  border-radius: 6px;
+  border-radius: 10px;
   font: 14px monospace;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 #skirk-location-dialog input:focus {
   outline: none;
   border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.18);
 }
 #skirk-location-dialog input[readonly] {
   background: #0a0e1a;
@@ -470,12 +504,12 @@ const searchWindowCSS = `
   margin-top: 20px;
 }
 #skirk-location-dialog button {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
+  padding: 10px 16px;
+  border: 1px solid #475569;
+  border-radius: 8px;
   font: 14px monospace;
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all 0.2s ease;
 }
 #skirk-location-dialog .btn-primary {
   background: #3b82f6;
@@ -485,11 +519,11 @@ const searchWindowCSS = `
   background: #2563eb;
 }
 #skirk-location-dialog .btn-secondary {
-  background: #475569;
+  background: #334155;
   color: #f1f5f9;
 }
 #skirk-location-dialog .btn-secondary:hover {
-  background: #64748b;
+  background: #475569;
 }
 
 
@@ -6434,7 +6468,7 @@ function forceTemplateRedraw() {
   }
 }
 
-// ====== KEYBOARD SHORTCUT: E + CLICK FOR ENHANCED COLORS ======
+// ====== KEYBOARD SHORTCUT: X + CLICK FOR ENHANCED COLORS ======
 
 /** Map of color IDs to RGB values from r/place palette */
 const COLOR_PALETTE_MAP = {
@@ -6504,68 +6538,68 @@ const COLOR_PALETTE_MAP = {
   'color-63': [205, 197, 158] // Light Stone
 };
 
-/** State for E key shortcut */
+/** State for X key shortcut */
 let isEKeyPressed = false;
 let eKeyModeActive = false;
 
 /** Initialize keyboard shortcut functionality 
  * 
- * HOW TO USE THE E+CLICK SHORTCUT:
- * 1. Press and hold the 'E' key
- * 2. While holding 'E', click on any color in the r/place palette
+ * HOW TO USE THE X+CLICK SHORTCUT:
+ * 1. Press and hold the 'X' key
+ * 2. While holding 'X', click on any color in the r/place palette
  * 3. This will:
  *    - Clear all currently enhanced colors
  *    - Enable enhanced mode ONLY for the clicked color
  *    - Refresh the template to show the changes
- * 4. Release the 'E' key to exit enhanced selection mode
+ * 4. Release the 'X' key to exit enhanced selection mode
  * 
  * VISUAL FEEDBACK:
- * - Cursor changes to crosshair when E-Mode is active
+ * - Cursor changes to crosshair when X-Mode is active
  * - Status messages appear to confirm actions
  * - Color filter overlay automatically refreshes if open
  * 
  * @since 1.0.0
  */
 function initializeKeyboardShortcuts() {
-  consoleLog('🎹 [Keyboard Shortcuts] Initializing E+Click shortcut for enhanced colors...');
+  consoleLog('🎹 [Keyboard Shortcuts] Initializing X+Click shortcut for enhanced colors...');
   
-  // Track E key press/release
+  // Track X key press/release
   document.addEventListener('keydown', (event) => {
-    if (event.code === 'KeyE' && !event.repeat) {
+    if (event.code === 'KeyX' && !event.repeat) {
       isEKeyPressed = true;
       eKeyModeActive = true;
       
-      // Visual feedback - add cursor style to show E mode is active
+      // Visual feedback - add cursor style to show X mode is active
       document.body.style.cursor = 'crosshair';
       
       // Show notification
       if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
-        overlayMain.handleDisplayStatus('🎹 E-Mode: Click a color to enable enhanced mode for that color only');
+        overlayMain.handleDisplayStatus('🎹 X-Mode: Click a color to enable enhanced mode for that color only');
       }
       
-      consoleLog('🎹 [E-Mode] Enhanced selection mode ACTIVATED');
+      consoleLog('🎹 [X-Mode] Enhanced selection mode ACTIVATED');
     }
   });
   
   document.addEventListener('keyup', (event) => {
-    if (event.code === 'KeyE') {
+    if (event.code === 'KeyX') {
       isEKeyPressed = false;
       eKeyModeActive = false;
       
       // Reset cursor
       document.body.style.cursor = '';
       
-      consoleLog('🎹 [E-Mode] Enhanced selection mode DEACTIVATED');
+      consoleLog('🎹 [X-Mode] Enhanced selection mode DEACTIVATED');
     }
   });
   
-  // Handle clicks on color palette buttons when E is pressed
+  // Handle clicks on color palette buttons when X is pressed
   document.addEventListener('click', handleEKeyColorClick, true);
   
-  consoleLog('✅ [Keyboard Shortcuts] E+Click shortcut initialized successfully');
+  consoleLog('✅ [Keyboard Shortcuts] X+Click shortcut initialized successfully');
 }
 
-/** Handle E+Click on color palette */
+/** Handle X+Click on color palette */
 function handleEKeyColorClick(event) {
   if (!eKeyModeActive) return;
   
@@ -6581,25 +6615,25 @@ function handleEKeyColorClick(event) {
   const rgbColor = COLOR_PALETTE_MAP[colorId];
   
   if (!rgbColor) {
-    consoleWarn(`🎹 [E-Mode] Unknown color ID: ${colorId}`);
+    consoleWarn(`🎹 [X-Mode] Unknown color ID: ${colorId}`);
     return;
   }
   
   // Skip transparent color
   if (colorId === 'color-0') {
     if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
-      overlayMain.handleDisplayStatus('🎹 E-Mode: Cannot enhance transparent color');
+      overlayMain.handleDisplayStatus('🎹 X-Mode: Cannot enhance transparent color');
     }
     return;
   }
   
-  consoleLog(`🎹 [E-Mode] Processing color: ${colorId} -> RGB(${rgbColor.join(', ')})`);
+  consoleLog(`🎹 [X-Mode] Processing color: ${colorId} -> RGB(${rgbColor.join(', ')})`);
   
   // Get current template
   const currentTemplate = templateManager.templatesArray?.[0];
   if (!currentTemplate) {
     if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayError) {
-      overlayMain.handleDisplayError('🎹 E-Mode: No template loaded');
+      overlayMain.handleDisplayError('🎹 X-Mode: No template loaded');
     }
     return;
   }
@@ -6607,11 +6641,11 @@ function handleEKeyColorClick(event) {
   try {
     // Clear all enhanced colors first
     currentTemplate.enhancedColors.clear();
-    consoleLog('🎹 [E-Mode] Cleared all enhanced colors');
+    consoleLog('🎹 [X-Mode] Cleared all enhanced colors');
     
     // Enable enhanced mode for the selected color
     currentTemplate.enableColorEnhanced(rgbColor);
-    consoleLog(`🎹 [E-Mode] Enhanced mode enabled for RGB(${rgbColor.join(', ')})`);
+    consoleLog(`🎹 [X-Mode] Enhanced mode enabled for RGB(${rgbColor.join(', ')})`);
     
     // Visual feedback
     const colorName = colorButton.getAttribute('aria-label') || colorId;
@@ -6621,9 +6655,9 @@ function handleEKeyColorClick(event) {
     
     // Refresh template to apply changes
     refreshTemplateDisplay().then(() => {
-      consoleLog('🎹 [E-Mode] Template refreshed with new enhanced color');
+      consoleLog('🎹 [X-Mode] Template refreshed with new enhanced color');
     }).catch(error => {
-      consoleError('🎹 [E-Mode] Error refreshing template:', error);
+      consoleError('🎹 [X-Mode] Error refreshing template:', error);
     });
     
     // Update color filter overlay if it's open
@@ -6637,9 +6671,9 @@ function handleEKeyColorClick(event) {
     }
     
   } catch (error) {
-    consoleError('🎹 [E-Mode] Error processing enhanced color:', error);
+    consoleError('🎹 [X-Mode] Error processing enhanced color:', error);
     if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayError) {
-      overlayMain.handleDisplayError('🎹 E-Mode: Failed to set enhanced color');
+      overlayMain.handleDisplayError('🎹 X-Mode: Failed to set enhanced color');
     }
   }
 }
@@ -9376,6 +9410,7 @@ function createSearchWindow() {
 
       <button id="skirk-clear-favorites">Clear All</button>
     </div>
+    <input type="text" id="skirk-favorites-filter" class="skirk-favorites-filter" placeholder="Filter favorites...">
     <div id="skirk-favorites-list"></div>
   </div>
 </div>`;
@@ -9399,6 +9434,16 @@ function createSearchWindow() {
       console.error('Error getting favorites:', error);
       return [];
     }
+  }
+  
+  function getFilteredFavorites(filterValue) {
+    const list = getFavorites();
+    const query = (filterValue || '').toLowerCase();
+    if (!query) {return list;}
+    return list.filter(fav => {
+      const a = `${fav.primaryName || ''} ${fav.secondaryInfo || ''} ${fav.fullAddress || ''}`.toLowerCase();
+      return a.includes(query);
+    });
   }
   
   function saveFavorites(favorites) {
@@ -9431,16 +9476,25 @@ function createSearchWindow() {
   }
   
   function updateFavoritesDisplay() {
-    const favorites = getFavorites();
+    const filterInput = searchPanel.querySelector('#skirk-favorites-filter');
+    const filterText = filterInput ? filterInput.value : '';
+    const allFavorites = getFavorites();
+    const favorites = getFilteredFavorites(filterText);
     const favoritesMenu = searchPanel.querySelector('#skirk-favorites-menu');
     const favoritesCount = searchPanel.querySelector('#skirk-favorites-count');
     const favoritesList = searchPanel.querySelector('#skirk-favorites-list');
     
-    favoritesCount.textContent = favorites.length;
+    // Always show total number saved, not filtered count
+    favoritesCount.textContent = allFavorites.length;
     
-    if (favorites.length > 0) {
+    if (allFavorites.length > 0) {
       favoritesMenu.style.display = 'block';
       favoritesList.innerHTML = '';
+      
+      if (favorites.length === 0) {
+        favoritesList.innerHTML = '<div class="skirk-no-results">No favorites match your filter</div>';
+        return;
+      }
       
       favorites.forEach(favorite => {
         const favoriteItem = document.createElement('div');
@@ -9479,6 +9533,17 @@ function createSearchWindow() {
       saveFavorites([]);
     }
   });
+  
+  // Favorites filter input
+  const favoritesFilterInput = searchPanel.querySelector('#skirk-favorites-filter');
+  if (favoritesFilterInput) {
+    let favFilterTimeout;
+    const onFilterChange = () => {
+      clearTimeout(favFilterTimeout);
+      favFilterTimeout = setTimeout(() => updateFavoritesDisplay(), 120);
+    };
+    favoritesFilterInput.addEventListener('input', onFilterChange);
+  }
   
   // Initialize favorites display
   updateFavoritesDisplay();
