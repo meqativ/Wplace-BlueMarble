@@ -12,6 +12,14 @@ View the specific progress of each color in your template. Each color shows how 
 
 <img width="661" height="796" alt="image" src="https://github.com/user-attachments/assets/6e764705-1e14-48db-92ab-c2a0679c03e8" />
 
+# Template Management
+
+## Features
+
+- **Export Templates:** Save your templates as `.json` files to back them up or share with others.  
+- **Import Templates:** Load templates from `.json` files to quickly load the template.
+
+This makes it easier to manage, transfer, and share with friends for big projects.
 
 ## Enhanced Mode (Highlight)
 
