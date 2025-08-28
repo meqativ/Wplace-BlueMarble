@@ -1874,6 +1874,191 @@ function deleteSelectedTemplate(instance) {
   document.body.appendChild(overlay);
 }
 
+/** Shows a drag and drop import dialog
+ * @param {Object} instance - The overlay instance
+ * @since 1.0.0
+ */
+function showImportDialog(instance) {
+  // Create import dialog overlay
+  const overlay = document.createElement('div');
+  overlay.id = 'bm-import-overlay';
+  overlay.style.cssText = `
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.8);
+    backdrop-filter: blur(8px);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 10001;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+
+  const container = document.createElement('div');
+  container.style.cssText = `
+    background: #1e293b;
+    color: #f1f5f9;
+    border-radius: 20px;
+    border: 1px solid #334155;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(16px);
+    max-width: 500px;
+    width: 90%;
+    padding: 40px;
+    text-align: center;
+    position: relative;
+  `;
+
+  // Header
+  const title = document.createElement('h3');
+  title.textContent = 'Import Templates';
+  title.style.cssText = `
+    margin: 0 0 20px 0;
+    font-size: 1.5em;
+    font-weight: 700;
+    background: linear-gradient(135deg, #f1f5f9, #cbd5e1);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  `;
+
+  // Drop zone
+  const dropZone = document.createElement('div');
+  dropZone.style.cssText = `
+    border: 2px dashed #475569;
+    border-radius: 12px;
+    padding: 60px 20px;
+    margin: 20px 0;
+    background: rgba(71, 85, 105, 0.1);
+    transition: all 0.2s ease;
+    cursor: pointer;
+  `;
+
+  const dropIcon = document.createElement('div');
+  dropIcon.innerHTML = icons.uploadIcon;
+  dropIcon.style.cssText = `
+    font-size: 48px;
+    margin-bottom: 16px;
+    color: #64748b;
+  `;
+
+  const dropText = document.createElement('p');
+  dropText.innerHTML = 'Drag & drop your JSON file here<br>or <strong>click to browse</strong>';
+  dropText.style.cssText = `
+    margin: 0;
+    color: #94a3b8;
+    font-size: 1.1em;
+    line-height: 1.5;
+  `;
+
+  dropZone.appendChild(dropIcon);
+  dropZone.appendChild(dropText);
+
+  // Hidden file input
+  const fileInput = document.createElement('input');
+  fileInput.type = 'file';
+  fileInput.accept = '.json,application/json';
+  fileInput.style.display = 'none';
+
+  // Close button
+  const closeBtn = document.createElement('button');
+  closeBtn.innerHTML = '×';
+  closeBtn.style.cssText = `
+    position: absolute;
+    top: 15px;
+    right: 20px;
+    background: transparent;
+    border: none;
+    color: #94a3b8;
+    font-size: 24px;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: all 0.2s ease;
+  `;
+
+  closeBtn.onmouseover = () => {
+    closeBtn.style.background = 'rgba(255, 255, 255, 0.1)';
+    closeBtn.style.color = '#f1f5f9';
+  };
+  closeBtn.onmouseout = () => {
+    closeBtn.style.background = 'transparent';
+    closeBtn.style.color = '#94a3b8';
+  };
+
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+
+  // File processing function
+  const processFile = async (file) => {
+    if (!file) return;
+    
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+      await templateManager.importFromObject(data, { merge: true });
+      document.body.removeChild(overlay);
+      instance.handleDisplayStatus(`Imported templates from ${file.name}!`);
+    } catch (e) {
+      console.error(e);
+      instance.handleDisplayStatus('Failed to import JSON - please check the file format');
+    }
+  };
+
+  // Event handlers
+  fileInput.onchange = () => processFile(fileInput.files?.[0]);
+  
+  dropZone.onclick = () => fileInput.click();
+
+  // Drag and drop handlers
+  dropZone.ondragover = (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#3b82f6';
+    dropZone.style.background = 'rgba(59, 130, 246, 0.1)';
+  };
+
+  dropZone.ondragleave = () => {
+    dropZone.style.borderColor = '#475569';
+    dropZone.style.background = 'rgba(71, 85, 105, 0.1)';
+  };
+
+  dropZone.ondrop = (e) => {
+    e.preventDefault();
+    dropZone.style.borderColor = '#475569';
+    dropZone.style.background = 'rgba(71, 85, 105, 0.1)';
+    
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type === 'application/json') {
+      processFile(file);
+    } else {
+      instance.handleDisplayStatus('Please drop a valid JSON file');
+    }
+  };
+
+  // Assemble the interface
+  container.appendChild(closeBtn);
+  container.appendChild(title);
+  container.appendChild(dropZone);
+  container.appendChild(fileInput);
+  overlay.appendChild(container);
+
+  // Close overlay when clicking outside
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+    }
+  });
+
+  // Add to page
+  document.body.appendChild(overlay);
+}
+
 /** Shows a comprehensive template management dialog
  * @param {Object} instance - The overlay instance
  * @since 1.0.0
@@ -1881,11 +2066,6 @@ function deleteSelectedTemplate(instance) {
 function showTemplateManageDialog(instance) {
   const templates = templateManager?.templatesJSON?.templates || {};
   const templateKeys = Object.keys(templates);
-  
-  if (templateKeys.length === 0) {
-    instance.handleDisplayStatus('No templates found!');
-    return;
-  }
   
   // Create management dialog
   const overlay = document.createElement('div');
@@ -2075,6 +2255,39 @@ function showTemplateManageDialog(instance) {
       align-items: center;
     `;
     
+    // Export button
+    const exportBtn = document.createElement('button');
+    exportBtn.innerHTML = icons.exportIcon;
+    exportBtn.title = 'Export this template as JSON';
+    exportBtn.style.cssText = `
+      padding: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #22c55e, #16a34a);
+      color: white;
+    `;
+    exportBtn.onmouseover = () => {
+      exportBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+      exportBtn.style.transform = 'translateY(-1px)';
+    };
+    
+    exportBtn.onmouseout = () => {
+      exportBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+      exportBtn.style.transform = '';
+    };
+
+    exportBtn.onclick = () => {
+      templateManager.downloadTemplateJSON(templateKey);
+      instance.handleDisplayStatus(`Exported "${templateName}"`);
+    };
+    
     // Toggle button
     const toggleBtn = document.createElement('button');
     toggleBtn.textContent = isEnabled ? 'Enabled' : 'Disabled';
@@ -2164,7 +2377,7 @@ function showTemplateManageDialog(instance) {
       }
     };
     
-
+    buttonContainer.appendChild(exportBtn);
     buttonContainer.appendChild(flyBtn);
     buttonContainer.appendChild(toggleBtn);
     
@@ -2173,82 +2386,15 @@ function showTemplateManageDialog(instance) {
     templateList.appendChild(templateItem);
   });
   
-  content.appendChild(templateList);
+    content.appendChild(templateList);
   
-  // Footer with bulk actions
-  const footer = document.createElement('div');
-  footer.style.cssText = `
-    display: flex;
-    gap: 12px;
-    justify-content: center;
-    padding: 20px 24px;
-    border-top: 1px solid #334155;
-    background: linear-gradient(135deg, #1e293b, #293548);
-  `;
-  
-  const enableAllBtn = document.createElement('button');
-  enableAllBtn.textContent = 'Enable All';
-  enableAllBtn.style.cssText = `
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #10b981, #059669);
-    color: white;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  `;
-  enableAllBtn.onmouseover = () => {
-    enableAllBtn.style.transform = 'translateY(-2px)';
-    enableAllBtn.style.boxShadow = '0 8px 25px rgba(16, 185, 129, 0.4)';
-  };
-  enableAllBtn.onmouseout = () => {
-    enableAllBtn.style.transform = '';
-    enableAllBtn.style.boxShadow = '';
-  };
-  enableAllBtn.onclick = () => {
-    templateKeys.forEach(key => templateManager.setTemplateEnabled(key, true));
-    document.body.removeChild(overlay);
-    instance.handleDisplayStatus('Enabled all templates!');
-  };
-  
-  const disableAllBtn = document.createElement('button');
-  disableAllBtn.textContent = 'Disable All';
-  disableAllBtn.style.cssText = `
-    flex: 1;
-    padding: 12px 20px;
-    border: none;
-    border-radius: 12px;
-    background: linear-gradient(135deg, #64748b, #475569);
-    color: #e2e8f0;
-    font-weight: 600;
-    cursor: pointer;
-    transition: all 0.2s ease;
-  `;
-  disableAllBtn.onmouseover = () => {
-    disableAllBtn.style.transform = 'translateY(-2px)';
-    disableAllBtn.style.boxShadow = '0 8px 25px rgba(100, 116, 139, 0.4)';
-  };
-  disableAllBtn.onmouseout = () => {
-    disableAllBtn.style.transform = '';
-    disableAllBtn.style.boxShadow = '';
-  };
-  disableAllBtn.onclick = () => {
-    templateKeys.forEach(key => templateManager.setTemplateEnabled(key, false));
-    document.body.removeChild(overlay);
-    instance.handleDisplayStatus('Disabled all templates!');
-  };
-  
-  footer.appendChild(enableAllBtn);
-  footer.appendChild(disableAllBtn);
+
   
   // Assemble the interface
   container.appendChild(header);
   container.appendChild(content);
-  container.appendChild(footer);
   overlay.appendChild(container);
-  
+
   // Close overlay when clicking outside
   overlay.addEventListener('click', (e) => {
     if (e.target === overlay) {
@@ -2725,7 +2871,7 @@ function buildOverlayMain() {
       }).buildElement()
       .buildElement() // Close bm-contain-buttons-template
       .addTextarea({'id': overlayMain.outputStatusId, 'placeholder': `Status: Sleeping...\nVersion: ${version}`, 'readOnly': true}).buildElement()
-      .addDiv({'id': 'bm-contain-buttons-action'})
+      .addDiv({'id': 'bm-contain-buttons-action', 'style': 'position: relative; padding-bottom: 22px;'})
         .addDiv({'style': 'display: flex; gap: 6px; align-items: center;'})
           .addButton({'id': 'bm-button-convert', 'className': 'bm-help', 'innerHTML': '🎨', 'title': 'Template Color Converter'}, 
             (instance, button) => {
@@ -2861,8 +3007,16 @@ function buildOverlayMain() {
               clearAllStorage(instance);
             });
           }).buildElement()
+          // Import Templates button
+          .addButton({'id': 'bm-button-import', 'className': 'bm-help', innerHTML: icons.uploadIcon, 'title': 'Import Templates'}, (instance, button) => {
+            button.addEventListener('click', () => {
+              showImportDialog(instance);
+            });
+          }).buildElement()
         .buildElement()
-        .addSmall({'textContent': 'Made by SwingTheVine | Fork Seris0', 'style': 'margin-top: auto;'}).buildElement()
+        .addDiv({'style': 'position: absolute; left: 0; bottom: 2px; text-align: left; padding: 0; pointer-events: auto; user-select: text; line-height: 12px;'}).
+          addSmall({'textContent': 'Made by SwingTheVine | Fork Seris0', 'style': 'color: #94a3b8; font-size: 0.74em; opacity: 0.85;'}).buildElement()
+        .buildElement()
       .buildElement()
     .buildElement()
   .buildOverlay(document.body);
@@ -5395,7 +5549,7 @@ function buildColorFilterOverlay() {
     `;
     
     const disableAllBtn = document.createElement('button');
-    disableAllBtn.textContent = 'Disable All';
+    disableAllBtn.textContent = 'Disable';
     disableAllBtn.style.cssText = `
       background: #dc2626;
       color: white;
@@ -5411,7 +5565,7 @@ function buildColorFilterOverlay() {
     disableAllBtn.addEventListener('mouseleave', () => disableAllBtn.style.background = '#dc2626');
     
     const enableAllBtn = document.createElement('button');
-    enableAllBtn.textContent = 'Enable All';
+    enableAllBtn.textContent = 'Enable';
     enableAllBtn.style.cssText = `
       background: #16a34a;
       color: white;

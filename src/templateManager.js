@@ -2909,4 +2909,184 @@ export default class TemplateManager {
       throw e;
     }
   }
+
+  /** Merge-import a BlueMarble JSON object (keeps coords and base64; allocates non-conflicting keys)
+   * @param {Object} json
+   * @param {{merge?: boolean}} options
+   */
+  async importFromObject(json, { merge = true } = {}) {
+    if (!json?.templates || typeof json.templates !== 'object') return;
+
+    if (!this.templatesJSON) {
+      this.templatesJSON = await this.createJSON();
+    }
+
+    const existingKeys = Object.keys(this.templatesJSON.templates || {});
+    const usedSortIDs = new Set(existingKeys.map(k => parseInt(k.split(' ')[0], 10)).filter(n => Number.isFinite(n)));
+
+    const nextSortID = () => {
+      let id = usedSortIDs.size ? Math.max(...Array.from(usedSortIDs)) + 1 : 0;
+      while (usedSortIDs.has(id)) id++;
+      usedSortIDs.add(id);
+      return id;
+    };
+
+    const incomingTemplates = json.templates;
+    for (const [templateKey, templateValue] of Object.entries(incomingTemplates)) {
+      let desiredSortID = parseInt((templateKey.split(' ')[0] || '0'), 10);
+      if (!Number.isFinite(desiredSortID) || usedSortIDs.has(desiredSortID)) {
+        desiredSortID = nextSortID();
+      } else {
+        usedSortIDs.add(desiredSortID);
+      }
+
+      const authorID = (templateKey.split(' ')[1]) || '';
+      const newKey = `${desiredSortID} ${authorID || ''}`.trim();
+
+      this.templatesJSON.templates[newKey] = {
+        name: templateValue.name || `Template ${desiredSortID}`,
+        coords: templateValue.coords,
+        createdAt: templateValue.createdAt || new Date().toISOString(),
+        pixelCount: templateValue.pixelCount || 0,
+        enabled: templateValue.enabled !== false,
+        disabledColors: templateValue.disabledColors || [],
+        enhancedColors: templateValue.enhancedColors || [],
+        includeWrongColorsInProgress: templateValue.includeWrongColorsInProgress ?? this.includeWrongColorsInProgress ?? false,
+        enhanceWrongColors: templateValue.enhanceWrongColors ?? this.enhanceWrongColors ?? false,
+        tiles: templateValue.tiles || {}
+      };
+
+      try {
+        const displayName = this.templatesJSON.templates[newKey].name;
+        const coords = this.templatesJSON.templates[newKey].coords?.split(', ').map(Number) || null;
+        const tilesbase64 = this.templatesJSON.templates[newKey].tiles;
+        const templateTiles = {};
+        let totalPixelCount = 0;
+
+        for (const [tile, b64] of Object.entries(tilesbase64)) {
+          const templateUint8Array = base64ToUint8(b64);
+          const templateBlob = new Blob([templateUint8Array], { type: "image/png" });
+          const templateBitmap = await createImageBitmap(templateBlob);
+          templateTiles[tile] = templateBitmap;
+
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = templateBitmap.width;
+            canvas.height = templateBitmap.height;
+            const ctx = canvas.getContext('2d');
+            ctx.imageSmoothingEnabled = false;
+            ctx.drawImage(templateBitmap, 0, 0);
+            const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+            const data = imageData.data;
+
+            for (let y = 0; y < canvas.height; y++) {
+              for (let x = 0; x < canvas.width; x++) {
+                if (x % this.drawMult !== 1 || y % this.drawMult !== 1) continue;
+                const i = (y * canvas.width + x) * 4;
+                if (data[i + 3] > 0) totalPixelCount++;
+              }
+            }
+          } catch (err) {
+            console.warn('Failed to count pixels for tile during import:', tile, err);
+          }
+        }
+
+        const template = new Template({
+          displayName,
+          sortID: desiredSortID,
+          authorID,
+          coords
+        });
+        template.chunked = templateTiles;
+        template.pixelCount = totalPixelCount;
+
+        if (!this.templatesJSON.templates[newKey].pixelCount) {
+          this.templatesJSON.templates[newKey].pixelCount = totalPixelCount;
+        }
+
+        if (Array.isArray(this.templatesJSON.templates[newKey].disabledColors)) {
+          template.setDisabledColors(this.templatesJSON.templates[newKey].disabledColors);
+        }
+        if (Array.isArray(this.templatesJSON.templates[newKey].enhancedColors)) {
+          template.setEnhancedColors(this.templatesJSON.templates[newKey].enhancedColors);
+        }
+
+        this.templatesArray.push(template);
+      } catch (e) {
+        console.warn('Failed to create Template instance during import merge:', e);
+      }
+    }
+
+    this.templatesJSON.lastModified = new Date().toISOString();
+    this.templatesJSON.templateCount = Object.keys(this.templatesJSON.templates).length;
+    this.templatesJSON.totalPixels = this.templatesArray.reduce((total, t) => total + (t.pixelCount || 0), 0);
+
+    await this.#storeTemplates();
+    this.overlay?.handleDisplayStatus?.('Templates imported!');
+  }
+
+  /** Build a single-template export JSON object */
+  exportTemplateJSON(templateKey) {
+    if (!this.templatesJSON?.templates?.[templateKey]) return null;
+    const wrapper = {
+      whoami: this.name.replace(' ', ''),
+      scriptVersion: this.version,
+      schemaVersion: this.templatesVersion,
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      templateCount: 1,
+      totalPixels: this.templatesJSON.templates[templateKey]?.pixelCount || 0,
+      templates: {
+        [templateKey]: this.templatesJSON.templates[templateKey]
+      }
+    };
+    return wrapper;
+  }
+
+  /** Download a single-template JSON file */
+  downloadTemplateJSON(templateKey) {
+    const obj = this.exportTemplateJSON(templateKey);
+    if (!obj) return;
+    const name = (obj.templates[templateKey]?.name || 'template').replace(/[\\/:*?"<>|]/g, '_');
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
+
+  /** Build an export JSON with all templates */
+  exportAllTemplatesJSON() {
+    if (!this.templatesJSON?.templates) return null;
+    const wrapper = {
+      whoami: this.name.replace(' ', ''),
+      scriptVersion: this.version,
+      schemaVersion: this.templatesVersion,
+      createdAt: this.templatesJSON.createdAt || new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      templateCount: Object.keys(this.templatesJSON.templates).length,
+      totalPixels: this.templatesArray.reduce((t, tt) => t + (tt.pixelCount || 0), 0),
+      templates: this.templatesJSON.templates
+    };
+    return wrapper;
+  }
+
+  /** Download all templates as JSON file */
+  downloadAllTemplatesJSON() {
+    const obj = this.exportAllTemplatesJSON();
+    if (!obj) return;
+    const blob = new Blob([JSON.stringify(obj, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BlueMarble-templates.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }
 }
