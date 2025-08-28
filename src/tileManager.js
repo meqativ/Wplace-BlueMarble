@@ -186,3 +186,12 @@ export function getTilePerformanceStats() {
 export function getCachedTileCount() {
   return frozenTileCache.size;
 }
+
+/** Clears the frozen tile cache to free memory and ensure clean state
+ * @since 1.0.0
+ */
+export function clearFrozenTileCache() {
+  const previousSize = frozenTileCache.size;
+  frozenTileCache.clear();
+  consoleLog(`🧹 Cleared frozen tile cache (${previousSize} tiles removed)`);
+}

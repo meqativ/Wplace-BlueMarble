@@ -604,20 +604,10 @@ async function loadTemplates() {
   }
   
   console.log(`📂 Templates loaded from: ${storageSource}`);
-  console.log('📦 Storage data:', storageTemplates);
   
-  // Detailed debug logging
-  console.log('🔍 Debug - Storage analysis:');
-  console.log('  - Type:', typeof storageTemplates);
-  console.log('  - Is object:', typeof storageTemplates === 'object' && storageTemplates !== null);
-  console.log('  - Has whoami:', storageTemplates?.whoami);
-  console.log('  - whoami value:', JSON.stringify(storageTemplates?.whoami));
-  console.log('  - Has templates:', !!storageTemplates?.templates);
-  console.log('  - Templates type:', typeof storageTemplates?.templates);
-  console.log('  - Templates keys:', storageTemplates?.templates ? Object.keys(storageTemplates.templates) : 'N/A');
-  
-  // Validate loaded data
+  // Minimal debug logging for performance
   const templateCount = Object.keys(storageTemplates?.templates || {}).length;
+  console.log(`📦 Found ${templateCount} templates`);
   
   if (templateCount === 0 && storageSource !== 'empty (all failed)') {
     console.warn('⚠️ No templates found but storage source was available');
@@ -650,8 +640,8 @@ async function loadTemplates() {
       if (backupCount > 0) {
         console.log(`✅ Recovering ${backupCount} templates from backup`);
         storageTemplates = backupData;
-        // Save recovered data to both storages
-        setTimeout(() => templateManager.updateTemplateWithColorFilter(), 1000);
+        // Save recovered data to both storages (removed setTimeout for performance)
+        templateManager.updateTemplateWithColorFilter().catch(e => console.warn('Template color filter update failed:', e));
       }
     } catch (recoveryError) {
       console.error('❌ Recovery failed:', recoveryError);
@@ -721,8 +711,10 @@ async function migrateAndValidateStorage() {
 
 
 
-// Load templates on startup
-Promise.resolve(migrateAndValidateStorage()).then(() => loadTemplates());
+// Load templates on startup - run migration first to ensure data consistency, then load
+migrateAndValidateStorage()
+  .then(() => loadTemplates())
+  .catch(error => console.error('Template loading failed:', error));
 
 buildOverlayMain(); // Builds the main overlay
 
@@ -1793,16 +1785,20 @@ function deleteSelectedTemplate(instance) {
       showCustomConfirmDialog(
         `Delete "${templateName}"?`,
         `Are you sure you want to delete this template?\n\nThis action cannot be undone!`,
-        () => {
+        async () => {
           try {
-            // Delete from templateManager
-            templateManager.deleteTemplate(templateKey);
+            // Delete from templateManager (now async)
+            const success = await templateManager.deleteTemplate(templateKey);
             
-            // Remove overlay
-            document.body.removeChild(overlay);
-            
-            instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
-            consoleLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
+            if (success) {
+              // Remove overlay
+              document.body.removeChild(overlay);
+              
+              instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
+              consoleLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
+            } else {
+              throw new Error('Delete operation returned false');
+            }
             
           } catch (error) {
             consoleError('❌ Failed to delete template:', error);
