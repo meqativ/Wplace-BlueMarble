@@ -125,7 +125,7 @@ export default class TemplateManager {
    */
   async createJSON() {
     const json = {
-      "whoami": this.name.replace(' ', ''), // Name of userscript without spaces
+      "whoami": 'BlueMarble', // Name of userscript
       "scriptVersion": this.version, // Version of userscript
       "schemaVersion": this.templatesVersion, // Version of JSON schema
       "createdAt": new Date().toISOString(), // When the JSON was first created
@@ -312,12 +312,34 @@ export default class TemplateManager {
     // Try TamperMonkey storage first
     try {
       if (typeof GM !== 'undefined' && GM.setValue) {
-        await GM.setValue('bmTemplates', data);
-        await GM.setValue('bmTemplates_timestamp', timestamp);
-        console.log('✅ Templates stored in TamperMonkey storage');
-        console.log('  - Stored data length:', data.length);
+        // Chunk if too large for TM or browser storage limitations
+        const CHUNK_SIZE = 900000; // ~0.9MB per chunk
+        if (data.length > CHUNK_SIZE) {
+          const parts = Math.ceil(data.length / CHUNK_SIZE);
+          // Clear single key
+          try { await GM.deleteValue?.('bmTemplates'); } catch (_) {}
+          await GM.setValue('bmTemplates_chunkCount', parts);
+          for (let i = 0; i < parts; i++) {
+            const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+            await GM.setValue(`bmTemplates_part_${i}`, slice);
+          }
+          await GM.setValue('bmTemplates_timestamp', timestamp);
+          console.log(`✅ Templates stored in TamperMonkey (chunked x${parts})`);
+        } else {
+          await GM.setValue('bmTemplates', data);
+          await GM.setValue('bmTemplates_timestamp', timestamp);
+          // Clear any previous chunked keys
+          try {
+            const count = await GM.getValue('bmTemplates_chunkCount', 0);
+            for (let i = 0; i < count; i++) await GM.deleteValue(`bmTemplates_part_${i}`);
+            await GM.deleteValue('bmTemplates_chunkCount');
+          } catch (_) {}
+          console.log('✅ Templates stored in TamperMonkey storage');
+          console.log('  - Stored data length:', data.length);
+        }
         return;
       } else if (typeof GM_setValue !== 'undefined') {
+        // Legacy GM_* APIs (synchronous) - use no-chunk or minimal chunk via localStorage fallback below
         GM_setValue('bmTemplates', data);
         GM_setValue('bmTemplates_timestamp', timestamp);
         console.log('✅ Templates stored in TamperMonkey storage (legacy)');
@@ -330,9 +352,27 @@ export default class TemplateManager {
     
     // Fallback to localStorage
     try {
-      localStorage.setItem('bmTemplates', data);
-      localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
-      console.log('✅ Templates stored in localStorage (fallback)');
+      const CHUNK_SIZE = 900000; // ~0.9MB
+      if (data.length > CHUNK_SIZE) {
+        const parts = Math.ceil(data.length / CHUNK_SIZE);
+        // Clear single key
+        try { localStorage.removeItem('bmTemplates'); } catch (_) {}
+        localStorage.setItem('bmTemplates_chunkCount', String(parts));
+        for (let i = 0; i < parts; i++) {
+          const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+          localStorage.setItem(`bmTemplates_part_${i}`, slice);
+        }
+        localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
+        console.log(`✅ Templates stored in localStorage (chunked x${parts})`);
+      } else {
+        localStorage.setItem('bmTemplates', data);
+        localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
+        // Clear previous chunked keys
+        const count = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+        for (let i = 0; i < count; i++) localStorage.removeItem(`bmTemplates_part_${i}`);
+        localStorage.removeItem('bmTemplates_chunkCount');
+        console.log('✅ Templates stored in localStorage (fallback)');
+      }
     } catch (error) {
       console.error('❌ All storage methods failed:', error);
       alert('Erro crítico: Não foi possível salvar templates. Verifique as permissões do navegador.');
@@ -1274,13 +1314,15 @@ export default class TemplateManager {
     console.log('  - Templates count:', json?.templates ? Object.keys(json.templates).length : 'N/A');
 
     // If the passed in JSON is a Blue Marble template object...
-    if (json?.whoami == 'SkirkMarble') {
+    // Accept both legacy 'SkirkMarble' and current 'BlueMarble' whoami values
+    const validWhoami = ['SkirkMarble', 'BlueMarble', this.name?.replace(' ', '')].filter(Boolean);
+    if (validWhoami.includes(json?.whoami)) {
       console.log('✅ Calling #parseBlueMarble...');
       this.#parseBlueMarble(json); // ...parse the template object as Blue Marble
     } else {
       console.warn('❌ Not a valid BlueMarble JSON:', {
         whoami: json?.whoami,
-        expected: 'SkirkMarble',
+        expected: validWhoami,
         hasTemplates: !!json?.templates
       });
     }
@@ -2917,6 +2959,10 @@ export default class TemplateManager {
   async importFromObject(json, { merge = true } = {}) {
     if (!json?.templates || typeof json.templates !== 'object') return;
 
+    // console.log('🔍 [Import] Starting importFromObject...');
+    console.log('🔍 [Import] Current templatesArray length:', this.templatesArray?.length || 0);
+    // console.log('🔍 [Import] Current templatesJSON templates:', Object.keys(this.templatesJSON?.templates || {}));
+
     if (!this.templatesJSON) {
       this.templatesJSON = await this.createJSON();
     }
@@ -3011,7 +3057,20 @@ export default class TemplateManager {
           template.setEnhancedColors(this.templatesJSON.templates[newKey].enhancedColors);
         }
 
-        this.templatesArray.push(template);
+        // Check if template already exists in templatesArray to avoid duplicates
+        const existingIndex = this.templatesArray.findIndex(t => 
+          t.sortID === template.sortID && t.authorID === template.authorID
+        );
+        
+        if (existingIndex !== -1) {
+          // Replace existing template
+          this.templatesArray[existingIndex] = template;
+          console.log(`🔄 [Import] Replaced existing template at index ${existingIndex}: ${newKey}`);
+        } else {
+          // Add new template
+          this.templatesArray.push(template);
+          console.log(`➕ [Import] Added new template: ${newKey}`);
+        }
       } catch (e) {
         console.warn('Failed to create Template instance during import merge:', e);
       }
@@ -3021,15 +3080,34 @@ export default class TemplateManager {
     this.templatesJSON.templateCount = Object.keys(this.templatesJSON.templates).length;
     this.templatesJSON.totalPixels = this.templatesArray.reduce((total, t) => total + (t.pixelCount || 0), 0);
 
+    console.log('🔍 [Import] After import - templatesArray length:', this.templatesArray.length);
+    console.log('🔍 [Import] After import - templatesJSON templates:', Object.keys(this.templatesJSON.templates));
+
     await this.#storeTemplates();
-    this.overlay?.handleDisplayStatus?.('Templates imported!');
+    try {
+      const imported = Object.entries(json.templates || {});
+      const importedCount = imported.length;
+      // Compose a brief status summary for bm-v
+      let summary = `Imported ${importedCount} template${importedCount!==1?'s':''}`;
+      if (importedCount > 0) {
+        const first = imported[0][1];
+        const name = first?.name || 'Unnamed';
+        const coords = first?.coords || 'N/A';
+        const pixels = first?.pixelCount ?? 'N/A';
+        summary += `\n• First: ${name}\n• Coords: ${coords}\n• Pixels: ${pixels}`;
+        if (importedCount > 1) summary += `\n• Others: ${importedCount - 1} more`;
+      }
+      this.overlay?.handleDisplayStatus?.(summary);
+    } catch (_) {
+      this.overlay?.handleDisplayStatus?.('Templates imported!');
+    }
   }
 
   /** Build a single-template export JSON object */
   exportTemplateJSON(templateKey) {
     if (!this.templatesJSON?.templates?.[templateKey]) return null;
     const wrapper = {
-      whoami: this.name.replace(' ', ''),
+      whoami: 'BlueMarble',
       scriptVersion: this.version,
       schemaVersion: this.templatesVersion,
       createdAt: new Date().toISOString(),
@@ -3063,7 +3141,7 @@ export default class TemplateManager {
   exportAllTemplatesJSON() {
     if (!this.templatesJSON?.templates) return null;
     const wrapper = {
-      whoami: this.name.replace(' ', ''),
+      whoami: 'BlueMarble',
       scriptVersion: this.version,
       schemaVersion: this.templatesVersion,
       createdAt: this.templatesJSON.createdAt || new Date().toISOString(),
@@ -3088,5 +3166,40 @@ export default class TemplateManager {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
+  }
+
+  /** Debug method to check template data integrity
+   * Call this in console: templateManager.debugTemplateState()
+   * @since 1.0.0
+   */
+  debugTemplateState() {
+    console.log('=== TEMPLATE STATE DEBUG ===');
+    console.log('templatesArray length:', this.templatesArray?.length || 0);
+    console.log('templatesJSON templates count:', Object.keys(this.templatesJSON?.templates || {}).length);
+    
+    if (this.templatesArray) {
+      console.log('templatesArray details:');
+      this.templatesArray.forEach((t, i) => {
+        console.log(`  [${i}] sortID: ${t.sortID}, authorID: ${t.authorID}, name: ${t.displayName}, pixels: ${t.pixelCount}`);
+      });
+    }
+    
+    if (this.templatesJSON?.templates) {
+      console.log('templatesJSON details:');
+      Object.entries(this.templatesJSON.templates).forEach(([key, t]) => {
+        console.log(`  [${key}] name: ${t.name}, coords: ${t.coords}, pixels: ${t.pixelCount}`);
+      });
+    }
+    
+    // Check for mismatches
+    const arrayKeys = this.templatesArray?.map(t => `${t.sortID} ${t.authorID}`) || [];
+    const jsonKeys = Object.keys(this.templatesJSON?.templates || {});
+    const arrayOnly = arrayKeys.filter(k => !jsonKeys.includes(k));
+    const jsonOnly = jsonKeys.filter(k => !arrayKeys.includes(k));
+    
+    if (arrayOnly.length > 0) console.warn('Templates in array but not in JSON:', arrayOnly);
+    if (jsonOnly.length > 0) console.warn('Templates in JSON but not in array:', jsonOnly);
+    
+    console.log('=== END DEBUG ===');
   }
 }
