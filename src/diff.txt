@@ -1,0 +1,4734 @@
+@@ -158,8 +158,28 @@ inject(() => {
+
+    return response; // Returns the original response
+  };
+
+    const observer = new MutationObserver(mutations => {
+        try {
+            let map = document.querySelector("div.absolute.bottom-3.right-3.z-30").childNodes[0].__click[3].v
+            if(typeof map.version == "string"){
+                window.bmmap = map;
+                observer.disconnect();
+            }
+        }
+        catch (e){
+
+        }
+    });
+
+    observer.observe(document.body, {
+        childList: true,
+        subtree: true
+    });
+});
+
+
+
+// Imports the CSS file from dist folder on github
+const cssOverlay = GM_getResourceText("CSS-BM-File");
+GM_addStyle(cssOverlay);
+@@ -576,7 +596,7 @@ templateManager.setSmartDetectionEnabled(getSmartDetectionEnabled());
+async function loadTemplates() {
+  let storageTemplates = {};
+  let storageSource = 'none';
+  
+
+  // Try TamperMonkey storage first
+  try {
+    if (typeof GM !== 'undefined' && GM.getValue) {
+@@ -590,7 +610,7 @@ async function loadTemplates() {
+    }
+  } catch (error) {
+    console.warn('⚠️ TamperMonkey storage load failed:', error);
+    
+
+    // Fallback to localStorage
+    try {
+      const data = localStorage.getItem('bmTemplates') || '{}';
+@@ -602,10 +622,10 @@ async function loadTemplates() {
+      storageSource = 'empty (all failed)';
+    }
+  }
+  
+
+  console.log(`📂 Templates loaded from: ${storageSource}`);
+  console.log('📦 Storage data:', storageTemplates);
+  
+
+  // Detailed debug logging
+  console.log('🔍 Debug - Storage analysis:');
+  console.log('  - Type:', typeof storageTemplates);
+@@ -615,18 +635,18 @@ async function loadTemplates() {
+  console.log('  - Has templates:', !!storageTemplates?.templates);
+  console.log('  - Templates type:', typeof storageTemplates?.templates);
+  console.log('  - Templates keys:', storageTemplates?.templates ? Object.keys(storageTemplates.templates) : 'N/A');
+  
+
+  // Validate loaded data
+  const templateCount = Object.keys(storageTemplates?.templates || {}).length;
+  
+
+  if (templateCount === 0 && storageSource !== 'empty (all failed)') {
+    console.warn('⚠️ No templates found but storage source was available');
+    
+
+    // Try to recover from backup or alternative storage
+    try {
+      // Check if there's a backup in the other storage system
+      let backupData = {};
+      
+
+      if (storageSource.includes('TamperMonkey')) {
+        // Try localStorage as backup
+        const lsBackup = localStorage.getItem('bmTemplates');
+@@ -645,7 +665,7 @@ async function loadTemplates() {
+          console.log('🔄 Found backup in TamperMonkey storage');
+        }
+      }
+      
+
+      const backupCount = Object.keys(backupData?.templates || {}).length;
+      if (backupCount > 0) {
+        console.log(`✅ Recovering ${backupCount} templates from backup`);
+@@ -657,9 +677,9 @@ async function loadTemplates() {
+      console.error('❌ Recovery failed:', recoveryError);
+    }
+  }
+  
+
+  templateManager.importJSON(storageTemplates); // Loads the templates
+  
+
+  if (templateCount > 0) {
+    console.log(`✅ Successfully loaded ${templateCount} templates`);
+  } else {
+@@ -675,7 +695,7 @@ async function migrateAndValidateStorage() {
+    let lsData = null;
+    let tmTimestamp = 0;
+    let lsTimestamp = 0;
+    
+
+    // Get TamperMonkey data
+    try {
+      if (typeof GM !== 'undefined' && GM.getValue) {
+@@ -686,17 +706,17 @@ async function migrateAndValidateStorage() {
+        tmTimestamp = GM_getValue('bmTemplates_timestamp', 0);
+      }
+    } catch (e) { console.warn('TM check failed:', e); }
+    
+
+    // Get localStorage data
+    try {
+      lsData = localStorage.getItem('bmTemplates');
+      lsTimestamp = parseInt(localStorage.getItem('bmTemplates_timestamp') || '0');
+    } catch (e) { console.warn('LS check failed:', e); }
+    
+
+    // If we have data in both, use the most recent
+    if (tmData && lsData && tmTimestamp !== lsTimestamp) {
+      console.log(`🔄 Data sync: TM(${new Date(tmTimestamp).toLocaleString()}) vs LS(${new Date(lsTimestamp).toLocaleString()})`);
+      
+
+      if (tmTimestamp > lsTimestamp) {
+        // TamperMonkey is newer, update localStorage
+        localStorage.setItem('bmTemplates', tmData);
+@@ -815,36 +835,36 @@ function observeOpacityButton() {
+    // Look for the opacity button (supports both languages)
+    const opacityButton = document.querySelector('button[title="Toggle art opacity"], button[title="Alterar opacidade"]');
+    if (!opacityButton) return;
+    
+
+    // Check if we already added our Map button container
+    let mapButtonContainer = document.querySelector('#bm-map-button-container');
+    if (mapButtonContainer) return;
+    
+
+    // Get the container div (absolute bottom-3 left-3 z-30)
+    const opacityContainer = opacityButton.closest('.absolute.bottom-3.left-3.z-30');
+    if (!opacityContainer) return;
+    
+
+    // Create a new container for the Map button positioned above the opacity button
+    mapButtonContainer = document.createElement('div');
+    mapButtonContainer.id = 'bm-map-button-container';
+    mapButtonContainer.className = 'fixed z-30';
+    mapButtonContainer.style.bottom = '230px'; // Fixed position above opacity button (approximate)
+    mapButtonContainer.style.left = '12px'; // Fixed position aligned with opacity button
+    
+
+    // Create the Map button
+    const mapButton = document.createElement('button');
+    mapButton.id = 'bm-button-map-positioned';
+    mapButton.innerHTML = '🗺️';
+    mapButton.className = 'btn btn-lg btn-square sm:btn-xl z-30 shadow-md text-base-content/80';
+    mapButton.title = 'Error Map View';
+    
+
+    // Initialize button appearance based on saved state
+    const initialState = getErrorMapEnabled();
+    if (initialState) {
+      mapButton.style.background = 'linear-gradient(135deg, #10b981, #059669)';
+      mapButton.style.color = 'white';
+    }
+    
+
+    mapButton.onclick = function() {
+      toggleErrorMapMode();
+      const isEnabled = getErrorMapEnabled();
+@@ -857,10 +877,10 @@ function observeOpacityButton() {
+      }
+      overlayMain.handleDisplayStatus(`Error Map ${isEnabled ? 'enabled' : 'disabled'}! ${isEnabled ? 'Green=correct, Red=wrong pixels' : 'Back to normal view'}`);
+    };
+    
+
+    // Add the button to our container
+    mapButtonContainer.appendChild(mapButton);
+    
+
+    // Insert the Map button container directly into the body with fixed positioning
+    document.body.appendChild(mapButtonContainer);
+  });
+@@ -876,12 +896,12 @@ function deleteAllTemplates(instance) {
+  // Get current template count for confirmation message
+  const templateCount = templateManager?.templatesArray?.length || 0;
+  const templateText = templateCount === 1 ? 'template' : 'templates';
+  
+
+  // Show confirmation dialog
+  const confirmMessage = templateCount > 0 
+  const confirmMessage = templateCount > 0
+    ? `Are you sure you want to delete all ${templateCount} ${templateText}?\n\nThis action cannot be undone!`
+    : 'No templates found to delete.';
+  
+
+  if (templateCount === 0) {
+    showCustomConfirmDialog(
+      'No Templates Found',
+@@ -893,7 +913,7 @@ function deleteAllTemplates(instance) {
+    );
+    return;
+  }
+  
+
+  // Use custom confirmation dialog instead of native confirm
+  showCustomConfirmDialog(
+    'Delete All Templates?',
+@@ -925,7 +945,7 @@ function performDeleteAllTemplates(instance, templateCount, templateText) {
+        templates: {}
+      };
+    }
+    
+
+    // Clear from TamperMonkey storage
+    try {
+      if (typeof GM !== 'undefined' && GM.deleteValue) {
+@@ -938,36 +958,36 @@ function performDeleteAllTemplates(instance, templateCount, templateText) {
+    } catch (error) {
+      console.warn('⚠️ Failed to clear TamperMonkey storage:', error);
+    }
+    
+
+    // Clear from localStorage
+    try {
+      localStorage.removeItem('bmTemplates');
+      localStorage.removeItem('bmTemplates_timestamp');
+    } catch (error) {
+      console.warn('⚠️ Failed to clear localStorage:', error);
+    }
+    
+
+    // Force refresh template display to clear any visual templates
+    if (typeof refreshTemplateDisplay === 'function') {
+      refreshTemplateDisplay().catch(error => {
+        console.warn('Warning: Failed to refresh template display:', error);
+      });
+    }
+    
+
+    // Update mini tracker to reflect empty state
+    if (typeof updateMiniTracker === 'function') {
+      updateMiniTracker();
+    }
+    
+
+    // Close Color Filter overlay if open
+    const existingColorFilterOverlay = document.getElementById('bm-color-filter-overlay');
+    if (existingColorFilterOverlay) {
+      existingColorFilterOverlay.remove();
+    }
+    
+
+    instance.handleDisplayStatus(`Successfully deleted all ${templateCount} ${templateText}!`);
+    consoleLog(`🗑️ Deleted all ${templateCount} templates from storage`);
+    
+
+  } catch (error) {
+    consoleError('❌ Failed to delete templates:', error);
+    instance.handleDisplayError('Failed to delete templates. Check console for details.');
+@@ -989,7 +1009,7 @@ function clearAllStorage(instance) {
+          // Templates
+          'bmTemplates',
+          'bmTemplates_timestamp',
+          
+
+          // Settings
+          'bmErrorMap',
+          'bmCrosshairColor',
+@@ -1006,18 +1026,18 @@ function clearAllStorage(instance) {
+          'bmQuickfillEnabled',
+          'bmQuickfillPixels',
+          'bmQuickfillSelectedColor',
+          
+
+          // Color filters
+          'bmcf-excluded-colors',
+          'bmcf-excluded-colors-pending',
+          'bmcf-view-preference',
+          
+
+          // Enhanced mode
+          'bmEnhanceWrongColors'
+        ];
+        
+
+        let deletedCount = 0;
+        
+
+        // Clear localStorage
+        bmStorageKeys.forEach(key => {
+          if (localStorage.getItem(key) !== null) {
+@@ -1026,7 +1046,7 @@ function clearAllStorage(instance) {
+            console.log(`🧹 Cleared localStorage: ${key}`);
+          }
+        });
+        
+
+        // Clear TamperMonkey storage (if available)
+        if (typeof GM_deleteValue !== 'undefined') {
+          bmStorageKeys.forEach(key => {
+@@ -1038,7 +1058,7 @@ function clearAllStorage(instance) {
+            }
+          });
+        }
+        
+
+        // Clear async GM storage (if available)
+        if (typeof GM !== 'undefined' && GM.deleteValue) {
+          bmStorageKeys.forEach(async (key) => {
+@@ -1050,15 +1070,15 @@ function clearAllStorage(instance) {
+            }
+          });
+        }
+        
+
+        // Clear template manager data
+        if (templateManager) {
+          templateManager.templatesJSON = null;
+          templateManager.templatesArray = [];
+          templateManager.templatesShouldBeDrawn = false;
+          console.log('🧹 Cleared template manager data');
+        }
+        
+
+        // Clear any remaining Blue Marble related session storage
+        try {
+          Object.keys(sessionStorage).forEach(key => {
+@@ -1070,17 +1090,17 @@ function clearAllStorage(instance) {
+        } catch (e) {
+          console.warn('Could not clear session storage:', e);
+        }
+        
+
+        instance.handleDisplayStatus(`🧹 Storage cleared! Deleted ${deletedCount} keys. Please refresh the page.`);
+        console.log(`🧹✅ Successfully cleared all Blue Marble storage data (${deletedCount} keys)`);
+        
+
+        // Suggest page refresh
+        setTimeout(() => {
+          if (confirm('Storage cleared successfully!\n\nRefresh the page to complete the reset?')) {
+            window.location.reload();
+          }
+        }, 2000);
+        
+
+      } catch (error) {
+        console.error('❌ Error clearing storage:', error);
+        instance.handleDisplayError('Failed to clear storage. Check console for details.');
+@@ -1292,61 +1312,61 @@ function showCustomConfirmDialog(title, message, onConfirm, onCancel = null) {
+    `;
+    document.head.appendChild(styleSheet);
+  }
+  
+
+  // Create overlay backdrop
+  const overlay = document.createElement('div');
+  overlay.className = 'bmcd-overlay-backdrop';
+  
+
+  // Create main container
+  const container = document.createElement('div');
+  container.className = 'bmcd-container';
+  
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'bmcd-header';
+  
+
+  const titleElement = document.createElement('h3');
+  titleElement.className = 'bmcd-title';
+  titleElement.textContent = title;
+  
+
+  header.appendChild(titleElement);
+  
+
+  // Content
+  const content = document.createElement('div');
+  content.className = 'bmcd-content';
+  
+
+  const messageElement = document.createElement('p');
+  messageElement.className = 'bmcd-message';
+  messageElement.textContent = message;
+  
+
+  content.appendChild(messageElement);
+  
+
+  // Footer with buttons
+  const footer = document.createElement('div');
+  footer.className = 'bmcd-footer';
+  
+
+  // Create buttons based on whether there's a confirm action
+  if (onConfirm) {
+    // Confirm button
+    const confirmBtn = document.createElement('button');
+    confirmBtn.className = 'bmcd-btn bmcd-btn-danger';
+    confirmBtn.textContent = 'Delete';
+    
+
+    confirmBtn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      onConfirm();
+    });
+    
+
+    // Cancel button
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'bmcd-btn bmcd-btn-secondary';
+    cancelBtn.textContent = 'Cancel';
+    
+
+    cancelBtn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      if (onCancel) onCancel();
+    });
+    
+
+    footer.appendChild(cancelBtn);
+    footer.appendChild(confirmBtn);
+  } else {
+@@ -1356,32 +1376,32 @@ function showCustomConfirmDialog(title, message, onConfirm, onCancel = null) {
+    okBtn.textContent = 'OK';
+    okBtn.style.flex = 'none';
+    okBtn.style.minWidth = '120px';
+    
+
+    okBtn.addEventListener('click', () => {
+      document.body.removeChild(overlay);
+      if (onCancel) onCancel();
+    });
+    
+
+    footer.appendChild(okBtn);
+    
+
+    // Focus the OK button for info dialogs
+    setTimeout(() => okBtn.focus(), 100);
+  }
+  
+
+  // Assemble the dialog
+  container.appendChild(header);
+  container.appendChild(content);
+  container.appendChild(footer);
+  overlay.appendChild(container);
+  
+
+  // Close dialog when clicking outside (but not when clicking the container)
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+      if (onCancel) onCancel();
+    }
+  });
+  
+
+  // ESC key support
+  const handleKeyDown = (e) => {
+    if (e.key === 'Escape') {
+@@ -1391,10 +1411,10 @@ function showCustomConfirmDialog(title, message, onConfirm, onCancel = null) {
+    }
+  };
+  document.addEventListener('keydown', handleKeyDown);
+  
+
+  // Add to page
+  document.body.appendChild(overlay);
+  
+
+  // Focus the cancel button by default for better UX (only if it exists)
+  if (onConfirm) {
+    setTimeout(() => {
+@@ -1412,12 +1432,12 @@ function deleteSelectedTemplate(instance) {
+  // Get available templates
+  const templates = templateManager?.templatesJSON?.templates || {};
+  const templateKeys = Object.keys(templates);
+  
+
+  if (templateKeys.length === 0) {
+    instance.handleDisplayStatus('No templates found to delete');
+    return;
+  }
+  
+
+  // Inject slate theme styles if not already present
+  if (!document.getElementById('bm-delete-template-styles')) {
+    const styleSheet = document.createElement('style');
+@@ -1714,58 +1734,58 @@ function deleteSelectedTemplate(instance) {
+    `;
+    document.head.appendChild(styleSheet);
+  }
+  
+
+  // Create overlay backdrop
+  const overlay = document.createElement('div');
+  overlay.id = 'bm-delete-template-overlay';
+  overlay.className = 'bmdt-overlay-backdrop';
+  
+
+  // Create main container
+  const container = document.createElement('div');
+  container.className = 'bmdt-container';
+  
+
+  // Header
+  const header = document.createElement('div');
+  header.className = 'bmdt-header';
+  
+
+  const title = document.createElement('h3');
+  title.className = 'bmdt-title';
+  title.textContent = 'Select Template to Delete';
+  
+
+  header.appendChild(title);
+  
+
+  // Content
+  const content = document.createElement('div');
+  content.className = 'bmdt-content';
+  
+
+  // Template list
+  const templateList = document.createElement('div');
+  templateList.className = 'bmdt-template-list';
+  
+
+  templateKeys.forEach(templateKey => {
+    const template = templates[templateKey];
+    const templateName = template.name || `Template ${templateKey}`;
+    const templateCoords = template.coords || 'Unknown location';
+    
+
+    const templateItem = document.createElement('div');
+    templateItem.className = 'bmdt-template-item';
+    
+
+    const templateInfo = document.createElement('div');
+    templateInfo.className = 'bmdt-template-info';
+    
+
+    const nameSpan = document.createElement('div');
+    nameSpan.className = 'bmdt-template-name';
+    nameSpan.textContent = templateName;
+    
+
+    // Extract sortID from template key for more user-friendly display
+    const keySpan = document.createElement('div');
+    keySpan.className = 'bmdt-template-key';
+    const sortID = templateKey.split(' ')[0];
+    keySpan.textContent = `Template ID: ${sortID}`;
+    
+
+    const coordsSpan = document.createElement('div');
+    coordsSpan.className = 'bmdt-template-coords';
+    
+
+    // Parse and format coordinates for better readability
+    if (templateCoords && templateCoords !== 'Unknown location') {
+      const coords = templateCoords.split(', ');
+@@ -1778,59 +1798,59 @@ function deleteSelectedTemplate(instance) {
+    } else {
+      coordsSpan.textContent = '📍 Unknown location';
+    }
+    
+
+    templateInfo.appendChild(nameSpan);
+    templateInfo.appendChild(keySpan);
+    templateInfo.appendChild(coordsSpan);
+    
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'bmdt-delete-btn';
+    deleteBtn.textContent = 'Delete';
+    
+
+    deleteBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      
+
+      showCustomConfirmDialog(
+        `Delete "${templateName}"?`,
+        `Are you sure you want to delete this template?\n\nThis action cannot be undone!`,
+        () => {
+          try {
+            // Delete from templateManager
+            templateManager.deleteTemplate(templateKey);
+            
+
+            // Remove overlay
+            document.body.removeChild(overlay);
+            
+
+            instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
+            consoleLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
+            
+
+          } catch (error) {
+            consoleError('❌ Failed to delete template:', error);
+            instance.handleDisplayError('Failed to delete template. Check console for details.');
+          }
+        }
+      );
+    });
+    
+
+    templateItem.appendChild(templateInfo);
+    templateItem.appendChild(deleteBtn);
+    templateList.appendChild(templateItem);
+  });
+  
+
+  content.appendChild(templateList);
+  
+
+  // Footer with buttons
+  const footer = document.createElement('div');
+  footer.className = 'bmdt-footer';
+  
+
+  // Delete All button
+  const deleteAllBtn = document.createElement('button');
+  deleteAllBtn.className = 'bmdt-btn bmdt-btn-danger';
+  deleteAllBtn.textContent = 'Delete All Templates';
+  
+
+  deleteAllBtn.addEventListener('click', () => {
+    document.body.removeChild(overlay);
+    
+
+    showCustomConfirmDialog(
+      'Delete All Templates?',
+      `Are you sure you want to delete all ${templateKeys.length} templates?\n\nThis action cannot be undone!`,
+@@ -1842,34 +1862,34 @@ function deleteSelectedTemplate(instance) {
+      }
+    );
+  });
+  
+
+  // Cancel button
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'bmdt-btn bmdt-btn-secondary';
+  cancelBtn.textContent = 'Cancel';
+  
+
+  cancelBtn.addEventListener('click', () => {
+    document.body.removeChild(overlay);
+    instance.handleDisplayStatus('Template deletion cancelled');
+  });
+  
+
+  footer.appendChild(deleteAllBtn);
+  footer.appendChild(cancelBtn);
+  
+
+  // Assemble the interface
+  container.appendChild(header);
+  container.appendChild(content);
+  container.appendChild(footer);
+  overlay.appendChild(container);
+  
+
+  // Close overlay when clicking outside
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) {
+      document.body.removeChild(overlay);
+      instance.handleDisplayStatus('Template deletion cancelled');
+    }
+  });
+  
+
+  // Add to page
+  document.body.appendChild(overlay);
+}
+@@ -1998,7 +2018,7 @@ function showImportDialog(instance) {
+  // File processing function
+  const processFile = async (file) => {
+    if (!file) return;
+    
+
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text);
+@@ -2013,7 +2033,7 @@ function showImportDialog(instance) {
+
+  // Event handlers
+  fileInput.onchange = () => processFile(fileInput.files?.[0]);
+  
+
+  dropZone.onclick = () => fileInput.click();
+
+  // Drag and drop handlers
+@@ -2032,7 +2052,7 @@ function showImportDialog(instance) {
+    e.preventDefault();
+    dropZone.style.borderColor = '#475569';
+    dropZone.style.background = 'rgba(71, 85, 105, 0.1)';
+    
+
+    const file = e.dataTransfer.files?.[0];
+    if (file && file.type === 'application/json') {
+      processFile(file);
+@@ -2066,7 +2086,7 @@ function showImportDialog(instance) {
+function showTemplateManageDialog(instance) {
+  const templates = templateManager?.templatesJSON?.templates || {};
+  const templateKeys = Object.keys(templates);
+  
+
+  // Create management dialog
+  const overlay = document.createElement('div');
+  overlay.id = 'bm-template-manage-overlay';
+@@ -2084,7 +2104,7 @@ function showTemplateManageDialog(instance) {
+    z-index: 10000;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  `;
+  
+
+  const container = document.createElement('div');
+  container.style.cssText = `
+    background: #1e293b;
+@@ -2101,7 +2121,7 @@ function showTemplateManageDialog(instance) {
+    flex-direction: column;
+    position: relative;
+  `;
+  
+
+  // Header
+  const header = document.createElement('div');
+  header.style.cssText = `
+@@ -2112,7 +2132,7 @@ function showTemplateManageDialog(instance) {
+    border-bottom: 1px solid #334155;
+    background: linear-gradient(135deg, #1e293b, #293548);
+  `;
+  
+
+  const title = document.createElement('h3');
+  title.textContent = 'Manage Templates';
+  title.style.cssText = `
+@@ -2124,7 +2144,7 @@ function showTemplateManageDialog(instance) {
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  `;
+  
+
+  const closeBtn = document.createElement('button');
+  closeBtn.textContent = '×';
+  closeBtn.style.cssText = `
+@@ -2151,33 +2171,33 @@ function showTemplateManageDialog(instance) {
+    closeBtn.style.color = '#94a3b8';
+  };
+  closeBtn.onclick = () => document.body.removeChild(overlay);
+  
+
+  header.appendChild(title);
+  header.appendChild(closeBtn);
+  
+
+  // Content
+  const content = document.createElement('div');
+  content.style.cssText = `
+    padding: 20px 24px;
+    overflow-y: auto;
+    flex: 1;
+  `;
+  
+
+  // Template list
+  const templateList = document.createElement('div');
+  templateList.style.cssText = `
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  `;
+  
+
+  templateKeys.forEach(templateKey => {
+    const template = templates[templateKey];
+    const templateName = template.name || `Template ${templateKey}`;
+    const templateCoords = template.coords || 'Unknown location';
+    const pixelCount = template.pixelCount || 0;
+    const isEnabled = templateManager.isTemplateEnabled(templateKey);
+    
+
+    const templateItem = document.createElement('div');
+    templateItem.style.cssText = `
+      display: flex;
+@@ -2197,14 +2217,14 @@ function showTemplateManageDialog(instance) {
+      templateItem.style.background = '#334155';
+      templateItem.style.transform = '';
+    };
+    
+
+    const templateInfo = document.createElement('div');
+    templateInfo.style.cssText = `
+      flex: 1;
+      min-width: 0;
+      margin-right: 16px;
+    `;
+    
+
+    // Name + pencil (inline rename)
+    const nameRow = document.createElement('div');
+    nameRow.style.cssText = 'display:flex; align-items:center; gap:8px; margin-bottom:6px;';
+@@ -2260,23 +2280,23 @@ function showTemplateManageDialog(instance) {
+    nameLabel.onclick = (e) => { e.stopPropagation(); startInlineRename(); };
+    nameRow.appendChild(renameBtn);
+    nameRow.appendChild(nameLabel);
+    
+
+    const infoSpan = document.createElement('div');
+    const validPixelCount = template.validPixelCount || pixelCount; // Fallback for older templates
+    const transparentPixelCount = template.transparentPixelCount || 0;
+    
+
+    if (validPixelCount !== pixelCount && transparentPixelCount > 0) {
+      infoSpan.textContent = `${new Intl.NumberFormat().format(pixelCount)} pixels (${new Intl.NumberFormat().format(validPixelCount)} valid)`;
+    } else {
+      infoSpan.textContent = `${new Intl.NumberFormat().format(pixelCount)} pixels`;
+    }
+    
+
+    infoSpan.style.cssText = `
+      font-size: 0.85em;
+      color: #94a3b8;
+      margin-bottom: 4px;
+    `;
+    
+
+    const coordsSpan = document.createElement('div');
+    if (templateCoords && templateCoords !== 'Unknown location') {
+      const coords = templateCoords.split(', ');
+@@ -2294,19 +2314,19 @@ function showTemplateManageDialog(instance) {
+      color: #60a5fa;
+      font-weight: 500;
+    `;
+    
+
+    templateInfo.appendChild(nameRow);
+    templateInfo.appendChild(infoSpan);
+    templateInfo.appendChild(coordsSpan);
+    
+
+    // Button container
+    const buttonContainer = document.createElement('div');
+    buttonContainer.style.cssText = `
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    `;
+    
+
+    // Export button
+    const exportBtn = document.createElement('button');
+    exportBtn.innerHTML = icons.exportIcon;
+@@ -2329,7 +2349,7 @@ function showTemplateManageDialog(instance) {
+      exportBtn.style.background = 'linear-gradient(135deg, #16a34a, #15803d)';
+      exportBtn.style.transform = 'translateY(-1px)';
+    };
+    
+
+    exportBtn.onmouseout = () => {
+      exportBtn.style.background = 'linear-gradient(135deg, #22c55e, #16a34a)';
+      exportBtn.style.transform = '';
+@@ -2339,7 +2359,7 @@ function showTemplateManageDialog(instance) {
+      templateManager.downloadTemplateJSON(templateKey);
+      instance.handleDisplayStatus(`Exported "${templateName}"`);
+    };
+    
+
+    // Toggle button
+    const toggleBtn = document.createElement('button');
+    toggleBtn.textContent = isEnabled ? 'Enabled' : 'Disabled';
+@@ -2357,21 +2377,21 @@ function showTemplateManageDialog(instance) {
+        : 'background: linear-gradient(135deg, #64748b, #475569); color: #e2e8f0;'
+      }
+    `;
+    
+
+    toggleBtn.onclick = () => {
+      const newState = !templateManager.isTemplateEnabled(templateKey);
+      templateManager.setTemplateEnabled(templateKey, newState);
+      
+
+      // Update button appearance
+      toggleBtn.textContent = newState ? 'Enabled' : 'Disabled';
+      toggleBtn.style.background = newState 
+      toggleBtn.style.background = newState
+        ? 'linear-gradient(135deg, #10b981, #059669)'
+        : 'linear-gradient(135deg, #64748b, #475569)';
+      toggleBtn.style.color = newState ? 'white' : '#e2e8f0';
+      
+
+      instance.handleDisplayStatus(`${newState ? 'Enabled' : 'Disabled'} template "${templateName}"!`);
+    };
+    
+
+    // Fly button
+    const flyBtn = document.createElement('button');
+    flyBtn.innerHTML = icons.pinIcon;
+@@ -2390,33 +2410,40 @@ function showTemplateManageDialog(instance) {
+      background: linear-gradient(135deg, #3b82f6, #2563eb);
+      color: white;
+    `;
+    
+
+    flyBtn.onmouseover = () => {
+      flyBtn.style.background = 'linear-gradient(135deg, #2563eb, #1d4ed8)';
+      flyBtn.style.transform = 'translateY(-1px)';
+    };
+    
+
+    flyBtn.onmouseout = () => {
+      flyBtn.style.background = 'linear-gradient(135deg, #3b82f6, #2563eb)';
+      flyBtn.style.transform = '';
+    };
+    
+
+    flyBtn.onclick = () => {
+      if (templateCoords && templateCoords !== 'Unknown location') {
+        const coords = templateCoords.split(', ');
+        if (coords.length === 4) {
+          const [tileX, tileY, pX, pY] = coords.map(coord => parseInt(coord.trim(), 10));
+          const coordinates = [tileX, tileY, pX, pY];
+          
+
+          // Convert to lat/lng
+          const latLng = canvasPosToLatLng(coordinates);
+          
+
+          if (latLng) {
+            const teleportUrl = `https://wplace.live/?lat=${latLng.lat}&lng=${latLng.lng}&zoom=14.202666470770193`;
+            
+            // Open in same tab to teleport
+            window.location.href = teleportUrl;
+            
+            window.bmmap.flyTo(
+                {
+                    center: [latLng.lng, latLng.lat],
+                    zoom: 16,
+                }
+            )
+
+            // const teleportUrl = `https://wplace.live/?lat=${latLng.lat}&lng=${latLng.lng}&zoom=14.202666470770193`;
+            //
+            // // Open in same tab to teleport
+            // window.location.href = teleportUrl;
+
+            instance.handleDisplayStatus(`🚀 Flying to "${templateName}" at ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}!`);
+          } else {
+            instance.handleDisplayStatus('❌ Unable to convert coordinates to location!');
+@@ -2428,18 +2455,18 @@ function showTemplateManageDialog(instance) {
+        instance.handleDisplayStatus('❌ No coordinates available for this template!');
+      }
+    };
+    
+
+    buttonContainer.appendChild(exportBtn);
+    buttonContainer.appendChild(flyBtn);
+    buttonContainer.appendChild(toggleBtn);
+    
+
+    templateItem.appendChild(templateInfo);
+    templateItem.appendChild(buttonContainer);
+    templateList.appendChild(templateItem);
+  });
+  
+
+    content.appendChild(templateList);
+  
+
+  // Footer with actions that keep dialog open
+  const footer = document.createElement('div');
+  footer.style.cssText = `
+@@ -2477,7 +2504,7 @@ function showTemplateManageDialog(instance) {
+  };
+  footer.appendChild(enableAllBtn);
+  footer.appendChild(disableAllBtn);
+  
+
+  // Assemble the interface
+  container.appendChild(header);
+  container.appendChild(content);
+@@ -2490,41 +2517,41 @@ function showTemplateManageDialog(instance) {
+      document.body.removeChild(overlay);
+    }
+  });
+  
+
+  // Add to page
+  document.body.appendChild(overlay);
+}
+
+/** Deploys the overlay to the page with minimize/maximize functionality.
+ * Creates a responsive overlay UI that can toggle between full-featured and minimized states.
+ * 
+ *
+ * Parent/child relationships in the DOM structure below are indicated by indentation.
+ * @since 0.58.3
+ */
+function buildOverlayMain() {
+  let isMinimized = false; // Overlay state tracker (false = maximized, true = minimized)
+  
+
+  overlayMain.addDiv({'id': 'bm-overlay', 'style': 'top: 10px; right: 75px;'})
+    .addDiv({'id': 'bm-contain-header'})
+      .addDiv({'id': 'bm-bar-drag'}).buildElement()
+      .addDiv({'id': 'bm-title-container'})
+        .addImg({'alt': 'Blue Marble Icon - Click to minimize/maximize', 'src': 'https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png', 'style': 'cursor: pointer;'}, 
+        .addImg({'alt': 'Blue Marble Icon - Click to minimize/maximize', 'src': 'https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png', 'style': 'cursor: pointer;'},
+          (instance, img) => {
+          /** Click event handler for overlay minimize/maximize functionality.
+           * 
+           *
+           * Toggles between two distinct UI states:
+           * 1. MINIMIZED STATE (60×76px):
+           *    - Shows only the Blue Marble icon and drag bar
+           *    - Hides all input fields, buttons, and status information
+           *    - Applies fixed dimensions for consistent appearance
+           *    - Repositions icon with 3px right offset for visual centering
+           * 
+           *
+           * 2. MAXIMIZED STATE (responsive):
+           *    - Restores full functionality with all UI elements
+           *    - Removes fixed dimensions to allow responsive behavior
+           *    - Resets icon positioning to default alignment
+           *    - Shows success message when returning to maximized state
+           * 
+           *
+           * @param {Event} event - The click event object (implicit)
+           */
+          img.addEventListener('click', () => {
+@@ -2541,7 +2568,7 @@ function buildOverlayMain() {
+            const deleteTemplatesButton = document.querySelector('#bm-button-delete-templates');
+            const coordInputs = document.querySelectorAll('#bm-contain-coords input');
+            const colorFilterButton = document.getElementById('bm-button-color-filter');
+            
+
+            // Pre-restore original dimensions when switching to maximized state
+            // This ensures smooth transition and prevents layout issues
+            if (!isMinimized) {
+@@ -2550,7 +2577,7 @@ function buildOverlayMain() {
+              overlay.style.minWidth = "200px";
+              overlay.style.padding = "10px";
+            }
+            
+
+            // Define elements that should be hidden/shown during state transitions
+            // Each element is documented with its purpose for maintainability
+                          const elementsToToggle = [
+@@ -2562,7 +2589,7 @@ function buildOverlayMain() {
+                '#bm-contain-buttons-action',        // Action buttons container
+                `#${instance.outputStatusId}`        // Status log textarea for user feedback
+              ];
+            
+
+            // Apply visibility changes to all toggleable elements
+            elementsToToggle.forEach(selector => {
+              const elements = document.querySelectorAll(selector);
+@@ -2575,17 +2602,17 @@ function buildOverlayMain() {
+              // ==================== MINIMIZED STATE CONFIGURATION ====================
+              // In minimized state, we hide ALL interactive elements except the icon and drag bar
+              // This creates a clean, unobtrusive interface that maintains only essential functionality
+              
+
+              // Hide coordinate input container completely
+              if (coordsContainer) {
+                coordsContainer.style.display = 'none';
+              }
+              
+
+              // Hide coordinate button (pin icon)
+              if (coordsButton) {
+                coordsButton.style.display = 'none';
+              }
+              
+
+              // Hide create template button
+              if (createButton) {
+                createButton.style.display = 'none';
+@@ -2666,12 +2693,12 @@ function buildOverlayMain() {
+                  icon.style.margin = '0 auto';
+                }
+              }
+              
+
+              // Hide all coordinate input fields individually (failsafe)
+              coordInputs.forEach(input => {
+                input.style.display = 'none';
+              });
+              
+
+              // Apply fixed dimensions for consistent minimized appearance
+              // These dimensions were chosen to accommodate the icon while remaining compact
+              // Increase width to accommodate compact Color Filter button (56px) + padding
+@@ -2680,15 +2707,15 @@ function buildOverlayMain() {
+              overlay.style.maxWidth = '72px';  // Prevent expansion
+              overlay.style.minWidth = '72px';  // Prevent shrinking
+              overlay.style.padding = '8px';    // Comfortable padding around icon
+              
+
+                             // Apply icon positioning for better visual centering in minimized state
+               img.style.margin = '.5rem 1rem 0';
+              
+
+              // Configure header layout for minimized state
+              header.style.textAlign = 'center';
+              header.style.margin = '0';
+              header.style.marginBottom = '0';
+              
+
+              // Ensure drag bar remains visible and properly spaced
+              if (dragBar) {
+                dragBar.style.display = '';
+@@ -2698,7 +2725,7 @@ function buildOverlayMain() {
+              // ==================== MAXIMIZED STATE RESTORATION ====================
+              // In maximized state, we restore all elements to their default functionality
+              // This involves clearing all style overrides applied during minimization
+              
+
+              // Restore coordinate container to default state
+              if (coordsContainer) {
+                coordsContainer.style.display = '';           // Show container
+@@ -2709,12 +2736,12 @@ function buildOverlayMain() {
+                coordsContainer.style.textAlign = '';         // Reset text alignment
+                coordsContainer.style.margin = '';            // Reset margins
+              }
+              
+
+              // Restore coordinate button visibility
+              if (coordsButton) {
+                coordsButton.style.display = '';
+              }
+              
+
+              // Restore create button visibility and reset positioning
+              if (createButton) {
+                createButton.style.display = '';
+@@ -2775,45 +2802,45 @@ function buildOverlayMain() {
+                  btnContainer.style.gridTemplateColumns = '';
+                }
+              }
+              
+
+              // Restore all coordinate input fields
+              coordInputs.forEach(input => {
+                input.style.display = '';
+              });
+              
+
+              // Reset icon positioning to default (remove minimized state offset)
+              img.style.marginLeft = '';
+              
+
+              // Restore overlay to responsive dimensions
+              overlay.style.padding = '10px';
+              
+
+              // Reset header styling to defaults
+              header.style.textAlign = '';
+              header.style.margin = '';
+              header.style.marginBottom = '';
+              
+
+              // Reset drag bar spacing
+              if (dragBar) {
+                dragBar.style.marginBottom = '0.5em';
+              }
+              
+
+              // Remove all fixed dimensions to allow responsive behavior
+              // This ensures the overlay can adapt to content changes
+              overlay.style.width = '';
+              overlay.style.height = '';
+            }
+            
+
+            // Update mini tracker visibility based on collapse setting
+            updateMiniTracker();
+            
+
+            // ==================== ACCESSIBILITY AND USER FEEDBACK ====================
+            // Update accessibility information for screen readers and tooltips
+            
+
+            // Update alt text to reflect current state for screen readers and tooltips
+            img.alt = isMinimized ? 
+              'Blue Marble Icon - Minimized (Click to maximize)' : 
+            img.alt = isMinimized ?
+              'Blue Marble Icon - Minimized (Click to maximize)' :
+              'Blue Marble Icon - Maximized (Click to minimize)';
+            
+
+            // No status message needed - state change is visually obvious to users
+          });
+        }
+@@ -2848,7 +2875,7 @@ function buildOverlayMain() {
+        .addP({'id': 'bm-user-fullcharge-content', 'textContent': 'Full Charge in...'}).buildElement()
+      .buildElement()
+    .buildElement()
+    
+
+
+    .addDiv({ id: 'bm-separator' })
+      .addHr().buildElement()
+@@ -2892,10 +2919,46 @@ function buildOverlayMain() {
+          .addInput({'type': 'number', 'id': 'bm-input-ty', 'placeholder': 'T1 Y', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+          .addInput({'type': 'number', 'id': 'bm-input-px', 'placeholder': 'Px X', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+          .addInput({'type': 'number', 'id': 'bm-input-py', 'placeholder': 'Px Y', 'min': 0, 'max': 2047, 'step': 1, 'required': true}).buildElement()
+          .addButton({'innerHTML': "🗺️"},(instance, button) => {
+              button.onclick = () => {
+                  function coordsToLatLng(tileX, tileY, pixelX, pixelY){
+                      const z = 40075.016685578485 / 2 ** 11
+                      const ys = 20037508.342789244
+                      let metersX = (tileX * 1000 + pixelX) * z - ys
+                      let metersY = (ys - (tileY * 1000 + pixelY) * z) / ys * 180
+
+                      let lat = 180 / Math.PI * (2 * Math.atan(Math.exp(metersY * Math.PI / 180)) - Math.PI / 2)
+                      let lng = metersX / ys * 180
+                      return [lat, lng]
+                  }
+                  const coordTlX = document.querySelector('#bm-input-tx');
+                  const coordTlY = document.querySelector('#bm-input-ty');
+                  const coordPxX = document.querySelector('#bm-input-px');
+                  const coordPxY = document.querySelector('#bm-input-py');
+
+                  const zoom = 16;
+                  const [lat, lng] = coordsToLatLng(coordTlX, coordTlY, coordPxX, coordPxY);
+                  window.bmmap.flyTo({
+                      center: [lng,lat],
+                      zoom: zoom
+                  });
+              }
+          } ).buildElement()
+        .buildElement()
+      .buildElement()
+      .addDiv({'id': 'bm-contain-buttons-template'})
+        .addInputFile({'id': 'bm-input-file-template', 'textContent': 'Upload Template', 'accept': 'image/png, image/jpeg, image/webp, image/bmp, image/gif'})
+        .addInputFile({'id': 'bm-input-file-template', 'textContent': 'Upload Template', 'accept': 'image/png, image/jpeg, image/webp, image/bmp, image/gif'}, (instance, container, input, button) => {
+            input.addEventListener('change', () => {
+                let filename = input.files[0].name
+                if(filename.match(/\./g).length === 5){
+                    const [name, tlx, tly, px, py, ext] = filename.split(".");
+                    instance.updateInnerHTML('bm-input-tx', tlx || '');
+                    instance.updateInnerHTML('bm-input-ty', tly || '');
+                    instance.updateInnerHTML('bm-input-px', px || '');
+                    instance.updateInnerHTML('bm-input-py', py || '');
+                }
+            });
+        })
+        .addButton({'id': 'bm-button-create', innerHTML: icons.createIcon + 'Create'}, (instance, button) => {
+          button.onclick = () => {
+            const input = document.querySelector('#bm-input-file-template');
+@@ -2938,18 +3001,18 @@ function buildOverlayMain() {
+        button.onclick = () => {
+          const isPaused = toggleTileRefreshPause(templateManager);
+          const cachedCount = getCachedTileCount();
+          
+
+          button.innerHTML = `${isPaused ? icons.playIcon : icons.pauseIcon} ${isPaused ? 'Resume' : 'Pause'}${isPaused && cachedCount > 0 ? ` (${cachedCount})` : ''}`;
+          
+
+          // Toggle CSS class based on pause state
+          if (isPaused) {
+            button.classList.add('paused');
+          } else {
+            button.classList.remove('paused');
+          }
+          
+          instance.handleDisplayStatus(isPaused ? 
+            `🧊 Tile refresh paused! Showing frozen template view with ${cachedCount} cached tiles for better performance.` : 
+
+          instance.handleDisplayStatus(isPaused ?
+            `🧊 Tile refresh paused! Showing frozen template view with ${cachedCount} cached tiles for better performance.` :
+            '▶️ Tile refresh resumed - templates now update in real-time'
+          );
+        }
+@@ -2963,13 +3026,13 @@ function buildOverlayMain() {
+      .addTextarea({'id': overlayMain.outputStatusId, 'placeholder': `Status: Sleeping...\nVersion: ${version}`, 'readOnly': true}).buildElement()
+      .addDiv({'id': 'bm-contain-buttons-action', 'style': 'position: relative; padding-bottom: 22px;'})
+        .addDiv({'style': 'display: flex; gap: 6px; align-items: center;'})
+          .addButton({'id': 'bm-button-convert', 'className': 'bm-help', 'innerHTML': '🎨', 'title': 'Template Color Converter'}, 
+          .addButton({'id': 'bm-button-convert', 'className': 'bm-help', 'innerHTML': '🎨', 'title': 'Template Color Converter'},
+            (instance, button) => {
+            button.addEventListener('click', () => {
+              window.open('https://pepoafonso.github.io/color_converter_wplace/', '_blank', 'noopener noreferrer');
+            });
+          }).buildElement()
+          .addButton({'id': 'bm-search', 'className': 'bm-help', 'innerHTML': '🔍', 'title': 'Location Search'}, 
+          .addButton({'id': 'bm-search', 'className': 'bm-help', 'innerHTML': '🔍', 'title': 'Location Search'},
+            (instance, button) => {
+            button.addEventListener('click', () => {
+              const searchPanel = document.getElementById('skirk-search-draggable');
+@@ -2984,7 +3047,7 @@ function buildOverlayMain() {
+                try {
+                  // SMART DETECTION: Get currently displayed template or first enabled template
+                  let t = null;
+                  
+
+                  if (templateManager.smartDetectionEnabled && templateManager.currentlyDisplayedTemplates.size === 1) {
+                    // Use the currently displayed template for screenshot
+                    const displayedTemplateKey = Array.from(templateManager.currentlyDisplayedTemplates)[0];
+@@ -2993,7 +3056,7 @@ function buildOverlayMain() {
+                      console.log('📸 [Smart Screenshot Button] Using actively displayed template:', t.displayName);
+                    }
+                  }
+                  
+
+                  // Fallback: Use first enabled template
+                  if (!t && templateManager.templatesArray) {
+                    for (const template of templateManager.templatesArray) {
+@@ -3005,35 +3068,35 @@ function buildOverlayMain() {
+                      }
+                    }
+                  }
+                  
+
+                  // Final fallback: Use first template (backward compatibility)
+                  if (!t) {
+                    t = templateManager.templatesArray?.[0];
+                    if (t) {
+                      console.log('📸 [Smart Screenshot Button] Using fallback template:', t.displayName);
+                    }
+                  }
+                  
+
+                  console.log('🔍 Debug - Active template:', t);
+                  console.log('🔍 Debug - Template coords:', t?.coords);
+                  if (!t) {
+                    instance.handleDisplayError('No template loaded.');
+                    return;
+                  }
+                  
+
+                  // Auto-detect coordinates from active template
+                  if (!t.coords || t.coords.length !== 4) {
+                    // console.log('❌ Debug - Template coords issue:', { coords: t.coords, length: t.coords?.length });
+                    instance.handleDisplayError('Template coordinates not available. Create a template first.');
+                    return;
+                  }
+                  
+
+                  const [tx, ty, px, py] = t.coords;
+                  if (!Number.isFinite(tx) || !Number.isFinite(ty) || !Number.isFinite(px) || !Number.isFinite(py)) {
+                    instance.handleDisplayError('Invalid template coordinates detected.');
+                    return;
+                  }
+                  
+
+                  if (!t.imageWidth || !t.imageHeight) {
+                    // Attempt to infer from chunked tiles if missing
+                    try {
+@@ -3128,7 +3191,7 @@ function buildOverlayTabTemplate() {
+                isMinimized = true;
+              }
+
+              
+
+            }
+          }
+        ).buildElement()
+@@ -3164,7 +3227,7 @@ function buildColorFilterOverlay() {
+  // Import the color palette from utils
+  import('./utils.js').then(utils => {
+    const colorPalette = utils.colorpalette;
+    
+
+    // Get enhanced pixel analysis data
+    consoleLog('🎯 [Color Filter] Calculating pixel statistics...');
+    const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
+@@ -3175,16 +3238,16 @@ function buildColorFilterOverlay() {
+    } catch (e) {
+      consoleWarn('Failed to update palette left badges:', e);
+    }
+    
+
+    // Calculate overall progress
+    let totalRequired = 0;
+    let totalPainted = 0;
+    let totalNeedCrosshair = 0;
+    let totalWrong = 0;
+    
+
+    // Get excluded colors from localStorage (used for both wrong pixels and main calculation)
+    const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+    
+
+    // Get wrong pixels from tile progress data (only once) - FILTERED BY ENABLED TEMPLATES
+    if (templateManager.tileProgress && templateManager.tileProgress.size > 0) {
+      // Get list of enabled templates for filtering (same logic as calculateRemainingPixelsByColor)
+@@ -3197,19 +3260,19 @@ function buildColorFilterOverlay() {
+          }
+        }
+      }
+      
+
+      for (const [tileKey, tileStats] of templateManager.tileProgress.entries()) {
+        // Filter tiles by enabled templates only (same logic as calculateRemainingPixelsByColor)
+        let shouldIncludeTile = true;
+        
+
+        if (enabledTemplateKeys.size > 0) {
+          shouldIncludeTile = false;
+          const [tileX, tileY] = tileKey.split(',').map(coord => parseInt(coord));
+          
+
+          for (const template of templateManager.templatesArray) {
+            const templateKey = `${template.sortID} ${template.authorID}`;
+            if (!enabledTemplateKeys.has(templateKey)) continue;
+            
+
+            if (template.chunked) {
+              for (const chunkKey of Object.keys(template.chunked)) {
+                const [chunkTileX, chunkTileY] = chunkKey.split(',').map(coord => parseInt(coord));
+@@ -3222,9 +3285,9 @@ function buildColorFilterOverlay() {
+            if (shouldIncludeTile) break;
+          }
+        }
+        
+
+        if (!shouldIncludeTile) continue;
+        
+
+        if (tileStats.colorBreakdown) {
+          for (const [colorKey, colorStats] of Object.entries(tileStats.colorBreakdown)) {
+            // Skip excluded colors from wrong pixels calculation too
+@@ -3236,22 +3299,22 @@ function buildColorFilterOverlay() {
+        }
+      }
+    }
+    
+
+    for (const [colorKey, stats] of Object.entries(pixelStats)) {
+      // Skip excluded colors from progress calculation
+      if (excludedColors.includes(colorKey)) {
+        consoleLog(`🚫 [Color Filter] Excluding color ${colorKey} from progress calculation`);
+        continue;
+      }
+      
+
+      totalRequired += stats.totalRequired || 0;
+      totalPainted += stats.painted || 0;
+      totalNeedCrosshair += stats.needsCrosshair || 0;
+    }
+    
+
+    // Apply wrong color logic based on settings
+    let overallProgress, displayPainted, displayRequired;
+    
+
+    if (templateManager.getIncludeWrongColorsInProgress()) {
+      // Wrong colors are ALREADY included in totalPainted from calculateRemainingPixelsByColor()
+      // Do NOT add totalWrong again to avoid double counting
+@@ -3266,7 +3329,7 @@ function buildColorFilterOverlay() {
+      overallProgress = displayRequired > 0 ? Math.round((displayPainted / displayRequired) * 100) : 0;
+      consoleLog(`🎯 [Color Filter] Overall progress: ${displayPainted}/${displayRequired} (${overallProgress}%) - ${totalNeedCrosshair} need crosshair, ${totalWrong} wrong excluded`);
+    }
+    
+
+    // Inject compact modern styles for Color Filter UI (once)
+    if (!document.getElementById('bmcf-styles')) {
+      const s = document.createElement('style');
+@@ -3364,7 +3427,7 @@ function buildColorFilterOverlay() {
+      const appliedExcluded = localStorage.getItem('bmcf-excluded-colors') || '[]';
+      localStorage.setItem('bmcf-excluded-colors-pending', appliedExcluded);
+    }
+    
+
+    // Create the color filter overlay
+    const colorFilterOverlay = document.createElement('div');
+    colorFilterOverlay.id = 'bm-color-filter-overlay';
+@@ -3459,20 +3522,20 @@ function buildColorFilterOverlay() {
+      closeButton.style.transform = '';
+      closeButton.style.boxShadow = '';
+    };
+    
+
+    // Prevent hover effects on touch by immediately resetting styles on touchstart
+    closeButton.addEventListener('touchstart', () => {
+      closeButton.style.transform = '';
+      closeButton.style.boxShadow = '';
+    }, { passive: true });
+    
+
+    closeButton.onclick = () => {
+      // Discard pending changes when closing without applying
+      localStorage.removeItem('bmcf-excluded-colors-pending');
+      colorFilterOverlay.remove();
+    };
+
+    // Settings button 
+    // Settings button
+    const settingsButton = document.createElement('button');
+    settingsButton.innerHTML = icons.settingsIcon;
+    settingsButton.style.cssText = `
+@@ -3503,7 +3566,7 @@ function buildColorFilterOverlay() {
+      settingsButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+      settingsButton.style.boxShadow = '';
+    };
+    
+
+    // Prevent hover effects on touch by immediately resetting styles on touchstart
+    settingsButton.addEventListener('touchstart', () => {
+      settingsButton.style.transform = '';
+@@ -3533,11 +3596,11 @@ function buildColorFilterOverlay() {
+      position: relative;
+      overflow: hidden;
+    `;
+    
+
+    // State variable for current view mode - restore from localStorage
+    const savedPreference = localStorage.getItem('bmcf-view-preference');
+    let isListView = savedPreference === 'list';
+    
+
+    // Add hover effects but prevent them on touch devices
+    viewToggleButton.onmouseover = () => {
+      viewToggleButton.style.transform = 'translateY(-1px) scale(1.05)';
+@@ -3549,7 +3612,7 @@ function buildColorFilterOverlay() {
+      viewToggleButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+      viewToggleButton.style.boxShadow = '';
+    };
+    
+
+    // Prevent hover effects on touch by immediately resetting styles on touchstart
+    viewToggleButton.addEventListener('touchstart', () => {
+      viewToggleButton.style.transform = '';
+@@ -3560,10 +3623,10 @@ function buildColorFilterOverlay() {
+    // Toggle view functionality
+    const toggleView = () => {
+      isListView = !isListView;
+      
+
+      // Save preference to localStorage
+      localStorage.setItem('bmcf-view-preference', isListView ? 'list' : 'grid');
+      
+
+      // Use CSS classes to control visibility - this prevents DOM manipulation conflicts
+      if (isListView) {
+        colorViewContainer.classList.add('list-mode');
+@@ -3574,22 +3637,22 @@ function buildColorFilterOverlay() {
+        viewToggleButton.innerHTML = '📋'; // List icon
+        viewToggleButton.title = 'Switch to List view';
+      }
+      
+
+      // Force layout recalculation
+      colorViewContainer.offsetHeight;
+      
+
+      // Re-apply current filter to the new view
+      if (typeof filterSelect !== 'undefined' && filterSelect.value) {
+        applyFilter(filterSelect.value);
+      }
+      
+
+      // Re-apply current search to the new view
+      if (typeof searchInput !== 'undefined' && searchInput.value.trim()) {
+        const searchTerm = searchInput.value.toLowerCase().trim();
+        const currentViewItems = isListView ? 
+          Array.from(colorList.querySelectorAll('[data-color-item]')) : 
+        const currentViewItems = isListView ?
+          Array.from(colorList.querySelectorAll('[data-color-item]')) :
+          Array.from(colorGrid.querySelectorAll('[data-color-item]'));
+        
+
+        currentViewItems.forEach(item => {
+          const colorName = item.getAttribute('data-color-name').toLowerCase();
+          if (colorName.includes(searchTerm)) {
+@@ -3615,7 +3678,7 @@ function buildColorFilterOverlay() {
+        viewToggleButton.innerHTML = '📋'; // List icon
+        viewToggleButton.title = 'Switch to List view';
+      }
+      
+
+      // Force layout recalculation
+      colorViewContainer.offsetHeight;
+    };
+@@ -3681,7 +3744,7 @@ function buildColorFilterOverlay() {
+      position: relative;
+      overflow: hidden;
+    `;
+    
+
+    // Add subtle background pattern
+    progressSummary.innerHTML = `
+      <div style="
+@@ -3791,7 +3854,7 @@ function buildColorFilterOverlay() {
+      const enabled = includeWrongProgressCheckbox.checked;
+      await templateManager.setIncludeWrongColorsInProgress(enabled);
+      overlayMain.handleDisplayStatus(`Include wrong colors in progress ${enabled ? 'enabled' : 'disabled'}!`);
+      
+
+      // Force refresh color filter overlay to update progress calculations immediately
+      buildColorFilterOverlay();
+    });
+@@ -3906,12 +3969,12 @@ function buildColorFilterOverlay() {
+      colorItems.forEach(item => {
+        const colorName = item.getAttribute('data-color-name').toLowerCase();
+        const colorRgb = item.getAttribute('data-color-rgb');
+        
+
+        // Search by name or RGB values
+        const matchesName = colorName.includes(term);
+        const matchesRgb = colorRgb.includes(term);
+        const matchesRgbFormatted = colorRgb.replace(/,/g, ' ').includes(term);
+        
+
+        if (term === '' || matchesName || matchesRgb || matchesRgbFormatted) {
+          item.style.display = 'flex';
+          visibleCount++;
+@@ -4114,7 +4177,7 @@ function buildColorFilterOverlay() {
+
+    mainButtonsContainer.appendChild(enableAllButton);
+    mainButtonsContainer.appendChild(disableAllButton);
+    
+
+    enhancedSection.appendChild(enhancedInfo);
+    enhancedSection.appendChild(mainButtonsContainer);
+    enhancedSection.appendChild(disableAllEnhancedButton);
+@@ -4158,7 +4221,7 @@ function buildColorFilterOverlay() {
+      const enabled = enhanceWrongCheckbox.checked;
+      await templateManager.setEnhanceWrongColors(enabled);
+      overlayMain.handleDisplayStatus(`Wrong colors crosshair ${enabled ? 'enabled' : 'disabled'}!`);
+      
+
+      // Force template redraw to apply enhanced mode changes
+      if (window.forceTemplateRedraw) {
+        window.forceTemplateRedraw();
+@@ -4213,20 +4276,20 @@ function buildColorFilterOverlay() {
+    colorPalette.forEach((colorInfo, index) => {
+      // Flag to prevent sync loops between grid and list
+      let isSyncing = false;
+      
+
+      const colorItem = document.createElement('div');
+      colorItem.className = 'bmcf-card';
+      const rgb = colorInfo.rgb;
+      const colorKey = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+      const isFreeColor = colorInfo.free;
+      const isDisabled = currentTemplate.isColorDisabled(rgb);
+      const isEnhanced = currentTemplate.isColorEnhanced ? currentTemplate.isColorEnhanced(rgb) : false;
+      
+
+      // Add data attributes for search functionality
+      colorItem.setAttribute('data-color-item', 'true');
+      colorItem.setAttribute('data-color-name', colorInfo.name);
+      colorItem.setAttribute('data-color-rgb', rgb.join(','));
+      
+
+      colorItem.style.cssText = `
+        background: rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]});
+        border: 3px solid ${isDisabled ? '#f44336' : '#4caf50'};
+@@ -4392,7 +4455,7 @@ function buildColorFilterOverlay() {
+      const appliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+      const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(appliedExcluded));
+      const isExcluded = pendingExcluded.includes(colorKey);
+      
+
+      if (isExcluded) {
+        excludeIcon.textContent = "🚫";
+        excludeIcon.style.opacity = '1';
+@@ -4403,7 +4466,7 @@ function buildColorFilterOverlay() {
+        excludeIcon.style.opacity = '1';
+        excludeIcon.style.transform = 'scale(1.1)';
+      };
+      
+
+      excludeIcon.onmouseleave = () => {
+        excludeIcon.style.opacity = isExcluded ? '1' : '0.7';
+        excludeIcon.style.transform = 'scale(1)';
+@@ -4412,7 +4475,7 @@ function buildColorFilterOverlay() {
+      excludeIcon.onclick = (e) => {
+        e.stopPropagation();
+        const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')));
+        
+
+        if (pendingExcluded.includes(colorKey)) {
+          // Remove from pending excluded list
+          const newPendingExcluded = pendingExcluded.filter(c => c !== colorKey);
+@@ -4436,18 +4499,18 @@ function buildColorFilterOverlay() {
+          listExcludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+          listExcludeIcon.style.opacity = '1';
+        }
+        
+
+        // Show status message (no automatic refresh)
+        if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+          overlayMain.handleDisplayStatus(`Color ${pendingExcluded.includes(colorKey) ? 'excluded from' : 'included in'} progress calculation - click Apply Colors to confirm`);
+        }
+      };
+
+      // Add pixel statistics display  
+      // Add pixel statistics display
+      const stats = pixelStats[colorKey];
+      const pixelStatsDisplay = document.createElement('div');
+      pixelStatsDisplay.className = 'bmcf-stats';
+      
+
+      if (stats && stats.totalRequired > 0) {
+        // Get wrong pixels for this specific color from tile progress data - FILTERED BY ENABLED TEMPLATES
+        let wrongPixelsForColor = 0;
+@@ -4462,19 +4525,19 @@ function buildColorFilterOverlay() {
+              }
+            }
+          }
+          
+
+          for (const [tileKey, tileStats] of templateManager.tileProgress.entries()) {
+            // Filter tiles by enabled templates only
+            let shouldIncludeTile = true;
+            
+
+            if (enabledTemplateKeys.size > 0) {
+              shouldIncludeTile = false;
+              const [tileX, tileY] = tileKey.split(',').map(coord => parseInt(coord));
+              
+
+              for (const template of templateManager.templatesArray) {
+                const templateKey = `${template.sortID} ${template.authorID}`;
+                if (!enabledTemplateKeys.has(templateKey)) continue;
+                
+
+                if (template.chunked) {
+                  for (const chunkKey of Object.keys(template.chunked)) {
+                    const [chunkTileX, chunkTileY] = chunkKey.split(',').map(coord => parseInt(coord));
+@@ -4487,9 +4550,9 @@ function buildColorFilterOverlay() {
+                if (shouldIncludeTile) break;
+              }
+            }
+            
+
+            if (!shouldIncludeTile) continue;
+            
+
+            if (tileStats.colorBreakdown && tileStats.colorBreakdown[colorKey]) {
+              wrongPixelsForColor += tileStats.colorBreakdown[colorKey].wrong || 0;
+            }
+@@ -4498,7 +4561,7 @@ function buildColorFilterOverlay() {
+
+        // Apply wrong color logic to individual color progress
+        let displayPainted, displayRequired, displayPercentage, displayRemaining;
+        
+
+        if (templateManager.getIncludeWrongColorsInProgress()) {
+          // When wrong colors are included, stats.painted already contains the effective painted count
+          // so we don't need to add wrongPixelsForColor again (that would be double counting)
+@@ -4513,13 +4576,13 @@ function buildColorFilterOverlay() {
+          displayPercentage = stats.percentage || 0;
+          displayRemaining = stats.totalRequired - stats.painted;
+        }
+        
+
+        // Add data attributes for filtering/sorting
+        colorItem.setAttribute('data-wrong-count', wrongPixelsForColor.toString());
+        colorItem.setAttribute('data-missing-count', displayRemaining.toString());
+        colorItem.setAttribute('data-total-count', displayRequired.toString());
+        colorItem.setAttribute('data-painted-count', displayPainted.toString());
+        
+
+        // Always render full stats inside the Template Color overlay
+        let displayText = `${displayPainted.toLocaleString()}/${displayRequired.toLocaleString()} (${displayPercentage}%)`;
+        if (templateManager.getIncludeWrongColorsInProgress() && wrongPixelsForColor > 0) {
+@@ -4559,18 +4622,18 @@ function buildColorFilterOverlay() {
+        `;
+        progressTrack.appendChild(progressFill);
+        colorItem.appendChild(progressTrack);
+        
+
+        consoleLog(`🎯 [Color Filter] Displaying stats for ${colorInfo.name} (${colorKey}): ${displayPainted}/${displayRequired} (${displayPercentage}%) - ${displayRemaining} need crosshair${wrongPixelsForColor > 0 ? ` - includes ${wrongPixelsForColor} wrong` : ''}`);
+      } else {
+        pixelStatsDisplay.innerHTML = `
+          <div style="font-size: 0.65em; color: rgba(255,255,255,0.6); text-shadow: 1px 1px 2px rgba(0,0,0,0.8);">
+            Not Used
+          </div>
+        `;
+        
+
+        consoleLog(`🎯 [Color Filter] Color ${colorInfo.name} (${colorKey}) not used in template`);
+      }
+      
+
+      pixelStatsDisplay.style.cssText = `
+        z-index: 1;
+        position: relative;
+@@ -4594,15 +4657,15 @@ function buildColorFilterOverlay() {
+      colorClickArea.onclick = (e) => {
+        e.stopPropagation(); // Prevent bubbling
+        if (isSyncing) return; // Prevent sync loops
+        
+
+        const wasDisabled = currentTemplate.isColorDisabled(rgb);
+        if (wasDisabled) {
+          currentTemplate.enableColor(rgb);
+          colorItem.style.border = '3px solid #4caf50';
+          const overlay = colorClickArea.querySelector('div[style*="position: absolute"]');
+          if (overlay) overlay.remove();
+          enhancedCheckbox.disabled = false;
+          
+
+          // Sync to list item
+          isSyncing = true;
+          listItem.style.border = '2px solid #4caf50';
+@@ -4632,7 +4695,7 @@ function buildColorFilterOverlay() {
+          colorClickArea.appendChild(overlay);
+          enhancedCheckbox.disabled = true;
+          enhancedCheckbox.checked = false;
+          
+
+          // Sync to list item
+          isSyncing = true;
+          listItem.style.border = '2px solid #f44336';
+@@ -4642,7 +4705,7 @@ function buildColorFilterOverlay() {
+          listEnhancedLabel.style.color = 'rgba(255,255,255,0.6)';
+          isSyncing = false;
+        }
+        
+
+        // Refresh template display in real-time
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing template:', error);
+@@ -4657,7 +4720,7 @@ function buildColorFilterOverlay() {
+        } else {
+          currentTemplate.disableColorEnhanced(rgb);
+        }
+        
+
+        // Refresh template display in real-time
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing enhanced mode:', error);
+@@ -4678,20 +4741,20 @@ function buildColorFilterOverlay() {
+      // Create corresponding list item based on the log.txt example
+      const listItem = document.createElement('div');
+      listItem.className = 'bmcf-list-item';
+      
+
+      // Add data attributes for search functionality
+      listItem.setAttribute('data-color-item', 'true');
+      listItem.setAttribute('data-color-name', colorInfo.name);
+      listItem.setAttribute('data-color-rgb', rgb.join(','));
+      
+
+      // Copy stats data attributes from grid item to list item
+      if (colorItem.hasAttribute('data-wrong-count')) {
+        listItem.setAttribute('data-wrong-count', colorItem.getAttribute('data-wrong-count'));
+        listItem.setAttribute('data-missing-count', colorItem.getAttribute('data-missing-count'));
+        listItem.setAttribute('data-total-count', colorItem.getAttribute('data-total-count'));
+        listItem.setAttribute('data-painted-count', colorItem.getAttribute('data-painted-count'));
+      }
+      
+
+      listItem.style.cssText = `
+        display: flex;
+        align-items: center;
+@@ -4707,7 +4770,7 @@ function buildColorFilterOverlay() {
+        min-height: 50px;
+        opacity: ${isDisabled ? '0.7' : '1'};
+      `;
+      
+
+      // Color swatch (small square)
+      const colorSwatch = document.createElement('div');
+      colorSwatch.style.cssText = `
+@@ -4729,7 +4792,7 @@ function buildColorFilterOverlay() {
+        gap: 4px;
+        min-width: 0;
+      `;
+      
+
+      // Color click area for enable/disable (covers whole item)
+      const listColorClickArea = document.createElement('div');
+      listColorClickArea.style.cssText = `
+@@ -4768,13 +4831,13 @@ function buildColorFilterOverlay() {
+      // Stats - get correct values from data attributes
+      let mainStatsText = '';
+      let leftValue = 0;
+      
+
+      // Get values from data attributes (same as grid item)
+      const totalCount = parseInt(listItem.getAttribute('data-total-count') || '0');
+      const paintedCount = parseInt(listItem.getAttribute('data-painted-count') || '0');
+      const missingCount = parseInt(listItem.getAttribute('data-missing-count') || '0');
+      const wrongCount = parseInt(listItem.getAttribute('data-wrong-count') || '0');
+      
+
+      if (totalCount > 0) {
+        const percentage = totalCount > 0 ? Math.round(((totalCount - missingCount) / totalCount) * 100) : 0;
+        mainStatsText = `${paintedCount.toLocaleString()}/${totalCount.toLocaleString()} (${percentage}%)`;
+@@ -4821,12 +4884,12 @@ function buildColorFilterOverlay() {
+      if (mainStatsText) {
+        topRow.appendChild(mainStats);
+      }
+      
+
+      infoContainer.appendChild(topRow);
+      if (mainStatsText !== 'Not Used') {
+        infoContainer.appendChild(bottomRow);
+      }
+      
+
+      // Controls container (right side)
+      const listControlsContainer = document.createElement('div');
+      listControlsContainer.style.cssText = `
+@@ -4836,7 +4899,7 @@ function buildColorFilterOverlay() {
+        z-index: 2;
+        position: relative;
+      `;
+      
+
+      // Enhanced mode checkbox
+      const listEnhancedCheckbox = document.createElement('input');
+      listEnhancedCheckbox.type = 'checkbox';
+@@ -4872,7 +4935,7 @@ function buildColorFilterOverlay() {
+      listEnhancedCheckbox.onchange = (e) => {
+        e.stopPropagation();
+        const isNowEnhanced = listEnhancedCheckbox.checked;
+        
+
+        if (isNowEnhanced) {
+          currentTemplate.enableColorEnhanced(rgb);
+          listEnhancedLabel.style.color = '#ffd700';
+@@ -4884,12 +4947,12 @@ function buildColorFilterOverlay() {
+          // Also update grid checkbox
+          enhancedCheckbox.checked = false;
+        }
+        
+
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing enhanced mode:', error);
+        });
+      };
+      
+
+      // Eyedropper icon for non-free colors
+      if (!isFreeColor) {
+        const listDropletIcon = document.createElement('div');
+@@ -4902,10 +4965,10 @@ function buildColorFilterOverlay() {
+          user-select: none;
+          transition: opacity 0.2s ease;
+        `;
+        
+
+        listDropletIcon.onmouseenter = () => listDropletIcon.style.opacity = '1';
+        listDropletIcon.onmouseleave = () => listDropletIcon.style.opacity = '0.7';
+        
+
+        listDropletIcon.onclick = (e) => {
+          e.stopPropagation();
+          const colorButtons = document.querySelectorAll(`button[id^="color-"]`);
+@@ -4921,10 +4984,10 @@ function buildColorFilterOverlay() {
+            }
+          });
+        };
+        
+
+        listControlsContainer.appendChild(listDropletIcon);
+      }
+      
+
+      // Exclude from progress icon for list view
+      const listExcludeIcon = document.createElement('div');
+      listExcludeIcon.textContent = "👁️";
+@@ -4947,7 +5010,7 @@ function buildColorFilterOverlay() {
+      const listAppliedExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+      const listPendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(listAppliedExcluded));
+      const listIsExcluded = listPendingExcluded.includes(colorKey);
+      
+
+      if (listIsExcluded) {
+        listExcludeIcon.textContent = "🚫";
+        listExcludeIcon.style.opacity = '1';
+@@ -4958,7 +5021,7 @@ function buildColorFilterOverlay() {
+        listExcludeIcon.style.opacity = '1';
+        listExcludeIcon.style.transform = 'scale(1.1)';
+      };
+      
+
+      listExcludeIcon.onmouseleave = () => {
+        listExcludeIcon.style.opacity = listIsExcluded ? '1' : '0.7';
+        listExcludeIcon.style.transform = 'scale(1)';
+@@ -4967,7 +5030,7 @@ function buildColorFilterOverlay() {
+      listExcludeIcon.onclick = (e) => {
+        e.stopPropagation();
+        const pendingExcluded = JSON.parse(localStorage.getItem('bmcf-excluded-colors-pending') || JSON.stringify(JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]')));
+        
+
+        if (pendingExcluded.includes(colorKey)) {
+          // Remove from pending excluded list
+          const newPendingExcluded = pendingExcluded.filter(c => c !== colorKey);
+@@ -4991,17 +5054,17 @@ function buildColorFilterOverlay() {
+          excludeIcon.style.background = 'rgba(244, 67, 54, 0.8)';
+          excludeIcon.style.opacity = '1';
+        }
+        
+
+        // Show status message (no automatic refresh)
+        if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+          overlayMain.handleDisplayStatus(`Color ${pendingExcluded.includes(colorKey) ? 'excluded from' : 'included in'} progress calculation - click Apply Colors to confirm`);
+        }
+      };
+      
+
+      listControlsContainer.appendChild(listExcludeIcon);
+      listControlsContainer.appendChild(listEnhancedCheckbox);
+      listControlsContainer.appendChild(listEnhancedLabel);
+      
+
+      // Assemble the list item
+      listItem.appendChild(colorSwatch);
+      listItem.appendChild(infoContainer);
+@@ -5012,14 +5075,14 @@ function buildColorFilterOverlay() {
+      listColorClickArea.onclick = (e) => {
+        e.stopPropagation();
+        if (isSyncing) return; // Prevent sync loops
+        
+
+        const wasDisabled = currentTemplate.isColorDisabled(rgb);
+        if (wasDisabled) {
+          currentTemplate.enableColor(rgb);
+          listItem.style.border = '2px solid #4caf50';
+          listItem.style.opacity = '1';
+          listEnhancedCheckbox.disabled = false;
+          
+
+          // Sync to grid item
+          isSyncing = true;
+          colorItem.style.border = '3px solid #4caf50';
+@@ -5034,7 +5097,7 @@ function buildColorFilterOverlay() {
+          listEnhancedCheckbox.disabled = true;
+          listEnhancedCheckbox.checked = false;
+          listEnhancedLabel.style.color = 'rgba(255,255,255,0.6)';
+          
+
+          // Sync to grid item
+          isSyncing = true;
+          colorItem.style.border = '3px solid #f44336';
+@@ -5060,7 +5123,7 @@ function buildColorFilterOverlay() {
+          enhancedCheckbox.checked = false;
+          isSyncing = false;
+        }
+        
+
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing template:', error);
+        });
+@@ -5078,9 +5141,9 @@ function buildColorFilterOverlay() {
+      const gridItems = Array.from(colorGrid.querySelectorAll('[data-color-item]'));
+      const listItems = Array.from(colorList.querySelectorAll('[data-color-item]'));
+      const colorItems = isListView ? listItems : gridItems;
+      
+
+      // Original orders are already initialized after creating all items
+      
+
+      if (filterType === 'default') {
+        // Restore original order and show all items
+        colorItems.forEach(item => {
+@@ -5089,13 +5152,13 @@ function buildColorFilterOverlay() {
+        // Restore original DOM order
+        const container = isListView ? colorList : colorGrid;
+        const originalItems = isListView ? originalListOrder : originalGridOrder;
+        
+
+        originalItems.forEach(item => {
+          container.appendChild(item);
+        });
+        return;
+      }
+      
+
+      if (filterType === 'enhanced') {
+        // Filter to show only enhanced colors
+        colorItems.forEach(item => {
+@@ -5108,12 +5171,12 @@ function buildColorFilterOverlay() {
+        });
+        return;
+      }
+      
+
+      // Show all items for sorting
+      colorItems.forEach(item => {
+        item.style.display = 'flex';
+      });
+      
+
+      colorItems.sort((a, b) => {
+        const aWrong = parseInt(a.getAttribute('data-wrong-count') || '0');
+        const bWrong = parseInt(b.getAttribute('data-wrong-count') || '0');
+@@ -5127,22 +5190,22 @@ function buildColorFilterOverlay() {
+        const bPercentage = bTotal > 0 ? ((bTotal - bMissing) / bTotal) * 100 : 0;
+
+        switch (filterType) {
+          case 'premium': 
+          case 'premium':
+            // Get color RGB from data attributes
+            const aRgb = a.getAttribute('data-color-rgb');
+            const bRgb = b.getAttribute('data-color-rgb');
+            
+
+            // Find colors in utils.colorpalette
+            const aColor = colorPalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === aRgb);
+            const bColor = colorPalette.find(c => `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === bRgb);
+            
+
+            const aIsPremium = aColor && aColor.free === false;
+            const bIsPremium = bColor && bColor.free === false;
+            
+
+            // Premium colors first
+            if (aIsPremium && !bIsPremium) return -1;
+            if (!aIsPremium && bIsPremium) return 1;
+            
+
+            // If both are premium or both are free, sort by most pixels missing
+            return bMissing - aMissing;
+          case 'wrong-desc': return bWrong - aWrong;
+@@ -5178,7 +5241,7 @@ function buildColorFilterOverlay() {
+      });
+      colorFilterOverlay.remove();
+      overlayMain.handleDisplayStatus('Enabling all colors...');
+      
+
+      try {
+        await refreshTemplateDisplay();
+        buildColorFilterOverlay(); // Rebuild to reflect changes
+@@ -5194,7 +5257,7 @@ function buildColorFilterOverlay() {
+      });
+      colorFilterOverlay.remove();
+      overlayMain.handleDisplayStatus('Disabling all colors...');
+      
+
+      try {
+        await refreshTemplateDisplay();
+        buildColorFilterOverlay(); // Rebuild to reflect changes
+@@ -5209,26 +5272,26 @@ function buildColorFilterOverlay() {
+      // Visual feedback - button click animation
+      const originalBg = disableAllEnhancedButton.style.background;
+      const originalText = disableAllEnhancedButton.textContent;
+      
+
+      // Immediate click feedback
+      disableAllEnhancedButton.style.background = '#dc3545'; // Red
+      disableAllEnhancedButton.textContent = 'Disabling...';
+      disableAllEnhancedButton.style.transform = 'scale(0.95)';
+      disableAllEnhancedButton.style.transition = 'all 0.1s ease';
+      
+
+      try {
+        const tmpl = templateManager.templatesArray?.[0];
+        if (tmpl && tmpl.enhancedColors && tmpl.enhancedColors.size > 0) {
+          tmpl.enhancedColors.clear();
+          
+
+          // Success feedback
+          disableAllEnhancedButton.style.background = '#28a745'; // Green
+          disableAllEnhancedButton.textContent = 'Disabled! ✓';
+          
+
+          // Trigger template refresh
+          await refreshTemplateDisplay();
+          buildColorFilterOverlay();
+          
+
+          // Reset button after 100ms
+          setTimeout(() => {
+            disableAllEnhancedButton.style.background = originalBg;
+@@ -5239,7 +5302,7 @@ function buildColorFilterOverlay() {
+          // No enhanced colors to disable
+          disableAllEnhancedButton.style.background = '#ffc107'; // Yellow
+          disableAllEnhancedButton.textContent = 'No Enhanced Colors';
+          
+
+          setTimeout(() => {
+            disableAllEnhancedButton.style.background = originalBg;
+            disableAllEnhancedButton.textContent = originalText;
+@@ -5250,13 +5313,13 @@ function buildColorFilterOverlay() {
+        // Error feedback
+        disableAllEnhancedButton.style.background = '#dc3545'; // Red
+        disableAllEnhancedButton.textContent = 'Error! ✗';
+        
+
+        setTimeout(() => {
+          disableAllEnhancedButton.style.background = originalBg;
+          disableAllEnhancedButton.textContent = originalText;
+          disableAllEnhancedButton.style.transform = 'scale(1)';
+        }, 100);
+        
+
+        consoleError('Error disabling all enhanced colors:', error);
+        overlayMain.handleDisplayError('Failed to disable all enhanced colors');
+      }
+@@ -5281,7 +5344,7 @@ function buildColorFilterOverlay() {
+      refreshStatsButton.style.boxShadow = '0 2px 8px rgba(76, 175, 80, 0.3)';
+    };
+
+    // Apply button  
+    // Apply button
+    const applyButton = document.createElement('button');
+    applyButton.innerHTML = '🎯 Apply Colors';
+    applyButton.className = 'bmcf-btn primary';
+@@ -5295,7 +5358,7 @@ function buildColorFilterOverlay() {
+      applyButton.style.transform = 'translateY(0)';
+      applyButton.style.boxShadow = '0 2px 8px rgba(33, 150, 243, 0.3)';
+    };
+    
+
+    refreshStatsButton.onclick = () => {
+      consoleLog('🔄 [Color Filter] Refreshing statistics...');
+      // Apply pending excluded colors changes
+@@ -5315,10 +5378,10 @@ function buildColorFilterOverlay() {
+        localStorage.setItem('bmcf-excluded-colors', pendingExcluded);
+        localStorage.removeItem('bmcf-excluded-colors-pending');
+      }
+      
+
+      colorFilterOverlay.remove();
+      overlayMain.handleDisplayStatus('Applying color filter...');
+      
+
+      try {
+        // Update mini tracker to reflect excluded colors
+        updateMiniTracker();
+@@ -5377,7 +5440,7 @@ function buildColorFilterOverlay() {
+      min-height: auto;
+      max-height: none;
+    `;
+    
+
+    // Set flex layout when visible
+    compactList.setAttribute('data-flex-layout', 'true');
+
+@@ -5393,15 +5456,15 @@ function buildColorFilterOverlay() {
+      border-radius: 12px 12px 0 0;
+      transition: border-radius 0.3s ease, border-bottom 0.3s ease;
+    `;
+    
+
+    // Create left section with title and collapse arrow
+    const compactLeftSection = document.createElement('div');
+    compactLeftSection.style.cssText = `
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    `;
+    
+
+    const compactCollapseArrow = document.createElement('span');
+    compactCollapseArrow.innerHTML = '▼';
+    compactCollapseArrow.style.cssText = `
+@@ -5413,15 +5476,15 @@ function buildColorFilterOverlay() {
+      padding: 2px 4px;
+      border-radius: 3px;
+    `;
+    
+
+    // Hover effect for arrow only
+    compactCollapseArrow.addEventListener('mouseenter', () => {
+      compactCollapseArrow.style.background = 'var(--slate-600)';
+    });
+    compactCollapseArrow.addEventListener('mouseleave', () => {
+      compactCollapseArrow.style.background = 'none';
+    });
+    
+
+    const compactTitle = document.createElement('span');
+    compactTitle.textContent = 'Color Toggle';
+    compactTitle.style.cssText = `
+@@ -5431,11 +5494,11 @@ function buildColorFilterOverlay() {
+      user-select: none;
+      cursor: default;
+    `;
+    
+
+    compactLeftSection.appendChild(compactCollapseArrow);
+    compactLeftSection.appendChild(compactTitle);
+
+    
+
+    const compactCloseBtn = document.createElement('button');
+    compactCloseBtn.innerHTML = '✕';
+    compactCloseBtn.title = 'Close';
+@@ -5455,7 +5518,7 @@ function buildColorFilterOverlay() {
+      compactList.style.display = 'none';
+      compactListButton.style.background = 'linear-gradient(135deg, var(--slate-600), var(--slate-700))';
+    };
+    
+
+    compactHeader.appendChild(compactLeftSection);
+    compactHeader.appendChild(compactCloseBtn);
+    compactList.appendChild(compactHeader);
+@@ -5497,19 +5560,19 @@ function buildColorFilterOverlay() {
+    // Add collapse functionality - only on arrow click
+    compactCollapseArrow.addEventListener('click', (e) => {
+      e.stopPropagation(); // Prevent dragging when clicking to collapse
+      
+
+      isCollapsed = !isCollapsed;
+      localStorage.setItem(COMPACT_COLLAPSE_KEY, isCollapsed.toString());
+      
+
+      if (isCollapsed) {
+        // Get the natural height first
+        compactCollapsibleContent.style.height = 'auto';
+        const naturalHeight = compactCollapsibleContent.offsetHeight;
+        compactCollapsibleContent.style.height = naturalHeight + 'px';
+        
+
+        // Force a reflow to establish the starting height
+        compactCollapsibleContent.offsetHeight;
+        
+
+        // Then animate to collapsed state
+        requestAnimationFrame(() => {
+          compactCollapsibleContent.style.height = '0px';
+@@ -5524,21 +5587,21 @@ function buildColorFilterOverlay() {
+        // First remove pointer-events and set opacity to start expanding
+        compactCollapsibleContent.style.pointerEvents = 'auto';
+        compactCollapsibleContent.style.opacity = '1';
+        
+
+        // Get the natural height by temporarily setting height to auto
+        const tempHeight = compactCollapsibleContent.style.height;
+        compactCollapsibleContent.style.height = 'auto';
+        const naturalHeight = compactCollapsibleContent.offsetHeight;
+        compactCollapsibleContent.style.height = tempHeight;
+        
+
+        // Force reflow and animate to natural height
+        compactCollapsibleContent.offsetHeight;
+        compactCollapsibleContent.style.height = naturalHeight + 'px';
+        compactCollapseArrow.style.transform = 'rotate(0deg)';
+        // Restore border radius when expanding
+        compactHeader.style.borderRadius = '12px 12px 0 0';
+        compactHeader.style.borderBottom = '1px solid var(--bmcf-border)';
+        
+
+        // After transition, set to auto for dynamic resizing
+        setTimeout(() => {
+          if (!isCollapsed) {
+@@ -5558,7 +5621,7 @@ function buildColorFilterOverlay() {
+      align-items: center;
+      gap: 6px;
+    `;
+    
+
+    const searchInput = document.createElement('input');
+    searchInput.type = 'text';
+    searchInput.placeholder = 'Search colors...';
+@@ -5574,18 +5637,18 @@ function buildColorFilterOverlay() {
+      outline: none;
+      transition: all 0.2s ease;
+    `;
+    
+
+    // Search input focus/blur effects
+    searchInput.addEventListener('focus', () => {
+      searchInput.style.borderColor = 'var(--blue-400)';
+      searchInput.style.background = 'var(--slate-550)';
+    });
+    
+
+    searchInput.addEventListener('blur', () => {
+      searchInput.style.borderColor = 'var(--slate-500)';
+      searchInput.style.background = 'var(--slate-600)';
+    });
+    
+
+    // Clear search button
+    const clearSearchBtn = document.createElement('button');
+    clearSearchBtn.innerHTML = '✕';
+@@ -5606,23 +5669,23 @@ function buildColorFilterOverlay() {
+      transition: all 0.15s ease;
+      opacity: 0.7;
+    `;
+    
+
+    clearSearchBtn.addEventListener('mouseenter', () => {
+      clearSearchBtn.style.background = 'var(--slate-600)';
+      clearSearchBtn.style.opacity = '1';
+    });
+    
+
+    clearSearchBtn.addEventListener('mouseleave', () => {
+      clearSearchBtn.style.background = 'none';
+      clearSearchBtn.style.opacity = '0.7';
+    });
+    
+
+    clearSearchBtn.addEventListener('click', () => {
+      searchInput.value = '';
+      searchInput.dispatchEvent(new Event('input'));
+      searchInput.focus();
+    });
+    
+
+    compactSearchContainer.appendChild(searchInput);
+    compactSearchContainer.appendChild(clearSearchBtn);
+    compactCollapsibleContent.appendChild(compactSearchContainer);
+@@ -5638,7 +5701,7 @@ function buildColorFilterOverlay() {
+      justify-content: center;
+      gap: 4px;
+    `;
+    
+
+    const disableAllBtn = document.createElement('button');
+    disableAllBtn.textContent = 'Disable';
+    disableAllBtn.style.cssText = `
+@@ -5654,7 +5717,7 @@ function buildColorFilterOverlay() {
+    `;
+    disableAllBtn.addEventListener('mouseenter', () => disableAllBtn.style.background = '#b91c1c');
+    disableAllBtn.addEventListener('mouseleave', () => disableAllBtn.style.background = '#dc2626');
+    
+
+    const enableAllBtn = document.createElement('button');
+    enableAllBtn.textContent = 'Enable';
+    enableAllBtn.style.cssText = `
+@@ -5670,12 +5733,12 @@ function buildColorFilterOverlay() {
+    `;
+    enableAllBtn.addEventListener('mouseenter', () => enableAllBtn.style.background = '#15803d');
+    enableAllBtn.addEventListener('mouseleave', () => enableAllBtn.style.background = '#16a34a');
+    
+
+    // Add click handlers usando a lógica que já existe
+    disableAllBtn.addEventListener('click', () => {
+      const currentTemplate = templateManager.templatesArray?.[0];
+      if (!currentTemplate) return;
+      
+
+      // Usar a mesma lógica que já existe no código para desabilitar cores
+      const items = compactContent.querySelectorAll('.bmcf-compact-item');
+      items.forEach(item => {
+@@ -5690,11 +5753,11 @@ function buildColorFilterOverlay() {
+        }
+      });
+    });
+    
+
+    enableAllBtn.addEventListener('click', () => {
+      const currentTemplate = templateManager.templatesArray?.[0];
+      if (!currentTemplate) return;
+      
+
+      // Usar a mesma lógica que já existe no código para habilitar cores
+      const items = compactContent.querySelectorAll('.bmcf-compact-item');
+      items.forEach(item => {
+@@ -5709,7 +5772,7 @@ function buildColorFilterOverlay() {
+        }
+      });
+    });
+    
+
+    compactBulkContainer.appendChild(disableAllBtn);
+    compactBulkContainer.appendChild(enableAllBtn);
+    compactCollapsibleContent.appendChild(compactBulkContainer);
+@@ -5724,15 +5787,15 @@ function buildColorFilterOverlay() {
+      align-items: center;
+      gap: 8px;
+    `;
+    
+
+    const sortLabel = document.createElement('span');
+    sortLabel.textContent = 'Sort:';
+    sortLabel.style.cssText = `
+      font-size: 11px;
+      color: var(--bmcf-text-muted);
+      min-width: 30px;
+    `;
+    
+
+    const compactSortSelect = document.createElement('select');
+    compactSortSelect.style.cssText = `
+      flex: 1;
+@@ -5745,7 +5808,7 @@ function buildColorFilterOverlay() {
+      outline: none;
+      cursor: pointer;
+    `;
+    
+
+    // Sort options
+    const sortOptions = [
+      { value: 'default', text: 'Default Order' },
+@@ -5759,7 +5822,7 @@ function buildColorFilterOverlay() {
+      { value: 'less-painted', text: 'Less Painted' },
+      { value: 'enhanced', text: 'Enhanced Only' }
+    ];
+    
+
+    sortOptions.forEach(option => {
+      const optionElement = document.createElement('option');
+      optionElement.value = option.value;
+@@ -5770,7 +5833,7 @@ function buildColorFilterOverlay() {
+      `;
+      compactSortSelect.appendChild(optionElement);
+    });
+    
+
+    compactSortContainer.appendChild(sortLabel);
+    compactSortContainer.appendChild(compactSortSelect);
+    compactCollapsibleContent.appendChild(compactSortContainer);
+@@ -5795,38 +5858,38 @@ function buildColorFilterOverlay() {
+    compactHeader.addEventListener('mousedown', (e) => {
+      // Don't start dragging if clicking on close button or collapse arrow
+      if (e.target === compactCloseBtn || e.target === compactCollapseArrow) return;
+      
+
+      isDraggingCompact = true;
+      compactDragStartX = e.clientX;
+      compactDragStartY = e.clientY;
+      
+
+      // Get current position
+      const rect = compactList.getBoundingClientRect();
+      compactInitialLeft = rect.left;
+      compactInitialTop = rect.top;
+      
+
+      // Change cursor and prevent text selection
+      compactHeader.style.cursor = 'grabbing';
+      compactList.style.userSelect = 'none';
+      document.body.style.userSelect = 'none';
+      
+
+      e.preventDefault();
+    });
+
+    // Mouse move handler for dragging
+    document.addEventListener('mousemove', (e) => {
+      if (!isDraggingCompact) return;
+      
+
+      const deltaX = e.clientX - compactDragStartX;
+      const deltaY = e.clientY - compactDragStartY;
+      
+
+      const newLeft = compactInitialLeft + deltaX;
+      const newTop = compactInitialTop + deltaY;
+      
+
+      // Keep within viewport bounds
+      const maxLeft = window.innerWidth - compactList.offsetWidth;
+      const maxTop = window.innerHeight - compactList.offsetHeight;
+      
+
+      compactList.style.left = Math.max(0, Math.min(maxLeft, newLeft)) + 'px';
+      compactList.style.top = Math.max(0, Math.min(maxTop, newTop)) + 'px';
+      compactList.style.right = 'auto'; // Remove right positioning
+@@ -5835,7 +5898,7 @@ function buildColorFilterOverlay() {
+    // Mouse up handler to stop dragging
+    document.addEventListener('mouseup', () => {
+      if (!isDraggingCompact) return;
+      
+
+      isDraggingCompact = false;
+      compactHeader.style.cursor = 'move';
+      compactList.style.userSelect = '';
+@@ -5845,49 +5908,49 @@ function buildColorFilterOverlay() {
+    // Touch support for mobile
+    compactHeader.addEventListener('touchstart', (e) => {
+      if (e.target === compactCloseBtn) return;
+      
+
+      const touch = e.touches[0];
+      isDraggingCompact = true;
+      compactDragStartX = touch.clientX;
+      compactDragStartY = touch.clientY;
+      
+
+      const rect = compactList.getBoundingClientRect();
+      compactInitialLeft = rect.left;
+      compactInitialTop = rect.top;
+      
+
+      compactList.style.userSelect = 'none';
+      e.preventDefault();
+    }, { passive: false });
+
+    document.addEventListener('touchmove', (e) => {
+      if (!isDraggingCompact) return;
+      
+
+      const touch = e.touches[0];
+      const deltaX = touch.clientX - compactDragStartX;
+      const deltaY = touch.clientY - compactDragStartY;
+      
+
+      const newLeft = compactInitialLeft + deltaX;
+      const newTop = compactInitialTop + deltaY;
+      
+
+      const maxLeft = window.innerWidth - compactList.offsetWidth;
+      const maxTop = window.innerHeight - compactList.offsetHeight;
+      
+
+      compactList.style.left = Math.max(0, Math.min(maxLeft, newLeft)) + 'px';
+      compactList.style.top = Math.max(0, Math.min(maxTop, newTop)) + 'px';
+      compactList.style.right = 'auto';
+    }, { passive: false });
+
+    document.addEventListener('touchend', () => {
+      if (!isDraggingCompact) return;
+      
+
+      isDraggingCompact = false;
+      compactList.style.userSelect = '';
+    });
+
+    // Function to apply sort to compact list
+    const applyCompactSort = (sortType) => {
+      const sortedItems = [...allCompactItems];
+      
+
+      switch (sortType) {
+        case 'name':
+          // Show all items first
+@@ -5900,7 +5963,7 @@ function buildColorFilterOverlay() {
+            return nameA.localeCompare(nameB);
+          });
+          break;
+          
+
+        case 'premium':
+          // Show all items first
+          sortedItems.forEach(item => {
+@@ -5909,33 +5972,33 @@ function buildColorFilterOverlay() {
+          sortedItems.sort((a, b) => {
+            const colorKeyA = a.getAttribute('data-color-rgb');
+            const colorKeyB = b.getAttribute('data-color-rgb');
+            
+
+            // Find colors in utils.colorpalette
+            const colorA = utils.colorpalette.find(c => c.name !== 'Transparent' && `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyA);
+            const colorB = utils.colorpalette.find(c => c.name !== 'Transparent' && `${c.rgb[0]},${c.rgb[1]},${c.rgb[2]}` === colorKeyB);
+            
+
+            const isPremiumA = colorA && colorA.free === false;
+            const isPremiumB = colorB && colorB.free === false;
+            
+
+            // Premium colors first
+            if (isPremiumA && !isPremiumB) return -1;
+            if (!isPremiumA && isPremiumB) return 1;
+            
+
+            // If both are premium or both are free, sort by most pixels missing
+            const remainingA = parseInt(a.getAttribute('data-remaining') || '0');
+            const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+
+            // Filter out 0/0 colors (no pixels at all)
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+
+            return remainingB - remainingA; // Descending (more missing first)
+          });
+          break;
+          
+
+        case 'most-missing':
+          // Show all items first
+          sortedItems.forEach(item => {
+@@ -5946,16 +6009,16 @@ function buildColorFilterOverlay() {
+            const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+
+            // Filter out 0/0 colors (no pixels at all)
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+
+            return remainingB - remainingA; // Descending (more missing first)
+          });
+          break;
+          
+
+        case 'less-missing':
+          // Show all items first
+          sortedItems.forEach(item => {
+@@ -5966,16 +6029,16 @@ function buildColorFilterOverlay() {
+            const remainingB = parseInt(b.getAttribute('data-remaining') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+
+            // Filter out 0/0 colors (no pixels at all) - put them at the end
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+
+            return remainingA - remainingB; // Ascending (less missing first)
+          });
+          break;
+          
+
+        case 'remaining':
+          // Show all items first
+          sortedItems.forEach(item => {
+@@ -5987,7 +6050,7 @@ function buildColorFilterOverlay() {
+            return remainingB - remainingA; // Descending (more remaining first)
+          });
+          break;
+          
+
+        case 'progress':
+          // Show all items first
+          sortedItems.forEach(item => {
+@@ -5999,7 +6062,7 @@ function buildColorFilterOverlay() {
+            return progressB - progressA; // Descending (higher progress first)
+          });
+          break;
+          
+
+        case 'most-painted':
+          // Show all items first
+          sortedItems.forEach(item => {
+@@ -6011,7 +6074,7 @@ function buildColorFilterOverlay() {
+            return paintedB - paintedA; // Descending (more painted first)
+          });
+          break;
+          
+
+        case 'less-painted':
+          // Show all items first
+          sortedItems.forEach(item => {
+@@ -6022,16 +6085,16 @@ function buildColorFilterOverlay() {
+            const paintedB = parseInt(b.getAttribute('data-painted') || '0');
+            const totalA = parseInt(a.getAttribute('data-total') || '0');
+            const totalB = parseInt(b.getAttribute('data-total') || '0');
+            
+
+            // Filter out 0/0 colors (no pixels at all) - put them at the end
+            if (totalA === 0 && totalB > 0) return 1;
+            if (totalB === 0 && totalA > 0) return -1;
+            if (totalA === 0 && totalB === 0) return 0;
+            
+
+            return paintedA - paintedB; // Ascending (less painted first)
+          });
+          break;
+          
+
+        case 'enhanced':
+          // First show all items, then sort enhanced ones to top
+          sortedItems.forEach(item => {
+@@ -6050,7 +6113,7 @@ function buildColorFilterOverlay() {
+            item.style.display = isEnhanced ? 'flex' : 'none';
+          });
+          break;
+          
+
+        case 'default':
+        default:
+          // Show all items and use original order
+@@ -6065,21 +6128,21 @@ function buildColorFilterOverlay() {
+          });
+          break;
+      }
+      
+
+      // Clear and re-append all sorted items
+      compactContent.innerHTML = '';
+      sortedItems.forEach(item => {
+        compactContent.appendChild(item);
+      });
+    };
+    
+
+    // Add sort event listener
+    compactSortSelect.addEventListener('change', () => {
+      applyCompactSort(compactSortSelect.value);
+      // Save sort preference
+      localStorage.setItem('bmcf-compact-sort', compactSortSelect.value);
+    });
+    
+
+    // Load saved sort preference
+    const savedSort = localStorage.getItem('bmcf-compact-sort') || 'default';
+    compactSortSelect.value = savedSort;
+@@ -6147,7 +6210,7 @@ function buildColorFilterOverlay() {
+        min-width: 0;
+        overflow: hidden;
+      `;
+      
+
+      name.innerHTML = `
+        <div style="font-weight: 600; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${color.name}</div>
+        <div style="font-size: 8px; color: var(--bmcf-text-muted); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+@@ -6175,44 +6238,44 @@ function buildColorFilterOverlay() {
+        cursor: pointer;
+      `;
+      enhancedCheckbox.title = 'Enable enhanced mode for this color';
+      
+
+      // Check if color is currently enhanced
+      if (templateInstance && templateInstance.enhancedColors) {
+        const rgbKey = color.rgb.join(',');
+        enhancedCheckbox.checked = templateInstance.enhancedColors.has(rgbKey);
+      }
+      
+
+      enhancedCheckbox.onclick = (e) => {
+        e.stopPropagation();
+      };
+      
+
+      enhancedCheckbox.onchange = (e) => {
+        e.stopPropagation();
+        const currentTemplate = templateManager.templatesArray?.[0];
+        if (!currentTemplate) return;
+        
+
+        if (enhancedCheckbox.checked) {
+          currentTemplate.enableColorEnhanced(color.rgb);
+          overlayMain.handleDisplayStatus(`Enhanced mode enabled: ${color.name}`);
+        } else {
+          currentTemplate.disableColorEnhanced(color.rgb);
+          overlayMain.handleDisplayStatus(`Enhanced mode disabled: ${color.name}`);
+        }
+        
+
+        // Sync with main overlay checkboxes
+        const gridItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"]`);
+        const listItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"].bmcf-list-item`);
+        
+
+        if (gridItem) {
+          const gridCheckbox = gridItem.querySelector('input[type="checkbox"]');
+          if (gridCheckbox) gridCheckbox.checked = enhancedCheckbox.checked;
+        }
+        
+
+        if (listItem) {
+          const listCheckbox = listItem.querySelector('input[type="checkbox"]');
+          if (listCheckbox) listCheckbox.checked = enhancedCheckbox.checked;
+        }
+        
+
+        // Refresh template display to save changes persistently
+        refreshTemplateDisplay().catch(error => {
+          consoleError('Error refreshing enhanced mode from Color Toggle:', error);
+@@ -6242,14 +6305,14 @@ function buildColorFilterOverlay() {
+          flex-shrink: 0;
+        `;
+      }
+      
+
+      controlsContainer.appendChild(premiumIcon);
+      controlsContainer.appendChild(enhancedCheckbox);
+
+      // Click handler - directly toggle color using template methods
+      item.onclick = (e) => {
+        e.stopPropagation();
+        
+
+        // Get current template
+        const currentTemplate = templateManager.templatesArray?.[0];
+        if (!currentTemplate) {
+@@ -6259,15 +6322,15 @@ function buildColorFilterOverlay() {
+
+        const rgb = color.rgb;
+        const wasDisabled = currentTemplate.isColorDisabled(rgb);
+        
+
+        // Find the corresponding grid/list items for visual sync
+        const gridItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"]`);
+        const listItem = colorViewContainer.querySelector(`[data-color-rgb="${colorKey}"].bmcf-list-item`);
+        
+
+        if (wasDisabled) {
+          // Enable the color
+          currentTemplate.enableColor(rgb);
+          
+
+          // Update grid item visual
+          if (gridItem) {
+            gridItem.style.border = '3px solid #4caf50';
+@@ -6276,24 +6339,24 @@ function buildColorFilterOverlay() {
+            const enhancedCheckbox = gridItem.querySelector('input[type="checkbox"]');
+            if (enhancedCheckbox) enhancedCheckbox.disabled = false;
+          }
+          
+
+          // Update list item visual
+          if (listItem) {
+            listItem.style.border = '2px solid #4caf50';
+            listItem.style.opacity = '1';
+            const listEnhancedCheckbox = listItem.querySelector('input[type="checkbox"]');
+            if (listEnhancedCheckbox) listEnhancedCheckbox.disabled = false;
+          }
+          
+
+          // Update compact list visual
+          item.style.opacity = '1';
+          item.style.background = '';
+          
+
+          overlayMain.handleDisplayStatus(`Color enabled: ${color.name}`);
+        } else {
+          // Disable the color
+          currentTemplate.disableColor(rgb);
+          
+
+          // Update grid item visual
+          if (gridItem) {
+            gridItem.style.border = '3px solid #f44336';
+@@ -6312,19 +6375,19 @@ function buildColorFilterOverlay() {
+            const enhancedCheckbox = gridItem.querySelector('input[type="checkbox"]');
+            if (enhancedCheckbox) enhancedCheckbox.disabled = true;
+          }
+          
+
+          // Update list item visual
+          if (listItem) {
+            listItem.style.border = '2px solid #f44336';
+            listItem.style.opacity = '0.5';
+            const listEnhancedCheckbox = listItem.querySelector('input[type="checkbox"]');
+            if (listEnhancedCheckbox) listEnhancedCheckbox.disabled = true;
+          }
+          
+
+          // Update compact list visual
+          item.style.opacity = '0.5';
+          item.style.background = 'rgba(244, 67, 54, 0.1)';
+          
+
+          overlayMain.handleDisplayStatus(`Color disabled: ${color.name}`);
+        }
+
+@@ -6333,11 +6396,11 @@ function buildColorFilterOverlay() {
+          const freshStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
+          const freshPainted = freshStats[colorKey]?.painted || 0;
+          const freshRemaining = freshStats[colorKey]?.needsCrosshair || 0;
+          
+
+          // Update the progress line in the name element
+          const freshTotalPixels = freshPainted + freshRemaining;
+          const freshProgressPercent = freshTotalPixels > 0 ? Math.round((freshPainted / freshTotalPixels) * 100) : 0;
+          
+
+          name.innerHTML = `
+            <div style="font-weight: 600; margin-bottom: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${color.name}</div>
+            <div style="font-size: 8px; color: var(--bmcf-text-muted); opacity: 0.8; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+@@ -6356,25 +6419,25 @@ function buildColorFilterOverlay() {
+
+    // Apply initial sort
+    applyCompactSort(savedSort);
+    
+
+    // Add search functionality
+    const applySearch = (searchTerm) => {
+      const items = Array.from(compactContent.children);
+      const term = searchTerm.toLowerCase().trim();
+      
+
+      let visibleCount = 0;
+      items.forEach(item => {
+        // Skip the no-results message element
+        if (item.classList.contains('no-results-msg')) return;
+        
+
+        const colorNameElement = item.querySelector('.bmcf-compact-name');
+        const colorName = colorNameElement?.textContent.toLowerCase() || '';
+        const isVisible = term === '' || colorName.includes(term);
+        
+
+        item.style.display = isVisible ? 'flex' : 'none';
+        if (isVisible) visibleCount++;
+      });
+      
+
+      // Show "No results" message if no colors match
+      let noResultsMsg = compactContent.querySelector('.no-results-msg');
+      if (visibleCount === 0 && term !== '') {
+@@ -6396,12 +6459,12 @@ function buildColorFilterOverlay() {
+        noResultsMsg.style.display = 'none';
+      }
+    };
+    
+
+    // Add search input event listener
+    searchInput.addEventListener('input', (e) => {
+      applySearch(e.target.value);
+    });
+    
+
+    // Prevent any interference with spacebar and other keys
+    searchInput.addEventListener('keydown', (e) => {
+      // Allow all normal typing including spacebar
+@@ -6417,15 +6480,15 @@ function buildColorFilterOverlay() {
+      // Allow all normal typing including spacebar
+      e.stopPropagation();
+    });
+    
+
+    // Add keyboard shortcut for search (Ctrl+F)
+    compactList.addEventListener('keydown', (e) => {
+      if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        searchInput.focus();
+        searchInput.select();
+      }
+      
+
+      // Escape to clear search
+      if (e.key === 'Escape' && document.activeElement === searchInput) {
+        searchInput.value = '';
+@@ -6442,31 +6505,31 @@ function buildColorFilterOverlay() {
+    window.updateCompactListData = function(existingList) {
+      const compactContent = existingList.querySelector('div[style*="overflow-y: auto"]');
+      if (!compactContent) return;
+      
+
+      // Get fresh data
+      const freshPixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
+      const templateInstance = templateManager.templatesArray?.[0];
+      
+
+      // Update each item
+      utils.colorpalette.forEach((color, index) => {
+        if (index === 0) return; // Skip transparent
+        
+
+        const colorKey = `${color.rgb[0]},${color.rgb[1]},${color.rgb[2]}`;
+        const item = compactContent.querySelector(`[data-color-rgb="${colorKey}"]`);
+        
+
+        if (item) {
+          const stats = freshPixelStats[colorKey] || {};
+          const painted = stats.painted || 0;
+          const remaining = stats.needsCrosshair || 0;
+          const totalPixels = painted + remaining;
+          const progressPercent = totalPixels > 0 ? Math.round((painted / totalPixels) * 100) : 0;
+          
+
+          // Update data attributes for sorting
+          item.setAttribute('data-remaining', remaining.toString());
+          item.setAttribute('data-painted', painted.toString());
+          item.setAttribute('data-total', totalPixels.toString());
+          item.setAttribute('data-progress', progressPercent.toString());
+          
+
+          // Update progress text
+          const nameDiv = item.querySelector('div[style*="flex: 1"]');
+          if (nameDiv) {
+@@ -6477,7 +6540,7 @@ function buildColorFilterOverlay() {
+              </div>
+            `;
+          }
+          
+
+          // Update visual state based on template
+          const isDisabled = templateInstance ? templateInstance.isColorDisabled(color.rgb) : false;
+          if (isDisabled) {
+@@ -6487,7 +6550,7 @@ function buildColorFilterOverlay() {
+            item.style.opacity = '1';
+            item.style.background = '';
+          }
+          
+
+          // Update enhanced checkbox
+          const checkbox = item.querySelector('input[type="checkbox"]');
+          if (checkbox && templateInstance && templateInstance.enhancedColors) {
+@@ -6502,7 +6565,7 @@ function buildColorFilterOverlay() {
+    compactListButton.onclick = () => {
+      // Check if there's already an existing compact list
+      const existingCompactList = document.getElementById('bmcf-compact-list');
+      
+
+      if (existingCompactList) {
+        // Reuse existing list
+        const isVisible = existingCompactList.style.display !== 'none';
+@@ -6513,7 +6576,7 @@ function buildColorFilterOverlay() {
+          existingCompactList.style.display = 'flex';
+          existingCompactList.style.flexDirection = 'column';
+          compactListButton.style.background = 'linear-gradient(135deg, var(--blue-600), var(--blue-700))';
+          
+
+          // Update the existing list with fresh data
+          updateCompactListData(existingCompactList);
+        }
+@@ -6536,7 +6599,7 @@ function buildColorFilterOverlay() {
+    if (originalRefreshTemplateDisplay && typeof originalRefreshTemplateDisplay === 'function') {
+      window.refreshTemplateDisplay = async function(...args) {
+        const result = await originalRefreshTemplateDisplay.apply(this, args);
+        
+
+        // Update compact list if it exists and is visible
+        const existingCompactList = document.getElementById('bmcf-compact-list');
+        if (existingCompactList && existingCompactList.style.display !== 'none') {
+@@ -6546,11 +6609,11 @@ function buildColorFilterOverlay() {
+            }
+          }, 200); // Small delay to ensure stats are updated
+        }
+        
+
+        return result;
+      };
+    }
+    
+
+    colorFilterOverlay.appendChild(contentContainer);
+    colorFilterOverlay.appendChild(footerContainer);
+
+@@ -6578,38 +6641,38 @@ function buildColorFilterOverlay() {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      
+
+      // Get current position
+      const rect = colorFilterOverlay.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      
+
+      // Change to absolute positioning for dragging
+      colorFilterOverlay.style.position = 'fixed';
+      colorFilterOverlay.style.transform = 'none';
+      colorFilterOverlay.style.left = initialLeft + 'px';
+      colorFilterOverlay.style.top = initialTop + 'px';
+      
+
+      // Change cursor and drag bar style
+      header.style.cursor = 'grabbing';
+      dragBar.style.cursor = 'grabbing';
+      dragBar.style.opacity = '1';
+      colorFilterOverlay.style.userSelect = 'none';
+      
+
+      e.preventDefault();
+    });
+
+    // Touch drag support (mobile)
+    header.addEventListener('touchstart', (e) => {
+      const t = e.touches && e.touches[0];
+      if (!t) return;
+      
+
+      // Check if the touch target is a button - if so, don't start dragging
+      const target = e.target;
+      if (target.tagName === 'BUTTON' || target.closest('button')) {
+        return; // Let the button handle the touch event
+      }
+      
+
+      isDragging = true;
+      dragStartX = t.clientX;
+      dragStartY = t.clientY;
+@@ -6626,20 +6689,20 @@ function buildColorFilterOverlay() {
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      
+
+      const newLeft = initialLeft + deltaX;
+      const newTop = initialTop + deltaY;
+      
+
+      // Keep within viewport bounds
+      const maxLeft = window.innerWidth - colorFilterOverlay.offsetWidth;
+      const maxTop = window.innerHeight - colorFilterOverlay.offsetHeight;
+      
+
+      const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+      
+
+      colorFilterOverlay.style.left = clampedLeft + 'px';
+      colorFilterOverlay.style.top = clampedTop + 'px';
+    });
+@@ -6787,8 +6850,8 @@ const COLOR_PALETTE_MAP = {
+let isEKeyPressed = false;
+let eKeyModeActive = false;
+
+/** Initialize keyboard shortcut functionality 
+ * 
+/** Initialize keyboard shortcut functionality
+ *
+ * HOW TO USE THE X+CLICK SHORTCUT:
+ * 1. Press and hold the 'X' key
+ * 2. While holding 'X', click on any color in the r/place palette
+@@ -6797,83 +6860,83 @@ let eKeyModeActive = false;
+ *    - Enable enhanced mode ONLY for the clicked color
+ *    - Refresh the template to show the changes
+ * 4. Release the 'X' key to exit enhanced selection mode
+ * 
+ *
+ * VISUAL FEEDBACK:
+ * - Cursor changes to crosshair when X-Mode is active
+ * - Status messages appear to confirm actions
+ * - Color filter overlay automatically refreshes if open
+ * 
+ *
+ * @since 1.0.0
+ */
+function initializeKeyboardShortcuts() {
+  consoleLog('🎹 [Keyboard Shortcuts] Initializing X+Click shortcut for enhanced colors...');
+  
+
+  // Track X key press/release
+  document.addEventListener('keydown', (event) => {
+    if (event.code === 'KeyX' && !event.repeat) {
+      isEKeyPressed = true;
+      eKeyModeActive = true;
+      
+
+      // Visual feedback - add cursor style to show X mode is active
+      document.body.style.cursor = 'crosshair';
+      
+
+      // Show notification
+      if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+        overlayMain.handleDisplayStatus('🎹 X-Mode: Click a color to enable enhanced mode for that color only');
+      }
+      
+
+      consoleLog('🎹 [X-Mode] Enhanced selection mode ACTIVATED');
+    }
+  });
+  
+
+  document.addEventListener('keyup', (event) => {
+    if (event.code === 'KeyX') {
+      isEKeyPressed = false;
+      eKeyModeActive = false;
+      
+
+      // Reset cursor
+      document.body.style.cursor = '';
+      
+
+      consoleLog('🎹 [X-Mode] Enhanced selection mode DEACTIVATED');
+    }
+  });
+  
+
+  // Handle clicks on color palette buttons when X is pressed
+  document.addEventListener('click', handleEKeyColorClick, true);
+  
+
+  consoleLog('✅ [Keyboard Shortcuts] X+Click shortcut initialized successfully');
+}
+
+/** Handle X+Click on color palette */
+function handleEKeyColorClick(event) {
+  if (!eKeyModeActive) return;
+  
+
+  // Check if clicked element is a color button
+  const colorButton = event.target.closest('button[id^="color-"]');
+  if (!colorButton) return;
+  
+
+  // Prevent normal color selection
+  event.preventDefault();
+  event.stopPropagation();
+  
+
+  const colorId = colorButton.id;
+  const rgbColor = COLOR_PALETTE_MAP[colorId];
+  
+
+  if (!rgbColor) {
+    consoleWarn(`🎹 [X-Mode] Unknown color ID: ${colorId}`);
+    return;
+  }
+  
+
+  // Skip transparent color
+  if (colorId === 'color-0') {
+    if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+      overlayMain.handleDisplayStatus('🎹 X-Mode: Cannot enhance transparent color');
+    }
+    return;
+  }
+  
+
+  consoleLog(`🎹 [X-Mode] Processing color: ${colorId} -> RGB(${rgbColor.join(', ')})`);
+  
+
+  // Get current template
+  const currentTemplate = templateManager.templatesArray?.[0];
+  if (!currentTemplate) {
+@@ -6882,29 +6945,29 @@ function handleEKeyColorClick(event) {
+    }
+    return;
+  }
+  
+
+  try {
+    // Clear all enhanced colors first
+    currentTemplate.enhancedColors.clear();
+    consoleLog('🎹 [X-Mode] Cleared all enhanced colors');
+    
+
+    // Enable enhanced mode for the selected color
+    currentTemplate.enableColorEnhanced(rgbColor);
+    consoleLog(`🎹 [X-Mode] Enhanced mode enabled for RGB(${rgbColor.join(', ')})`);
+    
+
+    // Visual feedback
+    const colorName = colorButton.getAttribute('aria-label') || colorId;
+    if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayStatus) {
+      overlayMain.handleDisplayStatus(`✅ Enhanced mode enabled for: ${colorName}`);
+    }
+    
+
+    // Refresh template to apply changes
+    refreshTemplateDisplay().then(() => {
+      consoleLog('🎹 [X-Mode] Template refreshed with new enhanced color');
+    }).catch(error => {
+      consoleError('🎹 [X-Mode] Error refreshing template:', error);
+    });
+    
+
+    // Update color filter overlay if it's open
+    const colorFilterOverlay = document.getElementById('bm-color-filter-overlay');
+    if (colorFilterOverlay) {
+@@ -6914,7 +6977,7 @@ function handleEKeyColorClick(event) {
+        buildColorFilterOverlay();
+      }, 100);
+    }
+    
+
+  } catch (error) {
+    consoleError('🎹 [X-Mode] Error processing enhanced color:', error);
+    if (typeof overlayMain !== 'undefined' && overlayMain.handleDisplayError) {
+@@ -6967,12 +7030,12 @@ function toggleErrorMapMode() {
+  const currentState = getErrorMapEnabled();
+  const newState = !currentState;
+  saveErrorMapEnabled(newState);
+  
+
+  // Apply to template manager
+  if (templateManager) {
+    templateManager.setErrorMapMode(newState);
+  }
+  
+
+  // Force template redraw to apply changes
+  if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+    templateManager.setTemplatesShouldBeDrawn(false);
+@@ -6988,17 +7051,17 @@ function toggleErrorMapMode() {
+function updatePaletteLeftBadges(pixelStats) {
+  if (!getShowLeftOnColorEnabled()) return;
+  if (!pixelStats || typeof pixelStats !== 'object') return;
+  
+
+  const idToRgb = COLOR_PALETTE_MAP || {};
+  
+
+  Object.entries(idToRgb).forEach(([colorId, rgb]) => {
+    const btn = document.querySelector(`button#${CSS.escape(colorId)}`);
+    if (!btn) return;
+    if (colorId === 'color-0') return; // Transparent
+    const key = `${rgb[0]},${rgb[1]},${rgb[2]}`;
+    const stats = pixelStats[key];
+    const left = stats && typeof stats.needsCrosshair === 'number' ? stats.needsCrosshair : 0;
+    
+
+    let badge = btn.querySelector('.bm-left-badge');
+    if (!badge) {
+      badge = document.createElement('div');
+@@ -7035,29 +7098,29 @@ async function refreshTemplateDisplay() {
+    // Force a complete recreation of the template with current color filter
+    try {
+      consoleLog('Starting template refresh with color filter...');
+      
+
+      // Get the current template
+      const currentTemplate = templateManager.templatesArray[0];
+      consoleLog('Current disabled colors:', currentTemplate.getDisabledColors());
+      
+
+      // Invalidate enhanced cache when colors change
+      currentTemplate.invalidateEnhancedCache();
+      
+
+      // Disable templates first to clear the display
+      templateManager.setTemplatesShouldBeDrawn(false);
+      
+
+      // Wait a moment for the change to take effect
+      await new Promise(resolve => setTimeout(resolve, 50));
+      
+
+      // Force recreation of template tiles with current color filter
+      consoleLog('Recreating template tiles with color filter...');
+      await templateManager.updateTemplateWithColorFilter(0);
+      
+
+      // Re-enable templates to show the updated version
+      templateManager.setTemplatesShouldBeDrawn(true);
+      
+
+      consoleLog('Template refresh completed successfully');
+      
+
+    } catch (error) {
+      consoleError('Error refreshing template display:', error);
+      overlayMain.handleDisplayError('Failed to apply color filter');
+@@ -7066,43 +7129,43 @@ async function refreshTemplateDisplay() {
+  } else {
+    consoleWarn('No templates available to refresh');
+  }
+  
+
+  // Update mini tracker after template refresh
+  updateMiniTracker();
+}
+
+/** Gets the saved crosshair color from storage
+ * @returns {Object} The crosshair color configuration
+ * @since 1.0.0 
+ * @since 1.0.0
+ */
+function getCrosshairColor() {
+  try {
+    let savedColor = null;
+    
+
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairColor', null);
+      if (saved) savedColor = JSON.parse(saved);
+    }
+    
+
+    // Fallback to localStorage
+    if (!savedColor) {
+      const saved = localStorage.getItem('bmCrosshairColor');
+      if (saved) savedColor = JSON.parse(saved);
+    }
+    
+
+    // Auto-migrate old alpha values (180 -> 255)
+    if (savedColor && savedColor.alpha === 180) {
+      savedColor.alpha = 255;
+      saveCrosshairColor(savedColor); // Save the migrated value
+      consoleLog('Auto-migrated crosshair transparency from 71% to 100%');
+    }
+    
+
+    if (savedColor) return savedColor;
+  } catch (error) {
+    consoleWarn('Failed to load crosshair color:', error);
+  }
+  
+
+  // Default red color
+  return {
+    name: 'Red',
+@@ -7118,15 +7181,15 @@ function getCrosshairColor() {
+function saveCrosshairColor(colorConfig) {
+  try {
+    const colorString = JSON.stringify(colorConfig);
+    
+
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairColor', colorString);
+    }
+    
+
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairColor', colorString);
+    
+
+    consoleLog('Crosshair color saved:', colorConfig);
+  } catch (error) {
+    consoleError('Failed to save crosshair color:', error);
+@@ -7135,32 +7198,32 @@ function saveCrosshairColor(colorConfig) {
+
+/** Gets the border enabled setting from storage
+ * @returns {boolean} Whether borders are enabled
+ * @since 1.0.0 
+ * @since 1.0.0
+ */
+function getBorderEnabled() {
+  try {
+    let borderEnabled = null;
+    
+
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairBorder', null);
+      if (saved !== null) borderEnabled = JSON.parse(saved);
+    }
+    
+
+    // Fallback to localStorage
+    if (borderEnabled === null) {
+      const saved = localStorage.getItem('bmCrosshairBorder');
+      if (saved !== null) borderEnabled = JSON.parse(saved);
+    }
+    
+
+    if (borderEnabled !== null) {
+      consoleLog('🔲 Border setting loaded:', borderEnabled);
+      return borderEnabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load border setting:', error);
+  }
+  
+
+  // Default to disabled
+  consoleLog('🔲 Using default border setting: false');
+  return false;
+@@ -7173,19 +7236,19 @@ function getBorderEnabled() {
+function saveBorderEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+
+    consoleLog('🔲 Saving border setting:', enabled, 'as string:', enabledString);
+    
+
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairBorder', enabledString);
+      consoleLog('🔲 Saved to TamperMonkey storage');
+    }
+    
+
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairBorder', enabledString);
+    consoleLog('🔲 Saved to localStorage');
+    
+
+    consoleLog('✅ Border setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save border setting:', error);
+@@ -7194,55 +7257,55 @@ function saveBorderEnabled(enabled) {
+
+/** Gets the enhanced size enabled setting from storage
+ * @returns {boolean} Whether enhanced size is enabled
+ * @since 1.0.0 
+ * @since 1.0.0
+ */
+function getEnhancedSizeEnabled() {
+  try {
+    let enhancedSizeEnabled = null;
+    
+
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairEnhancedSize', null);
+      if (saved !== null) {
+        enhancedSizeEnabled = JSON.parse(saved);
+      }
+    }
+    
+
+    // Fallback to localStorage
+    if (enhancedSizeEnabled === null) {
+      const saved = localStorage.getItem('bmCrosshairEnhancedSize');
+      if (saved !== null) {
+        enhancedSizeEnabled = JSON.parse(saved);
+      }
+    }
+    
+
+    if (enhancedSizeEnabled !== null) {
+      return enhancedSizeEnabled;
+    }
+  } catch (error) {
+    consoleError('Failed to load enhanced size setting:', error);
+  }
+  
+
+  // Default to disabled
+  return false;
+}
+
+/** Saves the enhanced size enabled setting to storage
+ * @param {boolean} enabled - Whether enhanced size should be enabled
+ * @since 1.0.0 
+ * @since 1.0.0
+ */
+function saveEnhancedSizeEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairEnhancedSize', enabledString);
+    }
+    
+
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairEnhancedSize', enabledString);
+    
+
+    consoleLog('✅ Enhanced size setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save enhanced size setting:', error);
+@@ -7251,57 +7314,57 @@ function saveEnhancedSizeEnabled(enabled) {
+
+/** Gets the crosshair radius setting from storage
+ * @returns {number} The crosshair radius value (12-32)
+ * @since 1.0.0 
+ * @since 1.0.0
+ */
+function getCrosshairRadius() {
+  try {
+    let radiusValue = null;
+    
+
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCrosshairRadius', null);
+      if (saved !== null) {
+        radiusValue = JSON.parse(saved);
+      }
+    }
+    
+
+    // Fallback to localStorage
+    if (radiusValue === null) {
+      const saved = localStorage.getItem('bmCrosshairRadius');
+      if (saved !== null) {
+        radiusValue = JSON.parse(saved);
+      }
+    }
+    
+
+    if (radiusValue !== null) {
+      // Ensure value is within valid range
+      return Math.max(12, Math.min(32, radiusValue));
+    }
+  } catch (error) {
+    consoleError('Failed to load crosshair radius setting:', error);
+  }
+  
+
+  return 16; // Default radius (between min 12 and max 32)
+}
+
+/** Saves the crosshair radius setting to storage
+ * @param {number} radius - The crosshair radius value (12-32)
+ * @since 1.0.0 
+ * @since 1.0.0
+ */
+function saveCrosshairRadius(radius) {
+  try {
+    // Ensure value is within valid range
+    const clampedRadius = Math.max(12, Math.min(32, radius));
+    const radiusString = JSON.stringify(clampedRadius);
+    
+
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCrosshairRadius', radiusString);
+    }
+    
+
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCrosshairRadius', radiusString);
+    
+
+    consoleLog('✅ Crosshair radius setting saved successfully:', clampedRadius);
+  } catch (error) {
+    consoleError('❌ Failed to save crosshair radius setting:', error);
+@@ -7310,32 +7373,32 @@ function saveCrosshairRadius(radius) {
+
+/** Gets the mini tracker enabled setting from storage
+ * @returns {boolean} Whether mini tracker is enabled
+ * @since 1.0.0 
+ * @since 1.0.0
+ */
+function getMiniTrackerEnabled() {
+  try {
+    let trackerEnabled = null;
+    
+
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmMiniTracker', null);
+      if (saved !== null) trackerEnabled = JSON.parse(saved);
+    }
+    
+
+    // Fallback to localStorage
+    if (trackerEnabled === null) {
+      const saved = localStorage.getItem('bmMiniTracker');
+      if (saved !== null) trackerEnabled = JSON.parse(saved);
+    }
+    
+
+    if (trackerEnabled !== null) {
+      consoleLog('📊 Mini tracker setting loaded:', trackerEnabled);
+      return trackerEnabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load mini tracker setting:', error);
+  }
+  
+
+  // Default to disabled
+  return false;
+}
+@@ -7347,19 +7410,19 @@ function getMiniTrackerEnabled() {
+function saveMiniTrackerEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+
+    consoleLog('📊 Saving mini tracker setting:', enabled, 'as string:', enabledString);
+    
+
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmMiniTracker', enabledString);
+      consoleLog('📊 Saved to TamperMonkey storage');
+    }
+    
+
+    // Also save to localStorage as backup
+    localStorage.setItem('bmMiniTracker', enabledString);
+    consoleLog('📊 Saved to localStorage');
+    
+
+    consoleLog('✅ Mini tracker setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save mini tracker setting:', error);
+@@ -7373,27 +7436,27 @@ function saveMiniTrackerEnabled(enabled) {
+function getCollapseMinEnabled() {
+  try {
+    let collapseEnabled = null;
+    
+
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmCollapseMin', null);
+      if (saved !== null) collapseEnabled = JSON.parse(saved);
+    }
+    
+
+    // Fallback to localStorage
+    if (collapseEnabled === null) {
+      const saved = localStorage.getItem('bmCollapseMin');
+      if (saved !== null) collapseEnabled = JSON.parse(saved);
+    }
+    
+
+    if (collapseEnabled !== null) {
+      consoleLog('📊 Collapse mini template setting loaded:', collapseEnabled);
+      return collapseEnabled;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load collapse mini template setting:', error);
+  }
+  
+
+  // Default to enabled
+  return true;
+}
+@@ -7405,19 +7468,19 @@ function getCollapseMinEnabled() {
+function saveCollapseMinEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+
+    consoleLog('📊 Saving collapse mini template setting:', enabled, 'as string:', enabledString);
+    
+
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmCollapseMin', enabledString);
+      consoleLog('📊 Saved to TamperMonkey storage');
+    }
+    
+
+    // Also save to localStorage as backup
+    localStorage.setItem('bmCollapseMin', enabledString);
+    consoleLog('📊 Saved to localStorage');
+    
+
+    consoleLog('✅ Collapse mini template setting saved successfully:', enabled);
+  } catch (error) {
+    consoleError('❌ Failed to save collapse mini template setting:', error);
+@@ -7476,7 +7539,7 @@ function saveShowLeftOnColorEnabled(enabled) {
+    }
+    localStorage.setItem('bmShowLeftOnColor', enabledString);
+    consoleLog('✅ Show Left-on-Color setting saved:', enabled);
+    
+
+    // Restart the left badges auto-update system with the new setting
+    startLeftBadgesAutoUpdate();
+  } catch (error) {
+@@ -7517,13 +7580,13 @@ function applyMobileModeToColorFilter(enableMobile) {
+    mobileStyleElement.remove();
+    consoleLog('📱 [Dynamic Mobile] Removed existing mobile styles');
+  }
+  
+
+  if (enableMobile) {
+    // Create fresh mobile style element
+    mobileStyleElement = document.createElement('style');
+    mobileStyleElement.id = 'bmcf-mobile-styles';
+    document.head.appendChild(mobileStyleElement);
+    
+
+    mobileStyleElement.textContent = `
+      /* Dynamic Mobile Mode Styles - Applied Fresh */
+      .bmcf-overlay { 
+@@ -7649,15 +7712,15 @@ function updateMiniTracker() {
+  const trackerEnabled = getMiniTrackerEnabled();
+  const collapseEnabled = getCollapseMinEnabled();
+  const existingTracker = document.getElementById('bm-mini-tracker');
+  
+
+  // Check if main overlay is minimized
+  const mainOverlay = document.getElementById('bm-overlay');
+    if (!mainOverlay) {
+      consoleWarn('Main overlay not found, skipping mini tracker update');
+      return;
+    }
+    const isMainMinimized = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px' || mainOverlay.style.width === '72px');
+  
+
+  // Hide tracker if disabled OR if collapse is enabled and main is minimized
+  if (!trackerEnabled || (collapseEnabled && isMainMinimized)) {
+    if (existingTracker) {
+@@ -7666,44 +7729,44 @@ function updateMiniTracker() {
+    }
+    return;
+  }
+  
+
+  // Calculate progress data using the SAME method as the main progress bar
+  let totalRequired = 0;
+  let totalPainted = 0;
+  let totalNeedCrosshair = 0;
+  
+
+  if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+    // Use templateManager.calculateRemainingPixelsByColor() like the main progress bar does
+    const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
+    
+
+    // Get excluded colors from localStorage (same as main progress bar)
+    const excludedColors = JSON.parse(localStorage.getItem('bmcf-excluded-colors') || '[]');
+    
+
+    for (const [colorKey, stats] of Object.entries(pixelStats)) {
+      // Skip excluded colors from mini tracker calculation too
+      if (excludedColors.includes(colorKey)) {
+        continue;
+      }
+      
+
+      totalRequired += stats.totalRequired || 0;
+      totalPainted += stats.painted || 0;
+      totalNeedCrosshair += stats.needsCrosshair || 0;
+    }
+  }
+  
+
+  const progressPercentage = totalRequired > 0 ? Math.round((totalPainted / totalRequired) * 100) : 0;
+  const remaining = totalRequired - totalPainted;
+  
+
+  // Create or update tracker
+  let tracker = existingTracker;
+  if (!tracker) {
+    tracker = document.createElement('div');
+    tracker.id = 'bm-mini-tracker';
+    
+
+    // Find the buttons container to position tracker after it
+    const buttonsContainer = document.getElementById('bm-contain-buttons-template');
+    const mainOverlay = document.getElementById('bm-overlay');
+    
+
+    if (buttonsContainer && mainOverlay) {
+      try {
+        // Insert tracker after the buttons container but before the status textarea
+@@ -7728,10 +7791,10 @@ function updateMiniTracker() {
+      }
+    }
+  }
+  
+
+  // Style the tracker - COMPACT SLATE THEME (responsive to minimized state)
+  const isMainMinimizedForStyle = mainOverlay && (mainOverlay.style.width === '60px' || mainOverlay.style.height === '76px' || mainOverlay.style.width === '72px');
+  
+
+  tracker.style.cssText = `
+    background: linear-gradient(135deg, #1e293b, #334155);
+    border: 1px solid #475569;
+@@ -7750,7 +7813,7 @@ function updateMiniTracker() {
+    letter-spacing: -0.01em;
+    box-sizing: border-box;
+  `;
+  
+
+  // LAYOUT CSS GRID - HTML LIMPO
+  if (totalRequired === 0) {
+    tracker.innerHTML = `
+@@ -7771,7 +7834,7 @@ function updateMiniTracker() {
+      <div class="tracker-left">${totalNeedCrosshair.toLocaleString()} Pixels Left</div>
+    `;
+  }
+  
+
+  // Aplicar estilos CSS às classes - SLATE THEME COMPACT (fixed styles)
+  const style = document.createElement('style');
+  style.textContent = `
+@@ -7828,7 +7891,7 @@ function updateMiniTracker() {
+  }
+  style.id = 'tracker-styles';
+  document.head.appendChild(style);
+  
+
+  consoleLog(`📊 Mini tracker updated: ${totalPainted}/${totalRequired} (${progressPercentage}%) - ${totalNeedCrosshair} need crosshair`);
+  } catch (error) {
+    consoleError('❌ Error updating mini tracker:', error);
+@@ -7852,7 +7915,7 @@ function startMiniTrackerAutoUpdate() {
+  if (miniTrackerAutoUpdateInterval) {
+    clearInterval(miniTrackerAutoUpdateInterval);
+  }
+  
+
+  // Only start auto-update if mini tracker is enabled
+  if (getMiniTrackerEnabled()) {
+    miniTrackerAutoUpdateInterval = setInterval(() => {
+@@ -7867,7 +7930,7 @@ function startMiniTrackerAutoUpdate() {
+        consoleLog('📊 Mini tracker auto-update stopped (disabled)');
+      }
+    }, 5000); // Update every 5 seconds
+    
+
+    consoleLog('📊 Mini tracker auto-update started (every 5 seconds)');
+  }
+}
+@@ -7878,17 +7941,17 @@ let leftBadgesAutoUpdateInterval = null;
+function updateLeftBadgesOnly() {
+  // Only update if the setting is enabled
+  if (!getShowLeftOnColorEnabled()) return;
+  
+
+  // Check if templates are available
+  if (!templateManager.templatesArray || templateManager.templatesArray.length === 0) return;
+  
+
+  try {
+    // Calculate pixel statistics
+    const pixelStats = templateManager.calculateRemainingPixelsByColor(0, true); // Only enabled templates
+    
+
+    // Update the palette badges
+    updatePaletteLeftBadges(pixelStats);
+    
+
+    consoleLog('🔢 Left badges auto-updated independently');
+  } catch (error) {
+    consoleWarn('Failed to auto-update left badges:', error);
+@@ -7900,7 +7963,7 @@ function startLeftBadgesAutoUpdate() {
+  if (leftBadgesAutoUpdateInterval) {
+    clearInterval(leftBadgesAutoUpdateInterval);
+  }
+  
+
+  // Only start auto-update if left badges are enabled
+  if (getShowLeftOnColorEnabled()) {
+    leftBadgesAutoUpdateInterval = setInterval(() => {
+@@ -7914,7 +7977,7 @@ function startLeftBadgesAutoUpdate() {
+        consoleLog('🔢 Left badges auto-update stopped (disabled)');
+      }
+    }, 5000); // Update every 5 seconds
+    
+
+    consoleLog('🔢 Left badges auto-update started (every 5 seconds)');
+  }
+}
+@@ -7927,7 +7990,7 @@ function startCompactListAutoUpdate() {
+  if (compactListAutoUpdateInterval) {
+    clearInterval(compactListAutoUpdateInterval);
+  }
+  
+
+  // Start auto-update interval
+  compactListAutoUpdateInterval = setInterval(() => {
+    const existingCompactList = document.getElementById('bmcf-compact-list');
+@@ -7939,7 +8002,7 @@ function startCompactListAutoUpdate() {
+      }
+    }
+  }, 5000); // Update every 5 seconds
+  
+
+  consoleLog('📌 Compact list auto-update started (every 5 seconds)');
+}
+
+@@ -7948,7 +8011,7 @@ setTimeout(() => {
+  startMiniTrackerAutoUpdate();
+  startLeftBadgesAutoUpdate();
+  startCompactListAutoUpdate();
+  
+
+  // Pin functionality removed - Color Toggle is now just a simple toggle without persistence
+}, 2000); // Start after 2 seconds to let everything initialize
+
+@@ -8029,12 +8092,12 @@ function buildCrosshairSettingsOverlay() {
+
+    // Get current crosshair color
+    const currentColor = getCrosshairColor();
+    
+
+    // Track temporary settings (before confirm)
+    let tempColor = { ...currentColor };
+    
+
+    // If current color is custom, ensure it has the isCustom flag
+    if (!tempColor.isCustom && !colorOptions.filter(c => !c.isCustom).some(predefined => 
+    if (!tempColor.isCustom && !colorOptions.filter(c => !c.isCustom).some(predefined =>
+        JSON.stringify(predefined.rgb) === JSON.stringify(tempColor.rgb)
+      )) {
+      tempColor.isCustom = true;
+@@ -8048,7 +8111,7 @@ function buildCrosshairSettingsOverlay() {
+    // Create the settings overlay
+    const settingsOverlay = document.createElement('div');
+    settingsOverlay.id = 'bm-crosshair-settings-overlay';
+    
+
+    // Check if mobile mode is enabled for compact layout
+    const isMobileMode = getMobileMode();
+    const mobileStyles = isMobileMode ? `
+@@ -8060,7 +8123,7 @@ function buildCrosshairSettingsOverlay() {
+      max-height: 85vh;
+      border-radius: 20px;
+    `;
+    
+
+    settingsOverlay.style.cssText = `
+      position: fixed;
+      top: 50%;
+@@ -8079,7 +8142,7 @@ function buildCrosshairSettingsOverlay() {
+      backdrop-filter: blur(16px);
+      overflow: hidden;
+    `;
+  
+
+  // Add subtle background pattern
+  settingsOverlay.innerHTML = `
+    <div style="
+@@ -8152,13 +8215,13 @@ function buildCrosshairSettingsOverlay() {
+    closeButton.style.transform = '';
+    closeButton.style.boxShadow = '';
+  };
+  
+
+  // Prevent hover effects on touch by immediately resetting styles on touchstart
+  closeButton.addEventListener('touchstart', () => {
+    closeButton.style.transform = '';
+    closeButton.style.boxShadow = '';
+  }, { passive: true });
+  
+
+  closeButton.onclick = () => settingsOverlay.remove();
+
+  header.appendChild(title);
+@@ -8226,13 +8289,13 @@ function buildCrosshairSettingsOverlay() {
+    previewColor.style.transform = '';
+    previewColor.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.4)';
+  };
+  
+
+  // Create crosshair preview pattern (simple cross: center + 4 sides)
+  function updateCrosshairPreview(color, borderEnabled, enhancedSize = false) {
+    const { rgb, alpha } = color;
+    const colorRgba = `rgba(${rgb[0]}, ${rgb[1]}, ${rgb[2]}, ${alpha / 255})`;
+    const borderRgba = borderEnabled ? 'rgba(0, 100, 255, 0.8)' : 'transparent'; // Blue borders
+    
+
+    if (enhancedSize) {
+      // Enhanced 5x size crosshair preview (extends beyond center)
+      previewColor.innerHTML = `
+@@ -8311,7 +8374,7 @@ function buildCrosshairSettingsOverlay() {
+      `;
+    }
+  }
+  
+
+  // Initialize crosshair preview
+  updateCrosshairPreview(currentColor, tempBorderEnabled);
+
+@@ -8345,28 +8408,28 @@ function buildCrosshairSettingsOverlay() {
+  // Create color option buttons
+  colorOptions.forEach((color) => {
+    const colorOption = document.createElement('button');
+    
+
+    // Enhanced selection logic for custom colors
+    let isSelected = false;
+    if (color.isCustom) {
+      // For custom color, check if saved color has isCustom flag OR is not a predefined color
+      isSelected = currentColor.isCustom || 
+        !colorOptions.filter(c => !c.isCustom).some(predefined => 
+      isSelected = currentColor.isCustom ||
+        !colorOptions.filter(c => !c.isCustom).some(predefined =>
+          JSON.stringify(predefined.rgb) === JSON.stringify(currentColor.rgb)
+        );
+    } else {
+      // For predefined colors, check exact RGB match AND that current color is not custom
+      isSelected = JSON.stringify(color.rgb) === JSON.stringify(currentColor.rgb) && !currentColor.isCustom;
+    }
+    
+
+    // Special handling for custom color button
+    if (color.isCustom) {
+      // Use current color if custom is selected, otherwise use sophisticated gradient
+      const backgroundStyle = isSelected 
+      const backgroundStyle = isSelected
+        ? `rgba(${currentColor.rgb[0]}, ${currentColor.rgb[1]}, ${currentColor.rgb[2]}, 1)`
+        : `linear-gradient(135deg, 
+            #8B5CF6 0%, #A855F7 25%, #3B82F6 50%, #06B6D4 75%, #8B5CF6 100%)`;
+            
+
+      const buttonHeight = isMobileMode ? '85px' : '110px';
+      const buttonPadding = isMobileMode ? '8px' : '12px';
+      colorOption.style.cssText = `
+@@ -8434,7 +8497,7 @@ function buildCrosshairSettingsOverlay() {
+        width: ${containerWidth};
+        max-width: ${containerMaxWidth};
+      `;
+      
+
+      // Create individual RGB inputs
+      const rInput = document.createElement('input');
+      rInput.type = 'number';
+@@ -8469,7 +8532,7 @@ function buildCrosshairSettingsOverlay() {
+        rInput.style.borderColor = 'var(--slate-500)';
+        rInput.style.boxShadow = '';
+      };
+      
+
+      const gInput = document.createElement('input');
+      gInput.type = 'number';
+      gInput.min = '0';
+@@ -8478,7 +8541,7 @@ function buildCrosshairSettingsOverlay() {
+      gInput.placeholder = 'G';
+      gInput.className = 'bm-custom-rgb-input';
+      gInput.style.cssText = rInput.style.cssText;
+      
+
+      const bInput = document.createElement('input');
+      bInput.type = 'number';
+      bInput.min = '0';
+@@ -8487,37 +8550,37 @@ function buildCrosshairSettingsOverlay() {
+      bInput.placeholder = 'B';
+      bInput.className = 'bm-custom-rgb-input';
+      bInput.style.cssText = rInput.style.cssText;
+      
+
+      // Update function for RGB inputs
+      const updateCustomColor = () => {
+        const r = Math.max(0, Math.min(255, parseInt(rInput.value) || 0));
+        const g = Math.max(0, Math.min(255, parseInt(gInput.value) || 0));
+        const b = Math.max(0, Math.min(255, parseInt(bInput.value) || 0));
+        
+
+        tempColor = { name: 'Custom', rgb: [r, g, b], alpha: tempColor.alpha, isCustom: true };
+        
+
+        // Update the button background to show the custom color
+        colorOption.style.background = `rgba(${r}, ${g}, ${b}, 1)`;
+        
+
+        // Update preview
+        updateCrosshairPreview(tempColor, tempBorderEnabled);
+        document.getElementById('bm-current-color-name').textContent = `Custom RGB(${r}, ${g}, ${b})`;
+      };
+      
+
+      // Add event listeners
+      [rInput, gInput, bInput].forEach(input => {
+        input.addEventListener('input', updateCustomColor);
+        input.addEventListener('change', updateCustomColor);
+        
+
+        // Prevent clicks on inputs from bubbling to button
+        input.addEventListener('click', (e) => e.stopPropagation());
+        input.addEventListener('mousedown', (e) => e.stopPropagation());
+      });
+      
+
+      rgbInputs.appendChild(rInput);
+      rgbInputs.appendChild(gInput);
+      rgbInputs.appendChild(bInput);
+      
+
+      colorOption.appendChild(colorName);
+      colorOption.appendChild(rgbInputs);
+    } else {
+@@ -8529,7 +8592,7 @@ function buildCrosshairSettingsOverlay() {
+        color: rgba(255, 255, 255, 0.8);
+        text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.8);
+      `;
+      
+
+      colorOption.appendChild(colorName);
+      colorOption.appendChild(rgbText);
+    }
+@@ -8556,19 +8619,19 @@ function buildCrosshairSettingsOverlay() {
+      if (!color.isCustom) {
+        // Update temporary color (don't save yet)
+        tempColor = { ...color };
+        
+
+        // Update crosshair preview with new color and current border setting
+        updateCrosshairPreview(tempColor, tempBorderEnabled);
+        document.getElementById('bm-current-color-name').textContent = color.name;
+      }
+      
+
+      // Update visual selection
+      colorGrid.querySelectorAll('button').forEach(btn => {
+        btn.style.border = '3px solid rgba(255, 255, 255, 0.3)';
+        const checkmark = btn.querySelector('div[style*="position: absolute"]');
+        if (checkmark) checkmark.remove();
+      });
+      
+
+      colorOption.style.border = '3px solid #fff';
+      const checkmark = document.createElement('div');
+      checkmark.textContent = '✓';
+@@ -8653,10 +8716,10 @@ function buildCrosshairSettingsOverlay() {
+  alphaSlider.oninput = () => {
+    const alpha = parseInt(alphaSlider.value);
+    alphaValue.textContent = `${Math.round((alpha / 255) * 100)}%`;
+    
+
+    // Update temporary color with new alpha
+    tempColor.alpha = alpha;
+    
+
+    // Update crosshair preview with new alpha
+    updateCrosshairPreview(tempColor, tempBorderEnabled);
+  };
+@@ -8726,7 +8789,7 @@ function buildCrosshairSettingsOverlay() {
+
+  borderCheckbox.onchange = () => {
+    tempBorderEnabled = borderCheckbox.checked;
+    
+
+    // Update crosshair preview to show/hide borders
+    updateCrosshairPreview(tempColor, tempBorderEnabled);
+    // Visual feedback like the Mini Progress Tracker (text color only)
+@@ -9028,7 +9091,7 @@ function buildCrosshairSettingsOverlay() {
+    tempMiniTrackerEnabled = trackerCheckbox.checked;
+    trackerToggleText.textContent = tempMiniTrackerEnabled ? 'Enabled' : 'Disabled';
+    trackerToggleText.style.color = tempMiniTrackerEnabled ? '#4caf50' : '#f44336';
+    
+
+    // Only update visual state, actual saving happens on Apply
+    consoleLog(`📊 Mini tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'} (preview only)`);
+  };
+@@ -9116,7 +9179,7 @@ function buildCrosshairSettingsOverlay() {
+    tempMobileMode = mobileCheckbox.checked;
+    mobileToggleText.textContent = tempMobileMode ? 'Enabled' : 'Disabled';
+    mobileToggleText.style.color = tempMobileMode ? '#4caf50' : '#f44336';
+    
+
+    // Only update visual state, actual saving happens on Apply
+    consoleLog(`📱 Mobile mode ${tempMobileMode ? 'enabled' : 'disabled'} (preview only)`);
+  };
+@@ -9222,7 +9285,7 @@ function buildCrosshairSettingsOverlay() {
+    tempCollapseMinEnabled = collapseCheckbox.checked;
+    collapseToggleText.textContent = tempCollapseMinEnabled ? 'Enabled' : 'Disabled';
+    collapseToggleText.style.color = tempCollapseMinEnabled ? '#4caf50' : '#f44336';
+    
+
+    consoleLog(`📊 Collapse mini template ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}`);
+  };
+
+@@ -9322,8 +9385,8 @@ function buildCrosshairSettingsOverlay() {
+    const currentTrackerSaved = getMiniTrackerEnabled();
+    const currentCollapseSaved = getCollapseMinEnabled();
+    const currentMobileSaved = getMobileMode();
+    
+    const hasChanges = 
+
+    const hasChanges =
+      JSON.stringify(tempColor) !== JSON.stringify(currentColorSaved) ||
+      tempBorderEnabled !== currentBorderSaved ||
+      tempEnhancedSize !== getEnhancedSizeEnabled() ||
+@@ -9332,7 +9395,7 @@ function buildCrosshairSettingsOverlay() {
+      tempCollapseMinEnabled !== currentCollapseSaved ||
+      tempMobileMode !== currentMobileSaved ||
+      tempShowLeftOnColor !== getShowLeftOnColorEnabled();
+    
+
+    if (hasChanges) {
+      if (confirm('Discard changes? Any unsaved settings will be lost.')) {
+        settingsOverlay.remove();
+@@ -9374,17 +9437,17 @@ function buildCrosshairSettingsOverlay() {
+    // Visual feedback - button click animation
+    const originalBg = applyButton.style.background;
+    const originalText = applyButton.textContent;
+    
+
+    // Immediate click feedback
+    applyButton.style.background = 'linear-gradient(135deg, var(--emerald-500), var(--emerald-600))';
+    applyButton.textContent = 'Applying...';
+    applyButton.style.transform = 'scale(0.95)';
+    applyButton.disabled = true;
+    
+
+    try {
+      // Save all settings
+      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled, mobile: tempMobileMode, showLeftOnColor: tempShowLeftOnColor });
+      
+
+      saveCrosshairColor(tempColor);
+      saveBorderEnabled(tempBorderEnabled);
+      saveEnhancedSizeEnabled(tempEnhancedSize);
+@@ -9393,7 +9456,7 @@ function buildCrosshairSettingsOverlay() {
+      saveCollapseMinEnabled(tempCollapseMinEnabled);
+      saveMobileMode(tempMobileMode);
+      saveShowLeftOnColorEnabled(tempShowLeftOnColor);
+      
+
+      // Apply mobile mode to existing Color Filter overlay dynamically
+      applyMobileModeToColorFilter(tempMobileMode);
+
+@@ -9404,15 +9467,15 @@ function buildCrosshairSettingsOverlay() {
+      } catch (e) {
+        consoleWarn('Failed to refresh palette left badges after apply:', e);
+      }
+      
+
+      // Success feedback
+      applyButton.style.background = 'linear-gradient(135deg, var(--emerald-600), var(--emerald-700))';
+      applyButton.textContent = 'Applied! ✓';
+      
+
+      // Update mini tracker visibility and restart auto-update
+      updateMiniTracker();
+      startMiniTrackerAutoUpdate();
+      
+
+      // Force invalidate template caches to ensure borders are applied
+      if (templateManager.templatesArray && templateManager.templatesArray.length > 0) {
+        templateManager.templatesArray.forEach(template => {
+@@ -9421,29 +9484,29 @@ function buildCrosshairSettingsOverlay() {
+          }
+        });
+      }
+      
+
+      // Refresh template display to apply new settings
+      await refreshTemplateDisplay();
+      
+
+      // Close overlay after short delay
+      setTimeout(() => {
+        settingsOverlay.remove();
+        overlayMain.handleDisplayStatus(`Crosshair settings applied: ${tempColor.name}, ${tempBorderEnabled ? 'with' : 'without'} borders, tracker ${tempMiniTrackerEnabled ? 'enabled' : 'disabled'}, collapse ${tempCollapseMinEnabled ? 'enabled' : 'disabled'}, mobile ${tempMobileMode ? 'enabled' : 'disabled'}, Left-on-Color ${tempShowLeftOnColor ? 'enabled' : 'disabled'}!`);
+      }, 800);
+      
+
+      consoleLog('✅ Crosshair settings successfully applied and templates refreshed');
+    } catch (error) {
+      // Error feedback
+      applyButton.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+      applyButton.textContent = 'Error! ✗';
+      
+
+      setTimeout(() => {
+        applyButton.style.background = originalBg;
+        applyButton.textContent = originalText;
+        applyButton.style.transform = 'scale(1)';
+        applyButton.disabled = false;
+      }, 2000);
+      
+
+      consoleError('❌ Error applying crosshair settings:', error);
+      overlayMain.handleDisplayError('Failed to apply crosshair settings');
+    }
+@@ -9504,7 +9567,7 @@ function buildCrosshairSettingsOverlay() {
+  contentContainer.appendChild(sizeSection);
+  contentContainer.appendChild(radiusSection);
+  contentContainer.appendChild(trackerSection);
+  
+
+  // Show Left number on color cards (compact mode)
+  const leftOnColorSection = document.createElement('div');
+  leftOnColorSection.style.cssText = `
+@@ -9614,42 +9677,42 @@ function buildCrosshairSettingsOverlay() {
+      isDragging = true;
+      dragStartX = e.clientX;
+      dragStartY = e.clientY;
+      
+
+      const rect = settingsOverlay.getBoundingClientRect();
+      initialLeft = rect.left;
+      initialTop = rect.top;
+      
+
+      settingsOverlay.style.position = 'fixed';
+      settingsOverlay.style.transform = 'none';
+      settingsOverlay.style.left = initialLeft + 'px';
+      settingsOverlay.style.top = initialTop + 'px';
+      
+
+      e.preventDefault();
+    });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      
+
+      const deltaX = e.clientX - dragStartX;
+      const deltaY = e.clientY - dragStartY;
+      
+
+      const newLeft = initialLeft + deltaX;
+      const newTop = initialTop + deltaY;
+      
+
+      const maxLeft = window.innerWidth - settingsOverlay.offsetWidth;
+      const maxTop = window.innerHeight - settingsOverlay.offsetHeight;
+      
+
+      const clampedLeft = Math.max(0, Math.min(newLeft, maxLeft));
+      const clampedTop = Math.max(0, Math.min(newTop, maxTop));
+      
+
+      settingsOverlay.style.left = clampedLeft + 'px';
+      settingsOverlay.style.top = clampedTop + 'px';
+    });
+
+    document.addEventListener('mouseup', () => {
+      isDragging = false;
+    });
+    
+
+  } catch (error) {
+    consoleError('Failed to build Crosshair Settings overlay:', error);
+    overlayMain.handleDisplayError('Failed to open Crosshair Settings');
+@@ -9695,7 +9758,7 @@ function createSearchWindow() {
+
+  // Favorites management
+  const FAVORITES_KEY = 'bm-search-favorites';
+  
+
+  function getFavorites() {
+    try {
+      const stored = localStorage.getItem(FAVORITES_KEY);
+@@ -9709,7 +9772,7 @@ function createSearchWindow() {
+      return [];
+    }
+  }
+  
+
+  function getFilteredFavorites(filterValue) {
+    const list = getFavorites();
+    const query = (filterValue || '').toLowerCase();
+@@ -9719,7 +9782,7 @@ function createSearchWindow() {
+      return a.includes(query);
+    });
+  }
+  
+
+  function saveFavorites(favorites) {
+    try {
+      localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+@@ -9728,7 +9791,7 @@ function createSearchWindow() {
+      console.error('Error saving favorites:', error);
+    }
+  }
+  
+
+  function addFavorite(location) {
+    const favorites = getFavorites();
+    const exists = favorites.find(fav => fav.lat === location.lat && fav.lon === location.lon);
+@@ -9737,18 +9800,18 @@ function createSearchWindow() {
+      saveFavorites(favorites);
+    }
+  }
+  
+
+  function removeFavorite(lat, lon) {
+    const favorites = getFavorites();
+    const filtered = favorites.filter(fav => !(fav.lat === lat && fav.lon === lon));
+    saveFavorites(filtered);
+  }
+  
+
+  function isFavorited(lat, lon) {
+    const favorites = getFavorites();
+    return favorites.some(fav => fav.lat === lat && fav.lon === lon);
+  }
+  
+
+  function updateFavoritesDisplay() {
+    const filterInput = searchPanel.querySelector('#skirk-favorites-filter');
+    const filterText = filterInput ? filterInput.value : '';
+@@ -9757,57 +9820,57 @@ function createSearchWindow() {
+    const favoritesMenu = searchPanel.querySelector('#skirk-favorites-menu');
+    const favoritesCount = searchPanel.querySelector('#skirk-favorites-count');
+    const favoritesList = searchPanel.querySelector('#skirk-favorites-list');
+    
+
+    // Always show total number saved, not filtered count
+    favoritesCount.textContent = allFavorites.length;
+    
+
+    if (allFavorites.length > 0) {
+      favoritesMenu.style.display = 'block';
+      favoritesList.innerHTML = '';
+      
+
+      if (favorites.length === 0) {
+        favoritesList.innerHTML = '<div class="skirk-no-results">No favorites match your filter</div>';
+        return;
+      }
+      
+
+      favorites.forEach(favorite => {
+        const favoriteItem = document.createElement('div');
+        favoriteItem.className = 'skirk-favorite-item';
+        
+
+        favoriteItem.innerHTML = `
+          <div class="skirk-result-content">
+            <div class="skirk-result-name">${favorite.primaryName}</div>
+            <div class="skirk-result-address">${favorite.secondaryInfo}</div>
+          </div>
+          <span class="skirk-favorite-remove" title="Remove from favorites">×</span>
+        `;
+        
+
+        // Click to navigate
+        favoriteItem.querySelector('.skirk-result-content').addEventListener('click', () => {
+          navigateToLocation(favorite.lat, favorite.lon);
+          searchPanel.style.display = 'none';
+        });
+        
+
+        // Click to remove
+        favoriteItem.querySelector('.skirk-favorite-remove').addEventListener('click', (e) => {
+          e.stopPropagation();
+          removeFavorite(favorite.lat, favorite.lon);
+        });
+        
+
+        favoritesList.appendChild(favoriteItem);
+      });
+    } else {
+      favoritesMenu.style.display = 'none';
+    }
+  }
+  
+
+  // Clear all favorites
+  searchPanel.querySelector('#skirk-clear-favorites').addEventListener('click', () => {
+    if (confirm('Are you sure you want to clear all favorites?')) {
+      saveFavorites([]);
+    }
+  });
+  
+
+  // Favorites filter input
+  const favoritesFilterInput = searchPanel.querySelector('#skirk-favorites-filter');
+  if (favoritesFilterInput) {
+@@ -9818,7 +9881,7 @@ function createSearchWindow() {
+    };
+    favoritesFilterInput.addEventListener('input', onFilterChange);
+  }
+  
+
+  // Initialize favorites display
+  updateFavoritesDisplay();
+
+@@ -9869,23 +9932,23 @@ function createSearchWindow() {
+  const linkInput = locationModal.querySelector('#location-link');
+  const latInput = locationModal.querySelector('#location-lat');
+  const lonInput = locationModal.querySelector('#location-lon');
+  
+
+  linkInput.addEventListener('input', () => {
+    const link = linkInput.value.trim();
+    if (!link) {
+      latInput.value = '';
+      lonInput.value = '';
+      return;
+    }
+    
+
+    // Extract lat and lng from wplace.live URL
+    const latMatch = link.match(/lat=([^&]+)/);
+    const lngMatch = link.match(/lng=([^&]+)/);
+    
+
+    if (latMatch && lngMatch) {
+      const lat = parseFloat(latMatch[1]);
+      const lng = parseFloat(lngMatch[1]);
+      
+
+      if (!isNaN(lat) && !isNaN(lng)) {
+        latInput.value = lat.toString();
+        lonInput.value = lng.toString();
+@@ -9962,7 +10025,7 @@ function createSearchWindow() {
+    favoritesCollapsed = !favoritesCollapsed;
+    const toggle = searchPanel.querySelector('#skirk-favorites-toggle');
+    const list = searchPanel.querySelector('#skirk-favorites-list');
+    
+
+    if (favoritesCollapsed) {
+      toggle.classList.add('collapsed');
+      list.style.display = 'none';
+@@ -10099,20 +10162,26 @@ function createSearchWindow() {
+  }
+
+  function navigateToLocation(lat, lon) {
+    const zoom = 14.62;
+    const url = `https://wplace.live/?lat=${lat}&lng=${lon}&zoom=${zoom}`;
+    console.log('Opening URL:', url);
+    
+    // Open in current tab (like the original)
+    window.location.href = url;
+    
+    window.bmmap.flyTo(
+        {
+            center: [parseFloat(lon), parseFloat(lat)],
+            zoom: 16,
+        }
+    )
+    // const zoom = 14.62;
+    // const url = `https://wplace.live/?lat=${lat}&lng=${lon}&zoom=${zoom}`;
+    // console.log('Opening URL:', url);
+    //
+    // // Open in current tab (like the original)
+    // window.location.href = url;
+
+    // Alternative: uncomment this line to open in new tab for debugging
+    // window.open(url, '_blank', 'noopener noreferrer');
+  }
+
+  function displayResults(results) {
+    console.log('Search results received:', results);
+    
+
+    if (results.length === 0) {
+      resultsContainer.innerHTML = '<div class="skirk-no-results">No results found</div>';
+      return;
+@@ -10122,18 +10191,18 @@ function createSearchWindow() {
+    results.forEach(result => {
+      console.log('Raw result object:', result);
+      console.log('Object keys:', Object.keys(result));
+      
+
+      // Try to access properties directly from the raw object
+      const displayName = result['display_name'] || result['name'] || 'Unknown location';
+      const lat = result['lat'];
+      const lon = result['lon'];
+      
+
+      console.log('Extracted values:', {
+        displayName: displayName,
+        lat: lat,
+        lon: lon
+      });
+      
+
+      const resultItem = document.createElement('div');
+      resultItem.className = 'skirk-search-result';
+
+@@ -10169,7 +10238,7 @@ function createSearchWindow() {
+        console.log('=== NAVIGATION DEBUG ===');
+        console.log('Clicking result with lat:', latStr, 'lon:', lonStr);
+        console.log('URL will be:', `https://wplace.live/?lat=${latStr}&lng=${lonStr}&zoom=14.62`);
+        
+
+        if (latStr && lonStr && latStr !== 'undefined' && lonStr !== 'undefined') {
+          navigateToLocation(latStr, lonStr);
+          searchPanel.style.display = 'none';
+@@ -10186,7 +10255,7 @@ function createSearchWindow() {
+        e.stopPropagation();
+        const star = e.target;
+        const isFav = star.classList.contains('favorited');
+        
+
+        if (isFav) {
+          removeFavorite(lat, lon);
+          star.classList.remove('favorited');
+@@ -10233,14 +10302,14 @@ function createSearchWindow() {
+  let searchTimeout;
+  searchInput.addEventListener('input', () => {
+    clearTimeout(searchTimeout);
+    
+
+    const query = searchInput.value.trim();
+    if (!query) {
+      // Clear results when search is empty
+      resultsContainer.innerHTML = '';
+      return;
+    }
+    
+
+    searchTimeout = setTimeout(handleSearch, 500); // Debounce search
+  });
+}
+@@ -10255,4 +10324,4 @@ if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', createSearchWindow);
+} else {
+  createSearchWindow();
+}
+}

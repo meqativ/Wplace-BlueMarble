@@ -29,6 +29,14 @@ function inject(callback) {
     script.remove();
 }
 
+function flyToLatLng(lat, lng) {
+  console.log(`🚀 Flying to lat: ${lat}, lng ${lng}!`, lat, lng);
+  unsafeWindow.bmmap.flyTo({
+      'center': [lng, lat],
+      'zoom': 16,
+  })
+}
+
 /** What code to execute instantly in the client (webpage) to spy on fetch calls.
  * This code will execute outside of TamperMonkey's sandbox.
  * @since 0.11.15
@@ -39,6 +47,25 @@ inject(() => {
   const name = script?.getAttribute('bm-name') || 'Blue Marble'; // Gets the name value that was passed in. Defaults to "Blue Marble" if nothing was found
   const consoleStyle = script?.getAttribute('bm-cStyle') || ''; // Gets the console style value that was passed in. Defaults to no styling if nothing was found
   const fetchedBlobQueue = new Map(); // Blobs being processed
+
+  // Observer to wait for the map to be ready and set window.bmmap
+  const observer = new MutationObserver(mutations => {
+    try {
+      let map = document.querySelector("div.absolute.bottom-3.right-3.z-30").childNodes[0].__click[3].v
+      if(typeof map.version == "string"){
+        window.bmmap = map;
+        observer.disconnect();
+      }
+    }
+    catch (e){
+
+    }
+  });
+
+  observer.observe(document.body, {
+    childList: true,
+    subtree: true
+  });
 
   window.addEventListener('message', (event) => {
     const { source, endpoint, blobID, blobData, blink } = event.data;
@@ -580,11 +607,47 @@ async function loadTemplates() {
   // Try TamperMonkey storage first
   try {
     if (typeof GM !== 'undefined' && GM.getValue) {
-      const data = await GM.getValue('bmTemplates', '{}');
+      // Check if data is chunked
+      const chunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+      let data;
+      
+      if (chunkCount > 0) {
+        // Load chunked data
+        console.log(`📦 Loading ${chunkCount} chunks from TamperMonkey storage...`);
+        let combinedData = '';
+        for (let i = 0; i < chunkCount; i++) {
+          const chunk = await GM.getValue(`bmTemplates_part_${i}`, '');
+          combinedData += chunk;
+        }
+        data = combinedData;
+        console.log(`✅ Successfully loaded chunked data (${combinedData.length} chars)`);
+      } else {
+        // Load regular single data
+        data = await GM.getValue('bmTemplates', '{}');
+      }
+      
       storageTemplates = JSON.parse(data);
       storageSource = 'TamperMonkey (async)';
     } else if (typeof GM_getValue !== 'undefined') {
-      const data = GM_getValue('bmTemplates', '{}');
+      // Check if data is chunked (legacy)
+      const chunkCount = GM_getValue('bmTemplates_chunkCount', 0);
+      let data;
+      
+      if (chunkCount > 0) {
+        // Load chunked data
+        console.log(`📦 Loading ${chunkCount} chunks from TamperMonkey storage (legacy)...`);
+        let combinedData = '';
+        for (let i = 0; i < chunkCount; i++) {
+          const chunk = GM_getValue(`bmTemplates_part_${i}`, '');
+          combinedData += chunk;
+        }
+        data = combinedData;
+        console.log(`✅ Successfully loaded chunked data (${combinedData.length} chars)`);
+      } else {
+        // Load regular single data
+        data = GM_getValue('bmTemplates', '{}');
+      }
+      
       storageTemplates = JSON.parse(data);
       storageSource = 'TamperMonkey (legacy)';
     }
@@ -669,10 +732,34 @@ async function migrateAndValidateStorage() {
     // Get TamperMonkey data
     try {
       if (typeof GM !== 'undefined' && GM.getValue) {
-        tmData = await GM.getValue('bmTemplates', null);
+        // Check if data is chunked
+        const chunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+        if (chunkCount > 0) {
+          // Load chunked data
+          let combinedData = '';
+          for (let i = 0; i < chunkCount; i++) {
+            const chunk = await GM.getValue(`bmTemplates_part_${i}`, '');
+            combinedData += chunk;
+          }
+          tmData = combinedData;
+        } else {
+          tmData = await GM.getValue('bmTemplates', null);
+        }
         tmTimestamp = await GM.getValue('bmTemplates_timestamp', 0);
       } else if (typeof GM_getValue !== 'undefined') {
-        tmData = GM_getValue('bmTemplates', null);
+        // Check if data is chunked (legacy)
+        const chunkCount = GM_getValue('bmTemplates_chunkCount', 0);
+        if (chunkCount > 0) {
+          // Load chunked data
+          let combinedData = '';
+          for (let i = 0; i < chunkCount; i++) {
+            const chunk = GM_getValue(`bmTemplates_part_${i}`, '');
+            combinedData += chunk;
+          }
+          tmData = combinedData;
+        } else {
+          tmData = GM_getValue('bmTemplates', null);
+        }
         tmTimestamp = GM_getValue('bmTemplates_timestamp', 0);
       }
     } catch (e) { console.warn('TM check failed:', e); }
@@ -2404,16 +2491,25 @@ function showTemplateManageDialog(instance) {
           const [tileX, tileY, pX, pY] = coords.map(coord => parseInt(coord.trim(), 10));
           const coordinates = [tileX, tileY, pX, pY];
           
+          // Auto-fill coordinate inputs with template coordinates
+          const coordTxInput = document.querySelector('#bm-input-tx');
+          const coordTyInput = document.querySelector('#bm-input-ty');
+          const coordPxInput = document.querySelector('#bm-input-px');
+          const coordPyInput = document.querySelector('#bm-input-py');
+          
+          if (coordTxInput) coordTxInput.value = tileX;
+          if (coordTyInput) coordTyInput.value = tileY;
+          if (coordPxInput) coordPxInput.value = pX;
+          if (coordPyInput) coordPyInput.value = pY;
+          
           // Convert to lat/lng
           const latLng = canvasPosToLatLng(coordinates);
           
           if (latLng) {
-            const teleportUrl = `https://wplace.live/?lat=${latLng.lat}&lng=${latLng.lng}&zoom=14.202666470770193`;
+            flyToLatLng(latLng.lat, latLng.lng)
+            document.body.removeChild(overlay)
             
-            // Open in same tab to teleport
-            window.location.href = teleportUrl;
-            
-            instance.handleDisplayStatus(`🚀 Flying to "${templateName}" at ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}!`);
+            instance.handleDisplayStatus(`🚀 Flying to "${templateName}" at ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}! Coordinates auto-filled.`);
           } else {
             instance.handleDisplayStatus('❌ Unable to convert coordinates to location!');
           }
@@ -2972,6 +3068,30 @@ function buildOverlayMain() {
               if (searchPanel) {
                 searchPanel.style.display = searchPanel.style.display === 'none' || !searchPanel.style.display ? 'flex' : 'none';
               }
+            });
+          }).buildElement()
+          .addButton({'id': 'bm-button-flyto', 'className': 'bm-help', 'innerHTML': '🗺️', 'title': 'Fly to current coordinates'}, 
+            (instance, button) => {
+            button.addEventListener('click', () => {
+              function coordsToLatLng(tileX, tileY, pixelX, pixelY){
+                const z = 40075.016685578485 / 2 ** 11
+                const ys = 20037508.342789244
+                let metersX = (tileX * 1000 + pixelX) * z - ys
+                let metersY = (ys - (tileY * 1000 + pixelY) * z) / ys * 180
+
+                let lat = 180 / Math.PI * (2 * Math.atan(Math.exp(metersY * Math.PI / 180)) - Math.PI / 2)
+                let lng = metersX / ys * 180
+                return [lat, lng]
+              }
+              
+              const coordTlX = Number(document.querySelector('#bm-input-tx').value);
+              const coordTlY = Number(document.querySelector('#bm-input-ty').value);
+              const coordPxX = Number(document.querySelector('#bm-input-px').value);
+              const coordPxY = Number(document.querySelector('#bm-input-py').value);
+
+              const [lat, lng] = coordsToLatLng(coordTlX, coordTlY, coordPxX, coordPxY);
+              flyToLatLng(lat, lng);
+              
             });
           }).buildElement()
           .addButton({'id': 'bm-button-screenshot', 'className': 'bm-help', 'innerHTML': '📸', 'title': 'Screenshot current template area (auto-detects coordinates)'},
@@ -10094,21 +10214,22 @@ function createSearchWindow() {
     });
   }
 
-  function navigateToLocation(lat, lon) {
-    const zoom = 14.62;
-    const url = `https://wplace.live/?lat=${lat}&lng=${lon}&zoom=${zoom}`;
-    console.log('Opening URL:', url);
+    function navigateToLocation(lat, lon) {
+    flyToLatLng(lat, lon)
+    // const zoom = 14.62;
+    // const url = `https://wplace.live/?lat=${lat}&lng=${lon}&zoom=${zoom}`;
+    // console.log('Opening URL:', url);
     
-    // Open in current tab (like the original)
-    window.location.href = url;
+    // // Open in current tab (like the original)
+    // window.location.href = url;
     
-    // Alternative: uncomment this line to open in new tab for debugging
-    // window.open(url, '_blank', 'noopener noreferrer');
+    // // Alternative: uncomment this line to open in new tab for debugging
+    // // window.open(url, '_blank', 'noopener noreferrer');
   }
 
   function displayResults(results) {
     console.log('Search results received:', results);
-    
+
     if (results.length === 0) {
       resultsContainer.innerHTML = '<div class="skirk-no-results">No results found</div>';
       return;
@@ -10118,18 +10239,18 @@ function createSearchWindow() {
     results.forEach(result => {
       console.log('Raw result object:', result);
       console.log('Object keys:', Object.keys(result));
-      
+
       // Try to access properties directly from the raw object
       const displayName = result['display_name'] || result['name'] || 'Unknown location';
       const lat = result['lat'];
       const lon = result['lon'];
-      
+
       console.log('Extracted values:', {
         displayName: displayName,
         lat: lat,
         lon: lon
       });
-      
+
       const resultItem = document.createElement('div');
       resultItem.className = 'skirk-search-result';
 
@@ -10165,7 +10286,7 @@ function createSearchWindow() {
         console.log('=== NAVIGATION DEBUG ===');
         console.log('Clicking result with lat:', latStr, 'lon:', lonStr);
         console.log('URL will be:', `https://wplace.live/?lat=${latStr}&lng=${lonStr}&zoom=14.62`);
-        
+
         if (latStr && lonStr && latStr !== 'undefined' && lonStr !== 'undefined') {
           navigateToLocation(latStr, lonStr);
           searchPanel.style.display = 'none';
@@ -10182,7 +10303,7 @@ function createSearchWindow() {
         e.stopPropagation();
         const star = e.target;
         const isFav = star.classList.contains('favorited');
-        
+
         if (isFav) {
           removeFavorite(lat, lon);
           star.classList.remove('favorited');
