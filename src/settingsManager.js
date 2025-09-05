@@ -425,3 +425,58 @@ export function saveSmartDetectionEnabled(enabled) {
     consoleError('Failed to save smart detection setting:', error);
   }
 }
+
+/** Gets the navigation method setting from storage
+ * @returns {string} Navigation method ('flyto' or 'openurl')
+ * @since 1.0.0
+ */
+export function getNavigationMethod() {
+  try {
+    let navigationMethod = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmNavigationMethod', null);
+      if (saved !== null) navigationMethod = JSON.parse(saved);
+    }
+    
+    // Fallback to localStorage
+    if (navigationMethod === null) {
+      const saved = localStorage.getItem('bmNavigationMethod');
+      if (saved !== null) navigationMethod = JSON.parse(saved);
+    }
+    
+    if (navigationMethod !== null) {
+      consoleLog('🧭 Navigation method setting loaded:', navigationMethod);
+      return navigationMethod;
+    }
+  } catch (error) {
+    consoleWarn('Failed to load navigation method setting:', error);
+  }
+  
+  // Default to flyto
+  consoleLog('🧭 Using default navigation method setting: flyto');
+  return 'flyto';
+}
+
+/** Saves the navigation method setting to storage
+ * @param {string} method - Navigation method ('flyto' or 'openurl')
+ * @since 1.0.0
+ */
+export function saveNavigationMethod(method) {
+  try {
+    const methodString = JSON.stringify(method);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmNavigationMethod', methodString);
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmNavigationMethod', methodString);
+    
+    consoleLog('🧭 Navigation method setting saved:', method);
+  } catch (error) {
+    consoleError('Failed to save navigation method setting:', error);
+  }
+}

@@ -30,7 +30,6 @@ function inject(callback) {
 }
 
 function flyToLatLng(lat, lng) {
-  console.log(`🚀 Flying to lat: ${lat}, lng ${lng}!`, lat, lng);
   unsafeWindow.bmmap.flyTo({
       'center': [lng, lat],
       'zoom': 16,
@@ -613,14 +612,12 @@ async function loadTemplates() {
       
       if (chunkCount > 0) {
         // Load chunked data
-        console.log(`📦 Loading ${chunkCount} chunks from TamperMonkey storage...`);
         let combinedData = '';
         for (let i = 0; i < chunkCount; i++) {
           const chunk = await GM.getValue(`bmTemplates_part_${i}`, '');
           combinedData += chunk;
         }
         data = combinedData;
-        console.log(`✅ Successfully loaded chunked data (${combinedData.length} chars)`);
       } else {
         // Load regular single data
         data = await GM.getValue('bmTemplates', '{}');
@@ -635,14 +632,12 @@ async function loadTemplates() {
       
       if (chunkCount > 0) {
         // Load chunked data
-        console.log(`📦 Loading ${chunkCount} chunks from TamperMonkey storage (legacy)...`);
         let combinedData = '';
         for (let i = 0; i < chunkCount; i++) {
           const chunk = GM_getValue(`bmTemplates_part_${i}`, '');
           combinedData += chunk;
         }
         data = combinedData;
-        console.log(`✅ Successfully loaded chunked data (${combinedData.length} chars)`);
       } else {
         // Load regular single data
         data = GM_getValue('bmTemplates', '{}');
@@ -666,11 +661,8 @@ async function loadTemplates() {
     }
   }
   
-  console.log(`📂 Templates loaded from: ${storageSource}`);
-  
   // Minimal debug logging for performance
   const templateCount = Object.keys(storageTemplates?.templates || {}).length;
-  console.log(`📦 Found ${templateCount} templates`);
   
   if (templateCount === 0 && storageSource !== 'empty (all failed)') {
     console.warn('⚠️ No templates found but storage source was available');
@@ -685,7 +677,6 @@ async function loadTemplates() {
         const lsBackup = localStorage.getItem('bmTemplates');
         if (lsBackup) {
           backupData = JSON.parse(lsBackup);
-          console.log('🔄 Found backup in localStorage');
         }
       } else {
         // Try TamperMonkey as backup
@@ -695,13 +686,11 @@ async function loadTemplates() {
         }
         if (tmBackup) {
           backupData = JSON.parse(tmBackup);
-          console.log('🔄 Found backup in TamperMonkey storage');
         }
       }
       
       const backupCount = Object.keys(backupData?.templates || {}).length;
       if (backupCount > 0) {
-        console.log(`✅ Recovering ${backupCount} templates from backup`);
         storageTemplates = backupData;
         // Save recovered data to both storages (removed setTimeout for performance)
         templateManager.updateTemplateWithColorFilter().catch(e => console.warn('Template color filter update failed:', e));
@@ -713,10 +702,8 @@ async function loadTemplates() {
   
   templateManager.importJSON(storageTemplates); // Loads the templates
   
-  if (templateCount > 0) {
-    console.log(`✅ Successfully loaded ${templateCount} templates`);
-  } else {
-    console.log('ℹ️ No templates loaded - start by creating a new template');
+  if (templateCount === 0) {
+    consoleLog('ℹ️ No templates loaded - start by creating a new template');
   }
 }
 
@@ -743,7 +730,7 @@ async function migrateAndValidateStorage() {
           }
           tmData = combinedData;
         } else {
-          tmData = await GM.getValue('bmTemplates', null);
+        tmData = await GM.getValue('bmTemplates', null);
         }
         tmTimestamp = await GM.getValue('bmTemplates_timestamp', 0);
       } else if (typeof GM_getValue !== 'undefined') {
@@ -758,7 +745,7 @@ async function migrateAndValidateStorage() {
           }
           tmData = combinedData;
         } else {
-          tmData = GM_getValue('bmTemplates', null);
+        tmData = GM_getValue('bmTemplates', null);
         }
         tmTimestamp = GM_getValue('bmTemplates_timestamp', 0);
       }
@@ -778,7 +765,6 @@ async function migrateAndValidateStorage() {
         // TamperMonkey is newer, update localStorage
         localStorage.setItem('bmTemplates', tmData);
         localStorage.setItem('bmTemplates_timestamp', tmTimestamp.toString());
-        console.log('✅ Synced localStorage with newer TamperMonkey data');
       } else {
         // localStorage is newer, update TamperMonkey
         if (typeof GM !== 'undefined' && GM.setValue) {
@@ -788,7 +774,6 @@ async function migrateAndValidateStorage() {
           GM_setValue('bmTemplates', lsData);
           GM_setValue('bmTemplates_timestamp', lsTimestamp);
         }
-        console.log('✅ Synced TamperMonkey with newer localStorage data');
       }
     }
   } catch (error) {
@@ -1102,7 +1087,6 @@ function clearAllStorage(instance) {
           if (localStorage.getItem(key) !== null) {
             localStorage.removeItem(key);
             deletedCount++;
-            console.log(`🧹 Cleared localStorage: ${key}`);
           }
         });
         
@@ -1111,7 +1095,6 @@ function clearAllStorage(instance) {
           bmStorageKeys.forEach(key => {
             try {
               GM_deleteValue(key);
-              console.log(`🧹 Cleared TamperMonkey: ${key}`);
             } catch (e) {
               // Key might not exist, ignore
             }
@@ -1123,7 +1106,6 @@ function clearAllStorage(instance) {
           bmStorageKeys.forEach(async (key) => {
             try {
               await GM.deleteValue(key);
-              console.log(`🧹 Cleared TamperMonkey async: ${key}`);
             } catch (e) {
               // Key might not exist, ignore
             }
@@ -1135,7 +1117,6 @@ function clearAllStorage(instance) {
           templateManager.templatesJSON = null;
           templateManager.templatesArray = [];
           templateManager.templatesShouldBeDrawn = false;
-          console.log('🧹 Cleared template manager data');
         }
         
         // Clear any remaining Blue Marble related session storage
@@ -1143,7 +1124,6 @@ function clearAllStorage(instance) {
           Object.keys(sessionStorage).forEach(key => {
             if (key.toLowerCase().includes('bm') || key.toLowerCase().includes('bluemarble')) {
               sessionStorage.removeItem(key);
-              console.log(`🧹 Cleared sessionStorage: ${key}`);
             }
           });
         } catch (e) {
@@ -1151,7 +1131,6 @@ function clearAllStorage(instance) {
         }
         
         instance.handleDisplayStatus(`🧹 Storage cleared! Deleted ${deletedCount} keys. Please refresh the page.`);
-        console.log(`🧹✅ Successfully cleared all Blue Marble storage data (${deletedCount} keys)`);
         
         // Suggest page refresh
         setTimeout(() => {
@@ -1878,11 +1857,11 @@ function deleteSelectedTemplate(instance) {
             const success = await templateManager.deleteTemplate(templateKey);
             
             if (success) {
-              // Remove overlay
-              document.body.removeChild(overlay);
-              
-              instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
-              consoleLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
+            // Remove overlay
+            document.body.removeChild(overlay);
+            
+            instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
+            consoleLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
             } else {
               throw new Error('Delete operation returned false');
             }
@@ -2506,10 +2485,20 @@ function showTemplateManageDialog(instance) {
           const latLng = canvasPosToLatLng(coordinates);
           
           if (latLng) {
-            flyToLatLng(latLng.lat, latLng.lng)
+            // Use navigation method setting
+            const navigationMethod = Settings.getNavigationMethod();
+            
+            if (navigationMethod === 'openurl') {
+              const zoom = 13.62;
+              const url = `https://wplace.live/?lat=${latLng.lat}&lng=${latLng.lng}&zoom=${zoom}`;
+              window.location.href = url;
+            } else {
+              flyToLatLng(latLng.lat, latLng.lng);
+            }
+            
             document.body.removeChild(overlay)
             
-            instance.handleDisplayStatus(`🚀 Flying to "${templateName}" at ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}! Coordinates auto-filled.`);
+            instance.handleDisplayStatus(`🧭 ${navigationMethod === 'openurl' ? 'Navigating' : 'Flying'} to "${templateName}" at ${latLng.lat.toFixed(6)}, ${latLng.lng.toFixed(6)}! Coordinates auto-filled.`);
           } else {
             instance.handleDisplayStatus('❌ Unable to convert coordinates to location!');
           }
@@ -3090,7 +3079,17 @@ function buildOverlayMain() {
               const coordPxY = Number(document.querySelector('#bm-input-py').value);
 
               const [lat, lng] = coordsToLatLng(coordTlX, coordTlY, coordPxX, coordPxY);
-              flyToLatLng(lat, lng);
+              
+              // Use navigation method setting
+              const navigationMethod = Settings.getNavigationMethod();
+              
+              if (navigationMethod === 'openurl') {
+                const zoom = 13.62;
+                const url = `https://wplace.live/?lat=${lat}&lng=${lng}&zoom=${zoom}`;
+                window.location.href = url;
+              } else {
+                flyToLatLng(lat, lng);
+              }
               
             });
           }).buildElement()
@@ -3105,9 +3104,6 @@ function buildOverlayMain() {
                     // Use the currently displayed template for screenshot
                     const displayedTemplateKey = Array.from(templateManager.currentlyDisplayedTemplates)[0];
                     t = templateManager.templatesArray.find(template => `${template.sortID} ${template.authorID}` === displayedTemplateKey);
-                    if (t) {
-                      console.log('📸 [Smart Screenshot Button] Using actively displayed template:', t.displayName);
-                    }
                   }
                   
                   // Fallback: Use first enabled template
@@ -3116,7 +3112,6 @@ function buildOverlayMain() {
                       const templateKey = `${template.sortID} ${template.authorID}`;
                       if (templateManager.isTemplateEnabled(templateKey)) {
                         t = template;
-                        console.log('📸 [Smart Screenshot Button] Using first enabled template:', t.displayName);
                         break;
                       }
                     }
@@ -3125,13 +3120,8 @@ function buildOverlayMain() {
                   // Final fallback: Use first template (backward compatibility)
                   if (!t) {
                     t = templateManager.templatesArray?.[0];
-                    if (t) {
-                      console.log('📸 [Smart Screenshot Button] Using fallback template:', t.displayName);
-                    }
                   }
                   
-                  console.log('🔍 Debug - Active template:', t);
-                  console.log('🔍 Debug - Template coords:', t?.coords);
                   if (!t) {
                     instance.handleDisplayError('No template loaded.');
                     return;
@@ -3139,7 +3129,6 @@ function buildOverlayMain() {
                   
                   // Auto-detect coordinates from active template
                   if (!t.coords || t.coords.length !== 4) {
-                    // console.log('❌ Debug - Template coords issue:', { coords: t.coords, length: t.coords?.length });
                     instance.handleDisplayError('Template coordinates not available. Create a template first.');
                     return;
                   }
@@ -9447,7 +9436,8 @@ function buildCrosshairSettingsOverlay() {
       tempMiniTrackerEnabled !== currentTrackerSaved ||
       tempCollapseMinEnabled !== currentCollapseSaved ||
       tempMobileMode !== currentMobileSaved ||
-      tempShowLeftOnColor !== getShowLeftOnColorEnabled();
+      tempShowLeftOnColor !== getShowLeftOnColorEnabled() ||
+      tempNavigationMethod !== Settings.getNavigationMethod();
     
     if (hasChanges) {
       if (confirm('Discard changes? Any unsaved settings will be lost.')) {
@@ -9499,7 +9489,7 @@ function buildCrosshairSettingsOverlay() {
     
     try {
       // Save all settings
-      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled, mobile: tempMobileMode, showLeftOnColor: tempShowLeftOnColor });
+      consoleLog('🎨 Applying crosshair settings:', { color: tempColor, borders: tempBorderEnabled, miniTracker: tempMiniTrackerEnabled, collapse: tempCollapseMinEnabled, mobile: tempMobileMode, showLeftOnColor: tempShowLeftOnColor, navigation: tempNavigationMethod });
       
       saveCrosshairColor(tempColor);
       saveBorderEnabled(tempBorderEnabled);
@@ -9509,6 +9499,7 @@ function buildCrosshairSettingsOverlay() {
       saveCollapseMinEnabled(tempCollapseMinEnabled);
       saveMobileMode(tempMobileMode);
       saveShowLeftOnColorEnabled(tempShowLeftOnColor);
+      Settings.saveNavigationMethod(tempNavigationMethod);
       
       // Apply mobile mode to existing Color Filter overlay dynamically
       applyMobileModeToColorFilter(tempMobileMode);
@@ -9715,6 +9706,108 @@ function buildCrosshairSettingsOverlay() {
   contentContainer.appendChild(mobileSection);
   contentContainer.appendChild(leftOnColorSection);
   contentContainer.appendChild(collapseSection);
+
+  // Navigation method section
+  const navigationSection = document.createElement('div');
+  navigationSection.style.cssText = `
+    background: linear-gradient(135deg, var(--slate-800), var(--slate-750));
+    border: 1px solid var(--slate-700);
+    border-radius: ${sectionBorderRadius};
+    padding: ${sectionPadding};
+    margin-bottom: ${sectionMargin};
+    position: relative;
+    z-index: 1;
+  `;
+
+  const navigationLabel = document.createElement('h3');
+  navigationLabel.textContent = 'Navigation Method';
+  navigationLabel.style.cssText = `
+    margin: 0 0 8px 0;
+    color: var(--slate-100);
+    font-size: 1em;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  `;
+
+  const navigationDescription = document.createElement('p');
+  navigationDescription.textContent = 'Choose how to navigate when clicking search results and favorites';
+  navigationDescription.style.cssText = `
+    margin: 0 0 16px 0;
+    color: var(--slate-400);
+    font-size: 0.85em;
+    line-height: 1.4;
+  `;
+
+  // Get current navigation method setting (single source of truth)
+  let tempNavigationMethod = Settings.getNavigationMethod();
+
+  const navigationToggle = document.createElement('div');
+  navigationToggle.style.cssText = `
+    display: flex;
+    gap: 8px;
+    padding: 4px;
+    background: var(--slate-900);
+    border-radius: 8px;
+    border: 1px solid var(--slate-600);
+  `;
+
+  const flytoButton = document.createElement('button');
+  flytoButton.textContent = 'FlyTo';
+  flytoButton.style.cssText = `
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    ${tempNavigationMethod === 'flyto' 
+      ? 'background: linear-gradient(135deg, var(--blue-500), var(--blue-600)); color: white;'
+      : 'background: transparent; color: var(--slate-300);'
+    }
+  `;
+
+  const openurlButton = document.createElement('button');
+  openurlButton.textContent = 'OpenURL';
+  openurlButton.style.cssText = `
+    flex: 1;
+    padding: 8px 12px;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 0.9em;
+    font-weight: 600;
+    transition: all 0.2s ease;
+    ${tempNavigationMethod === 'openurl' 
+      ? 'background: linear-gradient(135deg, var(--blue-500), var(--blue-600)); color: white;'
+      : 'background: transparent; color: var(--slate-300);'
+    }
+  `;
+
+  flytoButton.onclick = () => {
+    tempNavigationMethod = 'flyto';
+    flytoButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+    flytoButton.style.color = 'white';
+    openurlButton.style.background = 'transparent';
+    openurlButton.style.color = 'var(--slate-300)';
+  };
+
+  openurlButton.onclick = () => {
+    tempNavigationMethod = 'openurl';
+    openurlButton.style.background = 'linear-gradient(135deg, var(--blue-500), var(--blue-600))';
+    openurlButton.style.color = 'white';
+    flytoButton.style.background = 'transparent';
+    flytoButton.style.color = 'var(--slate-300)';
+  };
+
+  navigationToggle.appendChild(flytoButton);
+  navigationToggle.appendChild(openurlButton);
+  navigationSection.appendChild(navigationLabel);
+  navigationSection.appendChild(navigationDescription);
+  navigationSection.appendChild(navigationToggle);
+  contentContainer.appendChild(navigationSection);
+
   settingsOverlay.appendChild(contentContainer);
   settingsOverlay.appendChild(footerContainer);
   document.body.appendChild(settingsOverlay);
@@ -10214,22 +10307,23 @@ function createSearchWindow() {
     });
   }
 
-    function navigateToLocation(lat, lon) {
-    flyToLatLng(lat, lon)
-    // const zoom = 14.62;
-    // const url = `https://wplace.live/?lat=${lat}&lng=${lon}&zoom=${zoom}`;
-    // console.log('Opening URL:', url);
+  function navigateToLocation(lat, lon) {
+    const navigationMethod = Settings.getNavigationMethod();
     
-    // // Open in current tab (like the original)
-    // window.location.href = url;
+    if (navigationMethod === 'openurl') {
+    const zoom = 13.62;
+    const url = `https://wplace.live/?lat=${lat}&lng=${lon}&zoom=${zoom}`;
     
-    // // Alternative: uncomment this line to open in new tab for debugging
-    // // window.open(url, '_blank', 'noopener noreferrer');
+    // Open in current tab (like the original)
+    window.location.href = url;
+    } else {
+      flyToLatLng(lat, lon);
+    }
   }
 
   function displayResults(results) {
     console.log('Search results received:', results);
-
+    
     if (results.length === 0) {
       resultsContainer.innerHTML = '<div class="skirk-no-results">No results found</div>';
       return;
@@ -10239,18 +10333,18 @@ function createSearchWindow() {
     results.forEach(result => {
       console.log('Raw result object:', result);
       console.log('Object keys:', Object.keys(result));
-
+      
       // Try to access properties directly from the raw object
       const displayName = result['display_name'] || result['name'] || 'Unknown location';
       const lat = result['lat'];
       const lon = result['lon'];
-
+      
       console.log('Extracted values:', {
         displayName: displayName,
         lat: lat,
         lon: lon
       });
-
+      
       const resultItem = document.createElement('div');
       resultItem.className = 'skirk-search-result';
 
@@ -10286,7 +10380,7 @@ function createSearchWindow() {
         console.log('=== NAVIGATION DEBUG ===');
         console.log('Clicking result with lat:', latStr, 'lon:', lonStr);
         console.log('URL will be:', `https://wplace.live/?lat=${latStr}&lng=${lonStr}&zoom=14.62`);
-
+        
         if (latStr && lonStr && latStr !== 'undefined' && lonStr !== 'undefined') {
           navigateToLocation(latStr, lonStr);
           searchPanel.style.display = 'none';
@@ -10303,7 +10397,7 @@ function createSearchWindow() {
         e.stopPropagation();
         const star = e.target;
         const isFav = star.classList.contains('favorited');
-
+        
         if (isFav) {
           removeFavorite(lat, lon);
           star.classList.remove('favorited');
