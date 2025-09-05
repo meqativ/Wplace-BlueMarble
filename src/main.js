@@ -2363,6 +2363,7 @@ function showTemplateManageDialog(instance) {
     
     // Button container
     const buttonContainer = document.createElement('div');
+    buttonContainer.classList.add('templateInfoControls');
     buttonContainer.style.cssText = `
       display: flex;
       gap: 8px;
@@ -7741,6 +7742,14 @@ function applyMobileModeToColorFilter(enableMobile) {
       .bmcf-list-item .color-swatch { 
         width: 24px !important; 
         height: 24px !important; 
+      }
+      /* Template manager - mobile */
+      @media screen and (max-width: 500px){
+        .templateInfoControls{
+            max-width: 90px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
       }
     `;
     consoleLog('📱 [Dynamic Mobile] Mobile mode styles applied FRESH to Color Filter');
