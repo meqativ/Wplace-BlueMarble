@@ -2589,7 +2589,7 @@ function buildOverlayMain() {
     .addDiv({'id': 'bm-contain-header'})
       .addDiv({'id': 'bm-bar-drag'}).buildElement()
       .addDiv({'id': 'bm-title-container'})
-        .addImg({'alt': 'Blue Marble Icon - Click to minimize/maximize', 'src': 'https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png', 'style': 'cursor: pointer;'}, 
+        .addImg({'alt': 'Blue Marble Icon - Click to minimize/maximize', 'src': 'https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png', 'style': 'cursor: pointer; width: 42px; height: 42px;'}, 
           (instance, img) => {
           /** Click event handler for overlay minimize/maximize functionality.
            * 
@@ -2626,9 +2626,10 @@ function buildOverlayMain() {
             // Pre-restore original dimensions when switching to maximized state
             // This ensures smooth transition and prevents layout issues
             if (!isMinimized) {
-              overlay.style.width = "auto";
-              overlay.style.maxWidth = "300px";
-              overlay.style.minWidth = "200px";
+              overlay.style.width = "";
+              overlay.style.height = "";
+              overlay.style.maxWidth = "";
+              overlay.style.minWidth = "";
               overlay.style.padding = "10px";
             }
             
@@ -2729,7 +2730,7 @@ function buildOverlayMain() {
                 colorFilterButton.style.borderRadius = '8px';
                 colorFilterButton.style.animation = 'none';
                 colorFilterButton.style.gridColumn = 'auto';
-                colorFilterButton.style.margin = '6px auto 0';
+                colorFilterButton.style.margin = '2px auto 0';
                 colorFilterButton.style.display = 'flex';
                 colorFilterButton.style.alignItems = 'center';
                 colorFilterButton.style.justifyContent = 'center';
@@ -2756,14 +2757,14 @@ function buildOverlayMain() {
               // Apply fixed dimensions for consistent minimized appearance
               // These dimensions were chosen to accommodate the icon while remaining compact
               // Increase width to accommodate compact Color Filter button (56px) + padding
-              overlay.style.width = '72px';    // 56px button + 8px*2 padding
+              overlay.style.width = '72px';    // 56px button + 6px*2 padding
               overlay.style.height = '76px';   // Keep height consistent
               overlay.style.maxWidth = '72px';  // Prevent expansion
               overlay.style.minWidth = '72px';  // Prevent shrinking
-              overlay.style.padding = '8px';    // Comfortable padding around icon
+              overlay.style.padding = '6px';    // Reduced padding for tighter layout
               
                              // Apply icon positioning for better visual centering in minimized state
-               img.style.margin = '.5rem 1rem 0';
+               img.style.margin = '0.3rem 0 0 0';
               
               // Configure header layout for minimized state
               header.style.textAlign = 'center';
@@ -2773,7 +2774,7 @@ function buildOverlayMain() {
               // Ensure drag bar remains visible and properly spaced
               if (dragBar) {
                 dragBar.style.display = '';
-                dragBar.style.marginBottom = '0.25em';
+                dragBar.style.marginBottom = '0.1em';
               }
             } else {
               // ==================== MAXIMIZED STATE RESTORATION ====================
@@ -2863,7 +2864,7 @@ function buildOverlayMain() {
               });
               
               // Reset icon positioning to default (remove minimized state offset)
-              img.style.marginLeft = '';
+              img.style.margin = '';
               
               // Restore overlay to responsive dimensions
               overlay.style.padding = '10px';
@@ -2875,13 +2876,12 @@ function buildOverlayMain() {
               
               // Reset drag bar spacing
               if (dragBar) {
-                dragBar.style.marginBottom = '0.5em';
+                dragBar.style.marginBottom = '';
               }
               
-              // Remove all fixed dimensions to allow responsive behavior
-              // This ensures the overlay can adapt to content changes
-              overlay.style.width = '';
-              overlay.style.height = '';
+              // Remove all dimension constraints to allow natural responsive behavior
+              overlay.style.maxWidth = "";
+              overlay.style.minWidth = "";
             }
             
             // Update mini tracker visibility based on collapse setting
@@ -3521,9 +3521,10 @@ function buildColorFilterOverlay() {
 
     const title = document.createElement('h2');
     title.textContent = 'Template Color Filter';
+    const titleFontSize = isMobileMode ? '1.2em' : '1.5em';
     title.style.cssText = `
       margin: 0; 
-      font-size: 1.5em; 
+      font-size: ${titleFontSize}; 
       font-weight: 700;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       text-align: center;
@@ -3538,15 +3539,17 @@ function buildColorFilterOverlay() {
 
     const closeButton = document.createElement('button');
     closeButton.textContent = '✕';
+    const buttonSize = isMobileMode ? '32px' : '36px';
+    const buttonFontSize = isMobileMode ? '14px' : '16px';
     closeButton.style.cssText = `
       background: linear-gradient(135deg, #ef4444, #dc2626);
       border: 1px solid rgba(239, 68, 68, 0.3);
       color: white;
-      width: 36px;
-      height: 36px;
+      width: ${buttonSize};
+      height: ${buttonSize};
       border-radius: 12px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: ${buttonFontSize};
       font-weight: 600;
       display: flex;
       align-items: center;
@@ -3584,11 +3587,11 @@ function buildColorFilterOverlay() {
       background: linear-gradient(135deg, var(--slate-600), var(--slate-700));
       border: 1px solid var(--slate-500);
       color: var(--slate-200);
-      width: 36px;
-      height: 36px;
+      width: ${buttonSize};
+      height: ${buttonSize};
       border-radius: 12px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: ${buttonFontSize};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -3625,11 +3628,11 @@ function buildColorFilterOverlay() {
       background: linear-gradient(135deg, var(--slate-600), var(--slate-700));
       border: 1px solid var(--slate-500);
       color: var(--slate-200);
-      width: 36px;
-      height: 36px;
+      width: ${buttonSize};
+      height: ${buttonSize};
       border-radius: 12px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: ${buttonFontSize};
       display: flex;
       align-items: center;
       justify-content: center;
@@ -3733,11 +3736,11 @@ function buildColorFilterOverlay() {
       background: linear-gradient(135deg, var(--slate-600), var(--slate-700));
       border: 1px solid var(--slate-500);
       color: var(--slate-200);
-      width: 36px;
-      height: 36px;
+      width: ${buttonSize};
+      height: ${buttonSize};
       border-radius: 12px;
       cursor: pointer;
-      font-size: 16px;
+      font-size: ${buttonFontSize};
       display: flex;
       align-items: center;
       justify-content: center;
