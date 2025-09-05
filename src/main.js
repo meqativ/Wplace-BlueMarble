@@ -2164,6 +2164,190 @@ function showTemplateManageDialog(instance) {
     position: relative;
   `;
   
+  // Add mobile-specific styles for the manage dialog
+  if (!document.getElementById('bm-manage-mobile-styles')) {
+    const mobileStyles = document.createElement('style');
+    mobileStyles.id = 'bm-manage-mobile-styles';
+    mobileStyles.textContent = `
+      /* Template manager mobile styles */
+      @media screen and (max-width: 500px) {
+        /* Make ONLY template items stack vertically - not header */
+        #bm-template-manage-overlay div[style*="justify-content: space-between"][style*="padding: 16px"] {
+          flex-direction: column !important;
+          align-items: stretch !important;
+          gap: 12px !important;
+        }
+        
+        /* Template info section takes full width at top */
+        #bm-template-manage-overlay div[style*="flex: 1"][style*="min-width: 0"][style*="margin-right: 16px"] {
+          margin-bottom: 0 !important;
+          margin-right: 0 !important;
+          width: 100% !important;
+        }
+        
+        /* Button container - 4x1 grid layout (linha horizontal) */
+        #bm-template-manage-overlay .templateInfoControls {
+          max-width: 100% !important;
+          display: grid !important;
+          grid-template-columns: repeat(4, 1fr) !important;
+          gap: 6px !important;
+          justify-items: stretch !important;
+          margin-top: 8px !important;
+        }
+        
+        /* Buttons - touch-friendly em linha horizontal */
+        #bm-template-manage-overlay .templateInfoControls button {
+          width: 100% !important;
+          min-width: unset !important;
+          height: 40px !important;
+          padding: 6px 4px !important;
+          font-size: 12px !important;
+          display: flex !important;
+          align-items: center !important;
+          justify-content: center !important;
+        }
+        
+        /* Toggle button com fonte menor para caber */
+        #bm-template-manage-overlay .templateInfoControls button[style*="min-width: 80px"] {
+          font-size: 11px !important;
+          padding: 6px 2px !important;
+        }
+      }
+      
+      /* Small screens (380px) - começar compactação gradual */
+      @media screen and (max-width: 380px) {
+        /* Template item com padding reduzido gradualmente */
+        #bm-template-manage-overlay div[style*="justify-content: space-between"][style*="padding: 16px"] {
+          padding: 14px !important;
+          gap: 10px !important;
+        }
+        
+        /* Template info mais compacta */
+        #bm-template-manage-overlay div[style*="flex: 1"][style*="min-width: 0"][style*="margin-right: 16px"] {
+          line-height: 1.3 !important;
+        }
+        
+        /* Nome do template */
+        #bm-template-manage-overlay div[style*="display:flex"][style*="align-items:center"][style*="gap:8px"] {
+          margin-bottom: 5px !important;
+        }
+        
+        /* Informações de pixels */
+        #bm-template-manage-overlay div[style*="font-size: 0.85em"][style*="color: #94a3b8"] {
+          font-size: 0.82em !important;
+          margin-bottom: 3px !important;
+        }
+        
+        /* Coordenadas */
+        #bm-template-manage-overlay div[style*="font-size: 0.75em"][style*="color: #60a5fa"] {
+          font-size: 0.72em !important;
+          margin-top: 2px !important;
+        }
+        
+        /* Botões */
+        #bm-template-manage-overlay .templateInfoControls {
+          margin-top: 7px !important;
+          gap: 4px !important;
+        }
+        
+        #bm-template-manage-overlay .templateInfoControls button {
+          height: 42px !important;
+          font-size: 11px !important;
+          padding: 4px 2px !important;
+        }
+        
+        #bm-template-manage-overlay .templateInfoControls button[style*="min-width: 80px"] {
+          font-size: 10px !important;
+          padding: 4px 1px !important;
+        }
+      }
+      
+      /* Very small screens (360px) - mais compacto */
+      @media screen and (max-width: 360px) {
+        #bm-template-manage-overlay div[style*="justify-content: space-between"][style*="padding: 16px"] {
+          padding: 13px !important;
+          gap: 9px !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="flex: 1"][style*="min-width: 0"][style*="margin-right: 16px"] {
+          line-height: 1.25 !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="display:flex"][style*="align-items:center"][style*="gap:8px"] {
+          margin-bottom: 4px !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="font-size: 0.85em"][style*="color: #94a3b8"] {
+          font-size: 0.81em !important;
+          margin-bottom: 2px !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="font-size: 0.75em"][style*="color: #60a5fa"] {
+          font-size: 0.71em !important;
+        }
+        
+        #bm-template-manage-overlay .templateInfoControls button {
+          height: 40px !important;
+          font-size: 10px !important;
+        }
+        
+        #bm-template-manage-overlay .templateInfoControls button[style*="min-width: 80px"] {
+          font-size: 9px !important;
+        }
+      }
+      
+      /* Ultra small screens (320px) - máximo compacto */
+      @media screen and (max-width: 320px) {
+        #bm-template-manage-overlay div[style*="justify-content: space-between"][style*="padding: 16px"] {
+          padding: 12px !important;
+          gap: 8px !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="flex: 1"][style*="min-width: 0"][style*="margin-right: 16px"] {
+          line-height: 1.2 !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="display:flex"][style*="align-items:center"][style*="gap:8px"] {
+          margin-bottom: 3px !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="font-size: 0.85em"][style*="color: #94a3b8"] {
+          font-size: 0.8em !important;
+          margin-bottom: 2px !important;
+        }
+        
+        #bm-template-manage-overlay div[style*="font-size: 0.75em"][style*="color: #60a5fa"] {
+          font-size: 0.7em !important;
+          margin-top: 1px !important;
+        }
+        
+        #bm-template-manage-overlay .templateInfoControls {
+          margin-top: 6px !important;
+          gap: 3px !important;
+        }
+        
+        #bm-template-manage-overlay .templateInfoControls button {
+          height: 38px !important;
+          font-size: 10px !important;
+          padding: 3px 1px !important;
+        }
+        
+        #bm-template-manage-overlay .templateInfoControls button[style*="min-width: 80px"] {
+          font-size: 9px !important;
+        }
+      }
+      
+      /* Extra small screens (330px) - reduzir título para não quebrar */
+      @media screen and (max-width: 330px) {
+        #bm-template-manage-overlay h3 {
+          font-size: 1.3em !important;
+          line-height: 1.2 !important;
+        }
+      }
+    `;
+    document.head.appendChild(mobileStyles);
+  }
+  
   // Header
   const header = document.createElement('div');
   header.style.cssText = `
@@ -2511,8 +2695,74 @@ function showTemplateManageDialog(instance) {
       }
     };
     
+    // Delete button
+    const deleteBtn = document.createElement('button');
+    deleteBtn.innerHTML = icons.deleteIcon;
+    deleteBtn.title = 'Delete this template';
+    deleteBtn.style.cssText = `
+      padding: 8px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      min-width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(135deg, #ef4444, #dc2626);
+      color: white;
+    `;
+    
+    deleteBtn.onmouseover = () => {
+      deleteBtn.style.background = 'linear-gradient(135deg, #dc2626, #b91c1c)';
+      deleteBtn.style.transform = 'translateY(-1px)';
+    };
+    
+    deleteBtn.onmouseout = () => {
+      deleteBtn.style.background = 'linear-gradient(135deg, #ef4444, #dc2626)';
+      deleteBtn.style.transform = '';
+    };
+    
+    deleteBtn.onclick = (e) => {
+      e.stopPropagation();
+      
+      showCustomConfirmDialog(
+        `Delete "${templateName}"?`,
+        `Are you sure you want to delete this template?\n\nThis action cannot be undone!`,
+        async () => {
+          try {
+            const success = await templateManager.deleteTemplate(templateKey);
+            
+            if (success) {
+              // Remove the template item from the dialog
+              templateItem.remove();
+              
+              instance.handleDisplayStatus(`Successfully deleted template "${templateName}"!`);
+              consoleLog(`🗑️ Deleted template: ${templateName} (${templateKey})`);
+              
+              // Check if there are no more templates left
+              const remainingTemplates = templateList.children.length;
+              if (remainingTemplates === 0) {
+                // Close the dialog if no templates remain
+                document.body.removeChild(overlay);
+                instance.handleDisplayStatus('All templates deleted - dialog closed');
+              }
+            } else {
+              throw new Error('Delete operation returned false');
+            }
+            
+          } catch (error) {
+            consoleError('❌ Failed to delete template:', error);
+            instance.handleDisplayError('Failed to delete template. Check console for details.');
+          }
+        }
+      );
+    };
+
     buttonContainer.appendChild(exportBtn);
     buttonContainer.appendChild(flyBtn);
+    buttonContainer.appendChild(deleteBtn);
     buttonContainer.appendChild(toggleBtn);
     
     templateItem.appendChild(templateInfo);
@@ -2620,7 +2870,6 @@ function buildOverlayMain() {
             const createButton = document.querySelector('#bm-button-create');
             const manageButton = document.querySelector('#bm-button-manage');
             const pauseButton = document.querySelector('#bm-button-pause-tiles');
-            const deleteTemplatesButton = document.querySelector('#bm-button-delete-templates');
             const coordInputs = document.querySelectorAll('#bm-contain-coords input');
             const colorFilterButton = document.getElementById('bm-button-color-filter');
             
@@ -2684,10 +2933,6 @@ function buildOverlayMain() {
                 pauseButton.style.display = 'none';
               }
 
-              // Hide delete templates button
-              if (deleteTemplatesButton) {
-                deleteTemplatesButton.style.display = 'none';
-              }
 
               // Keep Color Filter button visible but compact in minimized state
               if (colorFilterButton) {
@@ -2816,10 +3061,6 @@ function buildOverlayMain() {
                 pauseButton.style.marginTop = '';
               }
 
-              // Restore delete templates button visibility
-              if (deleteTemplatesButton) {
-                deleteTemplatesButton.style.display = '';
-              }
 
               // Restore Color Filter button to normal size/state
               if (colorFilterButton) {
@@ -3192,13 +3433,7 @@ function buildOverlayMain() {
               });
             }
           ).buildElement()
-          // Moved delete button here as a small action next to Location Search
-          .addButton({'id': 'bm-button-delete-templates', 'className': 'bm-help', innerHTML: icons.deleteIcon, 'title': 'Delete Template'}, (instance, button) => {
-            button.addEventListener('click', () => {
-              deleteSelectedTemplate(instance);
-            });
-          }).buildElement()
-          // Clear All Storage button next to Delete Template
+          // Clear All Storage button
           .addButton({'id': 'bm-button-clear-storage', 'className': 'bm-help', innerHTML: icons.clearStorageIcon, 'title': 'Clear All Storage'}, (instance, button) => {
             button.addEventListener('click', () => {
               clearAllStorage(instance);
@@ -7742,14 +7977,6 @@ function applyMobileModeToColorFilter(enableMobile) {
       .bmcf-list-item .color-swatch { 
         width: 24px !important; 
         height: 24px !important; 
-      }
-      /* Template manager - mobile */
-      @media screen and (max-width: 500px){
-        .templateInfoControls{
-            max-width: 90px;
-            flex-wrap: wrap;
-            justify-content: center;
-        }
       }
     `;
     consoleLog('📱 [Dynamic Mobile] Mobile mode styles applied FRESH to Color Filter');
