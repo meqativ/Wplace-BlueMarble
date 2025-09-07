@@ -10106,13 +10106,19 @@ function buildCrosshairSettingsOverlay() {
 
 // Add Search Functionality
 function createSearchWindow() {
+  // Check if search window already exists to prevent duplicates
+  if (document.getElementById('skirk-search-draggable')) {
+    console.warn('Search window already exists, skipping creation');
+    return;
+  }
+
   const searchPanel = document.createElement('div');
   searchPanel.id = 'skirk-search-draggable';
   searchPanel.innerHTML = `
 <div class="drag-handle"></div>
 <div class="hdr">
   <h3>
-    <img class="skirk-icon" src="https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png" alt="Blue Marble">
+    <img class="skirk-icon" src="https://raw.githubusercontent.com/Seris0/Wplace-BlueMarble/main/dist/assets/Favicon.png" alt="Blue Marble" style="width:42px;height:42px;">
     Location Search
   </h3>
   <div class="actions">
@@ -10695,12 +10701,7 @@ function createSearchWindow() {
   });
 }
 
-// Initialize search window when DOM is ready
-document.addEventListener('DOMContentLoaded', () => {
-  createSearchWindow();
-});
-
-// Also initialize if DOM is already loaded
+// Initialize search window when DOM is ready - FIXED LOGIC
 if (document.readyState === 'loading') {
   document.addEventListener('DOMContentLoaded', createSearchWindow);
 } else {
