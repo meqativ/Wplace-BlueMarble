@@ -782,7 +782,7 @@ export default class TemplateManager {
            console.log(`✨ [Enhanced Debug] Applying crosshair effects to ${enhancedPixels.size} enhanced pixels...`);
            
            // Standard enhanced mode logic (simplified)
-           if (enhancedPixels.size > 23000) {
+           if (enhancedPixels.size > 60000) {
              console.log(`⚠️ [Enhanced Debug] Too many enhanced pixels (${enhancedPixels.size}), skipping enhanced mode for performance`);
            } else {
              let crosshairCenterCount = 0;
