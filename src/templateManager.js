@@ -774,16 +774,15 @@ export default class TemplateManager {
              }
            }
            
-                        console.log(`🎯 [Enhanced Debug] Found ${enhancedPixelCount} enhanced template pixels`);
+                        console.log(`Found ${enhancedPixelCount} enhanced pixels`);
            }
         
-                                   // Second pass: Apply enhanced mode crosshair effect if enabled
+         // Apply enhanced mode crosshair effects
          if (hasEnhancedColors && enhancedPixels && enhancedPixels.size > 0) {
-           console.log(`✨ [Enhanced Debug] Applying crosshair effects to ${enhancedPixels.size} enhanced pixels...`);
            
-           // Standard enhanced mode logic (simplified)
+           // Enhanced mode with performance limits
            if (enhancedPixels.size > 60000) {
-             console.log(`⚠️ [Enhanced Debug] Too many enhanced pixels (${enhancedPixels.size}), skipping enhanced mode for performance`);
+             console.log(`Skipping enhanced mode: ${enhancedPixels.size} pixels (performance limit)`);
            } else {
              let crosshairCenterCount = 0;
              
@@ -800,23 +799,23 @@ export default class TemplateManager {
                  canvasRegionData = canvasRegion.data;
                }
              } catch (error) {
-               console.warn('⚠️ [Enhanced Debug] Could not get canvas region, enhanced mode will be simplified');
+               console.warn('Could not get canvas region, using fallback mode');
              }
              
-             // Process enhanced pixels efficiently 
-             const enhancedPixelsArray = Array.from(enhancedPixels);
-             const isLargeTemplate = enhancedPixelsArray.length > 12000; // Consider large if more than 1200 pixels
-             const chunkSize = isLargeTemplate ? 2000 : enhancedPixelsArray.length; // Process in chunks for large templates
+              // Process enhanced pixels efficiently 
+              const enhancedPixelsArray = Array.from(enhancedPixels);
+              const isLargeTemplate = enhancedPixelsArray.length > 25000;
+              const chunkSize = isLargeTemplate ? 8000 : enhancedPixelsArray.length;
              
-             // NEW: Separate tracking for wrong color pixels
+             // Track wrong color pixels
              const wrongColorPixels = new Set();
              let wrongColorCount = 0;
              
-             // NEW: Detect wrong color pixels first
-             if (this.enhanceWrongColors) {
-               console.log(`🎯 [Wrong Colors] Scanning for wrong color pixels...`);
-               console.log(`🎯 [Wrong Colors] Enhanced pixels to check: ${enhancedPixelsArray.length}`);
-               console.log(`🎯 [Wrong Colors] Canvas region data available: ${!!canvasRegionData}`);
+              // Detect wrong color pixels
+              if (this.enhanceWrongColors) {
+                if (enhancedPixelsArray.length > 15000) {
+                  console.log(`Scanning ${enhancedPixelsArray.length} pixels for wrong colors`);
+                }
                
                for (const pixelCoord of enhancedPixelsArray) {
                  const [px, py] = pixelCoord.split(',').map(Number);
@@ -852,25 +851,19 @@ export default class TemplateManager {
                    wrongColorPixels.add(pixelCoord);
                    wrongColorCount++;
                    
-                   if (wrongColorCount <= 5) { // Log first 5 wrong colors for debugging
-                    //  console.log(`🎯 [Wrong Colors] Found wrong color at (${px},${py}): template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB}`);
-                   }
-                 } else if (wrongColorCount <= 5) {
-                   // Log first few pixels that are NOT wrong for debugging
-                  //  console.log(`🎯 [Wrong Colors] Pixel at (${px},${py}) is NOT wrong: template=${templateR},${templateG},${templateB} vs canvas=${canvasR},${canvasG},${canvasB} (alpha: ${canvasA})`);
-                 }
+                  }
                }
                
-              //  console.log(`🎯 [Wrong Colors] Found ${wrongColorCount} wrong color pixels out of ${enhancedPixelsArray.length} enhanced pixels`);
-               
-               // Add wrong color pixels to enhanced pixels set for crosshair processing
+                // Add wrong color pixels to enhanced pixels set for crosshair processing
                for (const pixelCoord of wrongColorPixels) {
                  enhancedPixels.add(pixelCoord);
                }
                
-               // Update the array with the new pixels
-               const updatedEnhancedPixelsArray = Array.from(enhancedPixels);
-               console.log(`🎯 [Wrong Colors] Total enhanced pixels after adding wrong colors: ${updatedEnhancedPixelsArray.length}`);
+                // Update the array with the new pixels
+                const updatedEnhancedPixelsArray = Array.from(enhancedPixels);
+                if (wrongColorCount > 50) {
+                  console.log(`Found ${wrongColorCount} wrong colors, total enhanced: ${updatedEnhancedPixelsArray.length}`);
+                }
              }
              
              // Get border setting once for the entire tile
@@ -884,9 +877,12 @@ export default class TemplateManager {
                const chunkEnd = Math.min(chunkStart + chunkSize, finalEnhancedPixelsArray.length);
                const chunk = finalEnhancedPixelsArray.slice(chunkStart, chunkEnd);
                
-               if (isLargeTemplate && chunkStart > 0) {
-                 console.log(`📦 [Enhanced Debug] Processing chunk ${Math.floor(chunkStart/chunkSize) + 1}/${Math.ceil(finalEnhancedPixelsArray.length/chunkSize)}`);
-               }
+                // Progress logging for large templates
+                if (isLargeTemplate && chunkStart > 0 && Math.floor(chunkStart/chunkSize) % 3 === 0) {
+                  const currentChunk = Math.floor(chunkStart/chunkSize) + 1;
+                  const totalChunks = Math.ceil(finalEnhancedPixelsArray.length/chunkSize);
+                  console.log(`Processing ${currentChunk}/${totalChunks} (${Math.round((chunkStart/finalEnhancedPixelsArray.length)*100)}%)`);
+                }
                
                for (const pixelCoord of chunk) {
                  const [px, py] = pixelCoord.split(',').map(Number);
@@ -1015,16 +1011,10 @@ export default class TemplateManager {
                }
              }
              
-                           console.log(`✨ [Enhanced Debug] Applied ${crosshairCenterCount} crosshairs and ${borderCount} corner borders`);
-              if (this.enhanceWrongColors && wrongColorCount > 0) {
-                const crosshairConfig = this.getCrosshairColor();
-                console.log(`🎯 [Wrong Colors] Applied crosshairs to ${wrongColorCount} wrong color pixels (${crosshairConfig.name} crosshairs)`);
-              }
-              if (borderEnabled) {
-                console.log(`🔲 [Border Debug] Corner borders enabled: ${borderCount} applied`);
-              } else {
-                console.log(`🔲 [Border Debug] Corner borders disabled`);
-              }
+               console.log(`Applied ${crosshairCenterCount} crosshairs and ${borderCount} borders`);
+               if (this.enhanceWrongColors && wrongColorCount > 0) {
+                 console.log(`Enhanced ${wrongColorCount} wrong color pixels`);
+               }
            }
          }
         

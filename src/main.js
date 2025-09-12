@@ -598,12 +598,14 @@ templateManager.loadWrongColorSettings();
 import { getSmartDetectionEnabled } from './settingsManager.js';
 templateManager.setSmartDetectionEnabled(getSmartDetectionEnabled());
 
-// Load templates with fallback system
+// Load templates with fallback system - FIXED CRITICAL BUG
 async function loadTemplates() {
   let storageTemplates = {};
   let storageSource = 'none';
   
-  // Try TamperMonkey storage first
+  console.log('📂 Loading templates from storage...');
+  
+  // Try TamperMonkey storage first with enhanced error handling
   try {
     if (typeof GM !== 'undefined' && GM.getValue) {
       // Check if data is chunked
@@ -611,53 +613,180 @@ async function loadTemplates() {
       let data;
       
       if (chunkCount > 0) {
-        // Load chunked data
+        console.log(`📦 Loading ${chunkCount} TM chunks...`);
+        // Load chunked data with validation
         let combinedData = '';
+        let corruptedChunks = 0;
+        
         for (let i = 0; i < chunkCount; i++) {
           const chunk = await GM.getValue(`bmTemplates_part_${i}`, '');
-          combinedData += chunk;
+          if (!chunk) {
+            corruptedChunks++;
+            console.error(`❌ Missing TM chunk ${i}/${chunkCount}`);
+          } else {
+            combinedData += chunk;
+          }
         }
+        
+        if (corruptedChunks > 0) {
+          throw new Error(`TM data corrupted: ${corruptedChunks}/${chunkCount} chunks missing`);
+        }
+        
         data = combinedData;
+        console.log(`✅ TM chunked data loaded: ${data.length} chars`);
       } else {
         // Load regular single data
         data = await GM.getValue('bmTemplates', '{}');
+        console.log(`📄 TM single data loaded: ${data.length} chars`);
       }
       
-      storageTemplates = JSON.parse(data);
-      storageSource = 'TamperMonkey (async)';
+      // Validate JSON before parsing
+      if (!data || data === '{}' || data === '') {
+        storageTemplates = {};
+        storageSource = 'TamperMonkey (empty)';
+      } else {
+        try {
+          storageTemplates = JSON.parse(data);
+          // Validate structure
+          if (!storageTemplates || typeof storageTemplates !== 'object') {
+            throw new Error('Invalid template structure');
+          }
+          if (!storageTemplates.templates) {
+            storageTemplates.templates = {};
+          }
+          storageSource = 'TamperMonkey (async)';
+          console.log(`✅ TM templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`);
+        } catch (parseError) {
+          console.error('❌ TM JSON parse failed:', parseError);
+          throw parseError;
+        }
+      }
     } else if (typeof GM_getValue !== 'undefined') {
       // Check if data is chunked (legacy)
       const chunkCount = GM_getValue('bmTemplates_chunkCount', 0);
       let data;
       
       if (chunkCount > 0) {
-        // Load chunked data
+        console.log(`📦 Loading ${chunkCount} TM legacy chunks...`);
+        // Load chunked data with validation
         let combinedData = '';
+        let corruptedChunks = 0;
+        
         for (let i = 0; i < chunkCount; i++) {
           const chunk = GM_getValue(`bmTemplates_part_${i}`, '');
-          combinedData += chunk;
+          if (!chunk) {
+            corruptedChunks++;
+            console.error(`❌ Missing TM legacy chunk ${i}/${chunkCount}`);
+          } else {
+            combinedData += chunk;
+          }
         }
+        
+        if (corruptedChunks > 0) {
+          throw new Error(`TM legacy data corrupted: ${corruptedChunks}/${chunkCount} chunks missing`);
+        }
+        
         data = combinedData;
+        console.log(`✅ TM legacy chunked data loaded: ${data.length} chars`);
       } else {
         // Load regular single data
         data = GM_getValue('bmTemplates', '{}');
+        console.log(`📄 TM legacy single data loaded: ${data.length} chars`);
       }
       
-      storageTemplates = JSON.parse(data);
-      storageSource = 'TamperMonkey (legacy)';
+      // Validate JSON before parsing
+      if (!data || data === '{}' || data === '') {
+        storageTemplates = {};
+        storageSource = 'TamperMonkey (legacy, empty)';
+      } else {
+        try {
+          storageTemplates = JSON.parse(data);
+          // Validate structure
+          if (!storageTemplates || typeof storageTemplates !== 'object') {
+            throw new Error('Invalid template structure');
+          }
+          if (!storageTemplates.templates) {
+            storageTemplates.templates = {};
+          }
+          storageSource = 'TamperMonkey (legacy)';
+          console.log(`✅ TM legacy templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`);
+        } catch (parseError) {
+          console.error('❌ TM legacy JSON parse failed:', parseError);
+          throw parseError;
+        }
+      }
     }
   } catch (error) {
-    console.warn('⚠️ TamperMonkey storage load failed:', error);
+    console.error('❌ TamperMonkey storage load failed:', error);
     
-    // Fallback to localStorage
+    // Fallback to localStorage with enhanced error handling
     try {
-      const data = localStorage.getItem('bmTemplates') || '{}';
-      storageTemplates = JSON.parse(data);
-      storageSource = 'localStorage (fallback)';
+      console.log('🔄 Falling back to localStorage...');
+      const lsChunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+      let data;
+      
+      if (lsChunkCount > 0) {
+        console.log(`📦 Loading ${lsChunkCount} LS chunks...`);
+        // Load chunked data with validation
+        let combinedData = '';
+        let corruptedChunks = 0;
+        
+        for (let i = 0; i < lsChunkCount; i++) {
+          const chunk = localStorage.getItem(`bmTemplates_part_${i}`) || '';
+          if (!chunk) {
+            corruptedChunks++;
+            console.error(`❌ Missing LS chunk ${i}/${lsChunkCount}`);
+          } else {
+            combinedData += chunk;
+          }
+        }
+        
+        if (corruptedChunks > 0) {
+          throw new Error(`LS data corrupted: ${corruptedChunks}/${lsChunkCount} chunks missing`);
+        }
+        
+        data = combinedData;
+        console.log(`✅ LS chunked data loaded: ${data.length} chars`);
+      } else {
+        data = localStorage.getItem('bmTemplates') || '{}';
+        console.log(`📄 LS single data loaded: ${data.length} chars`);
+      }
+      
+      // Validate JSON before parsing
+      if (!data || data === '{}' || data === '') {
+        storageTemplates = {};
+        storageSource = 'localStorage (empty)';
+      } else {
+        try {
+          storageTemplates = JSON.parse(data);
+          // Validate structure
+          if (!storageTemplates || typeof storageTemplates !== 'object') {
+            throw new Error('Invalid template structure');
+          }
+          if (!storageTemplates.templates) {
+            storageTemplates.templates = {};
+          }
+          storageSource = 'localStorage (fallback)';
+          console.log(`✅ LS templates loaded: ${Object.keys(storageTemplates.templates || {}).length} templates`);
+        } catch (parseError) {
+          console.error('❌ LS JSON parse failed:', parseError);
+          throw parseError;
+        }
+      }
     } catch (fallbackError) {
       console.error('❌ All storage methods failed:', fallbackError);
-      storageTemplates = {};
-      storageSource = 'empty (all failed)';
+      
+      // Last resort: try to salvage any valid data
+      console.log('🆘 Attempting emergency data recovery...');
+      try {
+        await attemptEmergencyRecovery();
+        storageTemplates = {};
+        storageSource = 'emergency recovery (empty)';
+      } catch (recoveryError) {
+        console.error('❌ Emergency recovery failed:', recoveryError);
+        storageTemplates = {};
+        storageSource = 'empty (all failed)';
+      }
     }
   }
   
@@ -700,84 +829,364 @@ async function loadTemplates() {
     }
   }
   
-  templateManager.importJSON(storageTemplates); // Loads the templates
-  
-  if (templateCount === 0) {
-    consoleLog('ℹ️ No templates loaded - start by creating a new template');
+  // Enhanced template loading with recovery
+  try {
+    templateManager.importJSON(storageTemplates); // Loads the templates
+    console.log(`✅ Templates imported successfully from ${storageSource}`);
+    
+    if (templateCount === 0) {
+      consoleLog('ℹ️ No templates loaded - start by creating a new template');
+    } else {
+      consoleLog(`📚 Loaded ${templateCount} templates from ${storageSource}`);
+    }
+  } catch (importError) {
+    console.error('❌ Template import failed:', importError);
+    
+    // Try to recover by creating fresh template structure
+    try {
+      console.log('🆘 Attempting template recovery...');
+      const freshTemplates = {
+        whoami: 'BlueMarble',
+        scriptVersion: '0.89.6',
+        schemaVersion: '2.1.0',
+        templates: {},
+        lastModified: new Date().toISOString(),
+        templateCount: 0,
+        totalPixels: 0
+      };
+      
+      templateManager.importJSON(freshTemplates);
+      console.log('✅ Template recovery successful - fresh start');
+    } catch (recoveryError) {
+      console.error('❌ Template recovery failed:', recoveryError);
+      throw recoveryError;
+    }
   }
 }
 
-// Storage migration and validation
+// Emergency data recovery function
+async function attemptEmergencyRecovery() {
+  console.log('🆘 Starting emergency data recovery...');
+  
+  // Clean up any corrupted storage keys
+  try {
+    // Clear TamperMonkey
+    if (typeof GM !== 'undefined' && GM.deleteValue) {
+      const tmKeys = ['bmTemplates', 'bmTemplates_timestamp', 'bmTemplates_chunkCount'];
+      for (const key of tmKeys) {
+        try { await GM.deleteValue(key); } catch (_) {}
+      }
+      
+      // Clear potential chunks (up to 50)
+      for (let i = 0; i < 50; i++) {
+        try { await GM.deleteValue(`bmTemplates_part_${i}`); } catch (_) {}
+      }
+    }
+    
+    // Clear localStorage
+    const lsKeys = ['bmTemplates', 'bmTemplates_timestamp', 'bmTemplates_chunkCount'];
+    for (const key of lsKeys) {
+      try { localStorage.removeItem(key); } catch (_) {}
+    }
+    
+    // Clear potential chunks (up to 50)
+    for (let i = 0; i < 50; i++) {
+      try { localStorage.removeItem(`bmTemplates_part_${i}`); } catch (_) {}
+    }
+    
+    console.log('✅ Emergency cleanup completed');
+    
+  } catch (e) {
+    console.error('❌ Emergency cleanup failed:', e);
+    throw e;
+  }
+}
+
+// Storage migration and validation - FIXED CRITICAL BUG
 async function migrateAndValidateStorage() {
   try {
+    console.log('🔄 Starting storage migration and validation...');
+    
     // Check if we have data in both storages
     let tmData = null;
     let lsData = null;
     let tmTimestamp = 0;
     let lsTimestamp = 0;
+    let tmChunked = false;
+    let lsChunked = false;
     
-    // Get TamperMonkey data
+    // Get TamperMonkey data with validation
     try {
       if (typeof GM !== 'undefined' && GM.getValue) {
         // Check if data is chunked
         const chunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
         if (chunkCount > 0) {
-          // Load chunked data
+          console.log(`📦 Loading ${chunkCount} TM chunks...`);
+          // Load chunked data with validation
           let combinedData = '';
+          let missingChunks = 0;
+          
           for (let i = 0; i < chunkCount; i++) {
             const chunk = await GM.getValue(`bmTemplates_part_${i}`, '');
-            combinedData += chunk;
+            if (!chunk) {
+              missingChunks++;
+              console.warn(`⚠️ Missing TM chunk ${i}/${chunkCount}`);
+            } else {
+              combinedData += chunk;
+            }
           }
-          tmData = combinedData;
+          
+          if (missingChunks > 0) {
+            console.error(`❌ TM data corruption: ${missingChunks}/${chunkCount} chunks missing`);
+            tmData = null; // Mark as corrupted
+          } else {
+            tmData = combinedData;
+            tmChunked = true;
+            console.log(`✅ TM chunked data loaded: ${combinedData.length} chars`);
+          }
         } else {
-        tmData = await GM.getValue('bmTemplates', null);
+          tmData = await GM.getValue('bmTemplates', null);
+          console.log(`📄 TM single data loaded: ${tmData ? tmData.length : 0} chars`);
         }
         tmTimestamp = await GM.getValue('bmTemplates_timestamp', 0);
       } else if (typeof GM_getValue !== 'undefined') {
         // Check if data is chunked (legacy)
         const chunkCount = GM_getValue('bmTemplates_chunkCount', 0);
         if (chunkCount > 0) {
-          // Load chunked data
+          console.log(`📦 Loading ${chunkCount} TM legacy chunks...`);
+          // Load chunked data with validation
           let combinedData = '';
+          let missingChunks = 0;
+          
           for (let i = 0; i < chunkCount; i++) {
             const chunk = GM_getValue(`bmTemplates_part_${i}`, '');
-            combinedData += chunk;
+            if (!chunk) {
+              missingChunks++;
+              console.warn(`⚠️ Missing TM legacy chunk ${i}/${chunkCount}`);
+            } else {
+              combinedData += chunk;
+            }
           }
-          tmData = combinedData;
+          
+          if (missingChunks > 0) {
+            console.error(`❌ TM legacy data corruption: ${missingChunks}/${chunkCount} chunks missing`);
+            tmData = null; // Mark as corrupted
+          } else {
+            tmData = combinedData;
+            tmChunked = true;
+            console.log(`✅ TM legacy chunked data loaded: ${combinedData.length} chars`);
+          }
         } else {
-        tmData = GM_getValue('bmTemplates', null);
+          tmData = GM_getValue('bmTemplates', null);
+          console.log(`📄 TM legacy single data loaded: ${tmData ? tmData.length : 0} chars`);
         }
         tmTimestamp = GM_getValue('bmTemplates_timestamp', 0);
       }
-    } catch (e) { console.warn('TM check failed:', e); }
+    } catch (e) { 
+      console.error('❌ TM check failed:', e);
+      tmData = null;
+    }
     
-    // Get localStorage data
+    // Get localStorage data with validation
     try {
-      lsData = localStorage.getItem('bmTemplates');
+      const lsChunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+      if (lsChunkCount > 0) {
+        console.log(`📦 Loading ${lsChunkCount} LS chunks...`);
+        // Load chunked data with validation
+        let combinedData = '';
+        let missingChunks = 0;
+        
+        for (let i = 0; i < lsChunkCount; i++) {
+          const chunk = localStorage.getItem(`bmTemplates_part_${i}`) || '';
+          if (!chunk) {
+            missingChunks++;
+            console.warn(`⚠️ Missing LS chunk ${i}/${lsChunkCount}`);
+          } else {
+            combinedData += chunk;
+          }
+        }
+        
+        if (missingChunks > 0) {
+          console.error(`❌ LS data corruption: ${missingChunks}/${lsChunkCount} chunks missing`);
+          lsData = null; // Mark as corrupted
+        } else {
+          lsData = combinedData;
+          lsChunked = true;
+          console.log(`✅ LS chunked data loaded: ${combinedData.length} chars`);
+        }
+      } else {
+        lsData = localStorage.getItem('bmTemplates');
+        console.log(`📄 LS single data loaded: ${lsData ? lsData.length : 0} chars`);
+      }
       lsTimestamp = parseInt(localStorage.getItem('bmTemplates_timestamp') || '0');
-    } catch (e) { console.warn('LS check failed:', e); }
+    } catch (e) { 
+      console.error('❌ LS check failed:', e);
+      lsData = null;
+    }
     
-    // If we have data in both, use the most recent
-    if (tmData && lsData && tmTimestamp !== lsTimestamp) {
+    // Validate JSON data before proceeding
+    let tmValid = false;
+    let lsValid = false;
+    
+    if (tmData) {
+      try {
+        const parsed = JSON.parse(tmData);
+        if (parsed && typeof parsed === 'object' && parsed.templates) {
+          tmValid = true;
+          console.log(`✅ TM data is valid JSON with ${Object.keys(parsed.templates).length} templates`);
+        } else {
+          console.warn('⚠️ TM data is not a valid template structure');
+        }
+      } catch (e) {
+        console.error('❌ TM data is not valid JSON:', e);
+        tmData = null;
+      }
+    }
+    
+    if (lsData) {
+      try {
+        const parsed = JSON.parse(lsData);
+        if (parsed && typeof parsed === 'object' && parsed.templates) {
+          lsValid = true;
+          console.log(`✅ LS data is valid JSON with ${Object.keys(parsed.templates).length} templates`);
+        } else {
+          console.warn('⚠️ LS data is not a valid template structure');
+        }
+      } catch (e) {
+        console.error('❌ LS data is not valid JSON:', e);
+        lsData = null;
+      }
+    }
+    
+    // Clean up corrupted data
+    if (!tmValid && tmData) {
+      console.warn('🧹 Cleaning up corrupted TM data...');
+      await cleanupCorruptedStorage('tm');
+      tmData = null;
+      tmTimestamp = 0;
+    }
+    
+    if (!lsValid && lsData) {
+      console.warn('🧹 Cleaning up corrupted LS data...');
+      await cleanupCorruptedStorage('ls');
+      lsData = null;
+      lsTimestamp = 0;
+    }
+    
+    // If we have valid data in both, use the most recent
+    if (tmValid && lsValid && tmTimestamp !== lsTimestamp) {
       console.log(`🔄 Data sync: TM(${new Date(tmTimestamp).toLocaleString()}) vs LS(${new Date(lsTimestamp).toLocaleString()})`);
       
       if (tmTimestamp > lsTimestamp) {
         // TamperMonkey is newer, update localStorage
-        localStorage.setItem('bmTemplates', tmData);
-        localStorage.setItem('bmTemplates_timestamp', tmTimestamp.toString());
-      } else {
+        console.log('📤 Syncing TM → LS...');
+        try {
+          if (tmData.length > 900000) {
+            // Store as chunks in LS
+            await storeDataChunked('ls', tmData, tmTimestamp);
+          } else {
+            localStorage.setItem('bmTemplates', tmData);
+            localStorage.setItem('bmTemplates_timestamp', tmTimestamp.toString());
+            // Clean up any existing chunks
+            const oldChunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+            for (let i = 0; i < oldChunkCount; i++) {
+              localStorage.removeItem(`bmTemplates_part_${i}`);
+            }
+            localStorage.removeItem('bmTemplates_chunkCount');
+          }
+          console.log('✅ LS updated from TM');
+        } catch (e) {
+          console.error('❌ Failed to sync TM → LS:', e);
+        }
+      } else if (lsTimestamp > tmTimestamp) {
         // localStorage is newer, update TamperMonkey
-        if (typeof GM !== 'undefined' && GM.setValue) {
-          await GM.setValue('bmTemplates', lsData);
-          await GM.setValue('bmTemplates_timestamp', lsTimestamp);
-        } else if (typeof GM_setValue !== 'undefined') {
-          GM_setValue('bmTemplates', lsData);
-          GM_setValue('bmTemplates_timestamp', lsTimestamp);
+        console.log('📤 Syncing LS → TM...');
+        try {
+          if (typeof GM !== 'undefined' && GM.setValue) {
+            if (lsData.length > 900000) {
+              // Store as chunks in TM
+              await storeDataChunked('tm', lsData, lsTimestamp);
+            } else {
+              await GM.setValue('bmTemplates', lsData);
+              await GM.setValue('bmTemplates_timestamp', lsTimestamp);
+              // Clean up any existing chunks
+              const oldChunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+              for (let i = 0; i < oldChunkCount; i++) {
+                try { await GM.deleteValue(`bmTemplates_part_${i}`); } catch (_) {}
+              }
+              try { await GM.deleteValue('bmTemplates_chunkCount'); } catch (_) {}
+            }
+          } else if (typeof GM_setValue !== 'undefined') {
+            GM_setValue('bmTemplates', lsData);
+            GM_setValue('bmTemplates_timestamp', lsTimestamp);
+          }
+          console.log('✅ TM updated from LS');
+        } catch (e) {
+          console.error('❌ Failed to sync LS → TM:', e);
         }
       }
     }
+    
+    console.log('✅ Storage migration completed');
+    
   } catch (error) {
-    console.warn('⚠️ Storage migration failed:', error);
+    console.error('❌ Storage migration failed:', error);
+  }
+}
+
+// Helper function to clean up corrupted storage
+async function cleanupCorruptedStorage(storageType) {
+  try {
+    if (storageType === 'tm') {
+      if (typeof GM !== 'undefined' && GM.deleteValue) {
+        try { await GM.deleteValue('bmTemplates'); } catch (_) {}
+        try { await GM.deleteValue('bmTemplates_timestamp'); } catch (_) {}
+        const chunkCount = await GM.getValue('bmTemplates_chunkCount', 0);
+        for (let i = 0; i < chunkCount; i++) {
+          try { await GM.deleteValue(`bmTemplates_part_${i}`); } catch (_) {}
+        }
+        try { await GM.deleteValue('bmTemplates_chunkCount'); } catch (_) {}
+      }
+    } else if (storageType === 'ls') {
+      try { localStorage.removeItem('bmTemplates'); } catch (_) {}
+      try { localStorage.removeItem('bmTemplates_timestamp'); } catch (_) {}
+      const chunkCount = parseInt(localStorage.getItem('bmTemplates_chunkCount') || '0');
+      for (let i = 0; i < chunkCount; i++) {
+        try { localStorage.removeItem(`bmTemplates_part_${i}`); } catch (_) {}
+      }
+      try { localStorage.removeItem('bmTemplates_chunkCount'); } catch (_) {}
+    }
+    console.log(`🧹 Cleaned up corrupted ${storageType.toUpperCase()} storage`);
+  } catch (e) {
+    console.error(`❌ Failed to cleanup ${storageType.toUpperCase()} storage:`, e);
+  }
+}
+
+// Helper function to store data in chunks
+async function storeDataChunked(storageType, data, timestamp) {
+  const CHUNK_SIZE = 900000;
+  const parts = Math.ceil(data.length / CHUNK_SIZE);
+  
+  if (storageType === 'tm') {
+    if (typeof GM !== 'undefined' && GM.setValue) {
+      // Clear single key first
+      try { await GM.deleteValue('bmTemplates'); } catch (_) {}
+      await GM.setValue('bmTemplates_chunkCount', parts);
+      for (let i = 0; i < parts; i++) {
+        const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+        await GM.setValue(`bmTemplates_part_${i}`, slice);
+      }
+      await GM.setValue('bmTemplates_timestamp', timestamp);
+    }
+  } else if (storageType === 'ls') {
+    // Clear single key first
+    try { localStorage.removeItem('bmTemplates'); } catch (_) {}
+    localStorage.setItem('bmTemplates_chunkCount', String(parts));
+    for (let i = 0; i < parts; i++) {
+      const slice = data.slice(i * CHUNK_SIZE, (i + 1) * CHUNK_SIZE);
+      localStorage.setItem(`bmTemplates_part_${i}`, slice);
+    }
+    localStorage.setItem('bmTemplates_timestamp', timestamp.toString());
   }
 }
 
