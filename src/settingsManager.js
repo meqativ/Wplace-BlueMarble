@@ -3,7 +3,7 @@
  * @since 1.0.0
  */
 
-import { consoleLog, consoleWarn, consoleError } from './utils.js';
+import { debugLog } from './utils.js';
 
 /** Gets the saved crosshair color from storage
  * @returns {Object} The crosshair color configuration
@@ -29,12 +29,12 @@ export function getCrosshairColor() {
     if (savedColor && savedColor.alpha === 180) {
       savedColor.alpha = 255;
       saveCrosshairColor(savedColor); // Save the migrated value
-      consoleLog('Auto-migrated crosshair transparency from 71% to 100%');
+      debugLog('Auto-migrated crosshair transparency from 71% to 100%');
     }
     
     if (savedColor) return savedColor;
   } catch (error) {
-    consoleWarn('Failed to load crosshair color:', error);
+    console.warn('Failed to load crosshair color:', error);
   }
   
   // Default red color
@@ -61,9 +61,9 @@ export function saveCrosshairColor(colorConfig) {
     // Also save to localStorage as backup
     localStorage.setItem('bmCrosshairColor', colorString);
     
-    consoleLog('Crosshair color saved:', colorConfig);
+    debugLog('Crosshair color saved:', colorConfig);
   } catch (error) {
-    consoleError('Failed to save crosshair color:', error);
+    console.error('Failed to save crosshair color:', error);
   }
 }
 
@@ -88,15 +88,13 @@ export function getBorderEnabled() {
     }
     
     if (borderEnabled !== null) {
-      consoleLog('🔲 Border setting loaded:', borderEnabled);
       return borderEnabled;
     }
   } catch (error) {
-    consoleWarn('Failed to load border setting:', error);
+    console.warn('Failed to load border setting:', error);
   }
   
   // Default to disabled
-  consoleLog('🔲 Using default border setting: false');
   return false;
 }
 
@@ -116,9 +114,8 @@ export function saveBorderEnabled(enabled) {
     // Also save to localStorage as backup
     localStorage.setItem('bmCrosshairBorder', enabledString);
     
-    consoleLog('🔲 Border setting saved:', enabled);
   } catch (error) {
-    consoleError('Failed to save border setting:', error);
+    console.error('Failed to save border setting:', error);
   }
 }
 
@@ -143,15 +140,13 @@ export function getEnhancedSizeEnabled() {
     }
     
     if (enhancedSizeEnabled !== null) {
-      consoleLog('📏 Enhanced size setting loaded:', enhancedSizeEnabled);
       return enhancedSizeEnabled;
     }
   } catch (error) {
-    consoleWarn('Failed to load enhanced size setting:', error);
+    console.warn('Failed to load enhanced size setting:', error);
   }
   
   // Default to disabled
-  consoleLog('📏 Using default enhanced size setting: false');
   return false;
 }
 
@@ -171,9 +166,8 @@ export function saveEnhancedSizeEnabled(enabled) {
     // Also save to localStorage as backup
     localStorage.setItem('bmCrosshairEnhancedSize', enabledString);
     
-    consoleLog('📏 Enhanced size setting saved:', enabled);
   } catch (error) {
-    consoleError('Failed to save enhanced size setting:', error);
+    console.error('Failed to save enhanced size setting:', error);
   }
 }
 
@@ -198,15 +192,13 @@ export function getMiniTrackerEnabled() {
     }
     
     if (miniTrackerEnabled !== null) {
-      consoleLog('📊 Mini tracker setting loaded:', miniTrackerEnabled);
       return miniTrackerEnabled;
     }
   } catch (error) {
-    consoleWarn('Failed to load mini tracker setting:', error);
+    console.warn('Failed to load mini tracker setting:', error);
   }
   
   // Default to enabled
-  consoleLog('📊 Using default mini tracker setting: true');
   return true;
 }
 
@@ -226,9 +218,8 @@ export function saveMiniTrackerEnabled(enabled) {
     // Also save to localStorage as backup
     localStorage.setItem('bmMiniTrackerEnabled', enabledString);
     
-    consoleLog('📊 Mini tracker setting saved:', enabled);
   } catch (error) {
-    consoleError('Failed to save mini tracker setting:', error);
+    console.error('Failed to save mini tracker setting:', error);
   }
 }
 
@@ -253,15 +244,13 @@ export function getCollapseMinEnabled() {
     }
     
     if (collapseMinEnabled !== null) {
-      consoleLog('📦 Collapse min setting loaded:', collapseMinEnabled);
       return collapseMinEnabled;
     }
   } catch (error) {
-    consoleWarn('Failed to load collapse min setting:', error);
+    console.warn('Failed to load collapse min setting:', error);
   }
   
   // Default to disabled
-  consoleLog('📦 Using default collapse min setting: false');
   return false;
 }
 
@@ -281,9 +270,8 @@ export function saveCollapseMinEnabled(enabled) {
     // Also save to localStorage as backup
     localStorage.setItem('bmCollapseMinEnabled', enabledString);
     
-    consoleLog('📦 Collapse min setting saved:', enabled);
   } catch (error) {
-    consoleError('Failed to save collapse min setting:', error);
+    console.error('Failed to save collapse min setting:', error);
   }
 }
 
@@ -298,7 +286,7 @@ export function getMobileMode() {
       return JSON.parse(saved);
     }
   } catch (error) {
-    consoleWarn('Failed to load mobile mode setting:', error);
+    console.warn('Failed to load mobile mode setting:', error);
   }
   return false; // Default to disabled
 }
@@ -310,9 +298,9 @@ export function getMobileMode() {
 export function saveMobileMode(enabled) {
   try {
     localStorage.setItem('bmMobileMode', JSON.stringify(enabled));
-    consoleLog('📱 Mobile mode setting saved:', enabled);
+    debugLog('Mobile mode setting saved:', enabled);
   } catch (error) {
-    consoleError('Failed to save mobile mode setting:', error);
+    console.error('Failed to save mobile mode setting:', error);
   }
 }
 
@@ -337,15 +325,15 @@ export function getTileRefreshPaused() {
     }
     
     if (pausedState !== null) {
-      consoleLog('⏸️ Tile refresh pause setting loaded:', pausedState);
+      debugLog('⏸️ Tile refresh pause setting loaded:', pausedState);
       return pausedState;
     }
   } catch (error) {
-    consoleWarn('Failed to load tile refresh pause setting:', error);
+    console.warn('Failed to load tile refresh pause setting:', error);
   }
   
   // Default to not paused
-  consoleLog('⏸️ Using default tile refresh pause setting: false');
+  debugLog('⏸️ Using default tile refresh pause setting: false');
   return false;
 }
 
@@ -365,9 +353,9 @@ export function saveTileRefreshPaused(paused) {
     // Also save to localStorage as backup
     localStorage.setItem('bmTileRefreshPaused', pausedString);
     
-    consoleLog('⏸️ Tile refresh pause setting saved:', paused);
+    debugLog('⏸️ Tile refresh pause setting saved:', paused);
   } catch (error) {
-    consoleError('Failed to save tile refresh pause setting:', error);
+    console.error('Failed to save tile refresh pause setting:', error);
   }
 }
 
@@ -392,15 +380,15 @@ export function getSmartDetectionEnabled() {
     }
     
     if (smartDetectionEnabled !== null) {
-      consoleLog('🧠 Smart detection setting loaded:', smartDetectionEnabled);
+      debugLog('Smart detection setting loaded:', smartDetectionEnabled);
       return smartDetectionEnabled;
     }
   } catch (error) {
-    consoleWarn('Failed to load smart detection setting:', error);
+    console.warn('Failed to load smart detection setting:', error);
   }
   
   // Default to enabled
-  consoleLog('🧠 Using default smart detection setting: true');
+  debugLog('Using default smart detection setting: true');
   return true;
 }
 
@@ -420,9 +408,9 @@ export function saveSmartDetectionEnabled(enabled) {
     // Also save to localStorage as backup
     localStorage.setItem('bmSmartDetectionEnabled', enabledString);
     
-    consoleLog('🧠 Smart detection setting saved:', enabled);
+    debugLog('Smart detection setting saved:', enabled);
   } catch (error) {
-    consoleError('Failed to save smart detection setting:', error);
+    console.error('Failed to save smart detection setting:', error);
   }
 }
 
@@ -447,15 +435,15 @@ export function getNavigationMethod() {
     }
     
     if (navigationMethod !== null) {
-      consoleLog('🧭 Navigation method setting loaded:', navigationMethod);
+      debugLog('Navigation method setting loaded:', navigationMethod);
       return navigationMethod;
     }
   } catch (error) {
-    consoleWarn('Failed to load navigation method setting:', error);
+    console.warn('Failed to load navigation method setting:', error);
   }
   
   // Default to flyto
-  consoleLog('🧭 Using default navigation method setting: flyto');
+  debugLog('Using default navigation method setting: flyto');
   return 'flyto';
 }
 
@@ -475,8 +463,8 @@ export function saveNavigationMethod(method) {
     // Also save to localStorage as backup
     localStorage.setItem('bmNavigationMethod', methodString);
     
-    consoleLog('🧭 Navigation method setting saved:', method);
+    debugLog('Navigation method setting saved:', method);
   } catch (error) {
-    consoleError('Failed to save navigation method setting:', error);
+    console.error('Failed to save navigation method setting:', error);
   }
 }

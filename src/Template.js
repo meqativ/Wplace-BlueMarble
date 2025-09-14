@@ -1,4 +1,4 @@
-import { uint8ToBase64 } from "./utils";
+import { uint8ToBase64, debugLog } from "./utils.js";
 
 /** An instance of a template.
  * Handles all mathematics, manipulation, and analysis regarding a single template.
@@ -528,16 +528,12 @@ export default class Template {
                 const r = originalData[i];
                 const g = originalData[i + 1];
                 const b = originalData[i + 2];
-                console.log(`✅ Template pixel found at (${x},${y}) with color RGB(${r},${g},${b})`);
               }
             }
           }
         }
         
-        console.log(`📊 [TEMPLATE DETECTION STATS]:`);
-        console.log(`  Total pixels checked: ${totalPixelsChecked}`);
-        console.log(`  Template pixels found: ${templatePixels.size}`);
-        console.log(`  This uses the OLD LOGIC - ALL template pixels get crosshairs`);
+        debugLog(`Template pixels found: ${templatePixels.size}`);
         
         console.groupEnd();
         
@@ -547,9 +543,7 @@ export default class Template {
         let transparentCount = 0;
         const borderEnabled = this.getBorderEnabled();
         
-        console.group(`🎯 [CROSSHAIR GENERATION] Using OLD LOGIC from templateManager.js`);
-        console.log(`Template pixels: ${templatePixels.size}`);
-        console.log(`Border enabled: ${borderEnabled}`);
+        debugLog(`Generating crosshairs for ${templatePixels.size} pixels`);
         // console.log(`Image dimensions: ${width}x${height}`);
         
         for (let y = 0; y < height; y++) {
@@ -613,7 +607,7 @@ export default class Template {
                 crosshairCount++;
                 
                 if (crosshairCount <= 5) {
-                  console.log(`🎯 Applied crosshair at (${x},${y}) using user color`);
+                  debugLog(`Applied crosshair at (${x},${y}) using user color`);
                 }
               } else if (isCorner) {
                 // Make diagonal neighbors blue (crosshair corners)
@@ -624,19 +618,19 @@ export default class Template {
                 borderCount++;
                 
                 if (borderCount <= 5) {
-                  console.log(`🔲 Applied BLUE border at (${x},${y})`);
+                  debugLog(`Applied BLUE border at (${x},${y})`);
                 }
               }
             }
           }
         }
         
-        console.log(`📊 [OLD LOGIC STATISTICS]:`);
-        console.log(`  Template pixels: ${templatePixels.size}`);
-        console.log(`  Transparent pixels: ${transparentCount}`);
-        console.log(`  Crosshairs applied: ${crosshairCount}`);
-        console.log(`  Blue borders applied: ${borderCount}`);
-        console.log(`  Border enabled: ${borderEnabled}`);
+        debugLog(`OLD LOGIC STATISTICS:`);
+        debugLog(`  Template pixels: ${templatePixels.size}`);
+        debugLog(`  Transparent pixels: ${transparentCount}`);
+        debugLog(`  Crosshairs applied: ${crosshairCount}`);
+        debugLog(`  Blue borders applied: ${borderCount}`);
+        debugLog(`  Border enabled: ${borderEnabled}`);
         
         if (templatePixels.size === 0) {
           console.warn(`🚨 [CRITICAL] No template pixels found! Template might be completely transparent.`);
@@ -645,7 +639,7 @@ export default class Template {
         } else if (borderEnabled && borderCount === 0) {
           console.warn(`⚠️ [BORDER ISSUE] Borders enabled but none applied! Template might not have diagonal space.`);
         } else {
-          console.log(`✅ [SUCCESS] Crosshairs and borders applied successfully!`);
+          debugLog(`Crosshairs applied successfully`);
         }
         
         console.groupEnd();
@@ -722,7 +716,7 @@ export default class Template {
       // Try TamperMonkey storage first
       if (typeof GM_getValue !== 'undefined') {
         const saved = GM_getValue('bmCrosshairBorder', null);
-        console.log('TamperMonkey raw value:', saved);
+        debugLog('TamperMonkey raw value:', saved);
         if (saved !== null) {
           borderEnabled = JSON.parse(saved);
           source = 'TamperMonkey';
@@ -732,7 +726,7 @@ export default class Template {
       // Fallback to localStorage
       if (borderEnabled === null) {
         const saved = localStorage.getItem('bmCrosshairBorder');
-        console.log('localStorage raw value:', saved);
+        debugLog('localStorage raw value:', saved);
         if (saved !== null) {
           borderEnabled = JSON.parse(saved);
           source = 'localStorage';
@@ -740,8 +734,7 @@ export default class Template {
       }
       
       if (borderEnabled !== null) {
-        console.log(`✅ Border setting loaded from ${source}:`, borderEnabled);
-        console.groupEnd();
+        debugLog(`Border setting loaded from ${source}:`, borderEnabled);
         return borderEnabled;
       }
     } catch (error) {
@@ -749,8 +742,7 @@ export default class Template {
     }
     
     // Default to disabled
-    console.log('🔲 Using default border setting: false (no saved value found)');
-    console.groupEnd();
+    debugLog('Using default border setting: false (no saved value found)');
     return false;
   }
 }

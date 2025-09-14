@@ -72,18 +72,20 @@ const resultEsbuild = await esbuild.build({
   legalComments: 'inline', // What level of legal comments are preserved? (Hard: none, Soft: inline)
   minify: false, // Should the code be minified?
   write: false, // Should we write the outfile to the disk?
+  treeShaking: false, // Disable to preserve debug functions
 }).catch(() => process.exit(1));
 
 // Retrieves the JS file
 const resultEsbuildJS = resultEsbuild.outputFiles.find(file => file.path.endsWith('.js'));
 
+
 // Obfuscates the JS file
 let resultTerser = await terser.minify(resultEsbuildJS.text, {
   mangle: {
-    //toplevel: true, // Obfuscate top-level class/function names
+    toplevel: false, // Don't obfuscate top-level class/function names
     keep_classnames: false, // Should class names be preserved?
     keep_fnames: false, // Should function names be preserved?
-    reserved: [], // List of keywords to preserve
+    reserved: ['getDebugLoggingEnabled', 'saveDebugLoggingEnabled'], // Preserve debug settings functions
     properties: {
       // regex: /.*/, // Yes, I am aware I should be using a RegEx. Yes, like you, I am also suprised the userscript still functions
       keep_quoted: true, // Should names in quotes be preserved?
@@ -94,8 +96,8 @@ let resultTerser = await terser.minify(resultEsbuildJS.text, {
     comments: 'some' // Save legal comments
   },
   compress: {
-    dead_code: isGitHub, // Should unreachable code be removed?
-    drop_console: isGitHub, // Should console code be removed?
+    dead_code: true, // Remove unused code
+    drop_console: false, // Keep console code for debug logging
     drop_debugger: isGitHub, // SHould debugger code be removed?
     passes: 2 // How many times terser will compress the code
   }

@@ -4,7 +4,7 @@
  */
 
 import * as icons from './icons.js';
-import { consoleLog, consoleWarn, consoleError } from './utils.js';
+// UI Builder utilities - currently minimal
 
 /** Builds the main overlay interface
  * @param {Object} params - Parameters object

@@ -5,7 +5,7 @@
  */
 
 import TemplateManager from "./templateManager.js";
-import { escapeHTML, numberToEncoded, serverTPtoDisplayTP } from "./utils.js";
+import { escapeHTML, numberToEncoded, serverTPtoDisplayTP, debugLog } from "./utils.js";
 
 export default class ApiManager {
 
@@ -47,7 +47,7 @@ export default class ApiManager {
       // E.g. "wplace.live/api/files/s0/tiles/0/0/0.png" -> "tiles"
       const endpointText = data['endpoint']?.split('?')[0].split('/').filter(s => s && isNaN(Number(s))).filter(s => s && !s.includes('.')).pop();
 
-      console.log(`%cBlue Marble%c: Recieved message about "%s"`, 'color: cornflowerblue;', '', endpointText);
+      debugLog(`Blue Marble: Recieved message about "${endpointText}"`);
 
       // Each case is something that Blue Marble can use from the fetch.
       // For instance, if the fetch was for "me", we can update the overlay stats
@@ -65,9 +65,9 @@ export default class ApiManager {
 
           const nextLevelPixels = Math.ceil(Math.pow(Math.floor(dataJSON['level']) * Math.pow(30, 0.65), (1/0.65)) - dataJSON['pixelsPainted']); // Calculates pixels to the next level
 
-          console.log(dataJSON['id']);
+          debugLog(dataJSON['id']);
           if (!!dataJSON['id'] || dataJSON['id'] === 0) {
-            console.log(numberToEncoded(
+            debugLog(numberToEncoded(
               dataJSON['id'],
               '!#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[]^_`abcdefghijklmnopqrstuvwxyz{|}~'
             ));
@@ -92,7 +92,7 @@ export default class ApiManager {
           }
           
           // Log paint data for debugging
-          console.log('%cSkirk Marble%c: Paint Data:', 'color: cornflowerblue;', '', this.userPaintData);
+          debugLog('Skirk Marble: Paint Data:', this.userPaintData);
           
           overlay.updateInnerHTML('bm-user-name-content', `<b>Username:</b> ${escapeHTML(dataJSON['name'])}`); // Updates the text content of the username field
           try {

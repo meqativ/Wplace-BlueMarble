@@ -45,32 +45,65 @@ export function negativeSafeModulo(a, b) {
   return (a % b + b) % b;
 }
 
-/** Bypasses terser's stripping of console function calls.
- * This is so the non-obfuscated code will contain debugging console calls, but the distributed version won't.
- * However, the distributed version needs to call the console somehow, so this wrapper function is how.
- * This is the same as `console.log()`.
+/** Gets the debug logging enabled setting from storage
+ * @returns {boolean} Whether debug logging is enabled
+ * @since 1.0.0 
+ */
+export function getDebugLoggingEnabled() {
+  try {
+    let debugEnabled = null;
+    
+    // Try TamperMonkey storage first
+    if (typeof GM_getValue !== 'undefined') {
+      const saved = GM_getValue('bmDebugLoggingEnabled', null);
+      if (saved !== null) debugEnabled = JSON.parse(saved);
+    }
+    
+    // Fallback to localStorage
+    if (debugEnabled === null) {
+      const saved = localStorage.getItem('bmDebugLoggingEnabled');
+      if (saved !== null) debugEnabled = JSON.parse(saved);
+    }
+    
+    return debugEnabled !== null ? debugEnabled : false; // Default to disabled
+  } catch (error) {
+    return false; // Default to disabled on error
+  }
+}
+
+/** Saves the debug logging enabled setting to storage
+ * @param {boolean} enabled - Whether debug logging should be enabled
+ * @since 1.0.0
+ */
+export function saveDebugLoggingEnabled(enabled) {
+  try {
+    const enabledString = JSON.stringify(enabled);
+    
+    // Save to TamperMonkey storage
+    if (typeof GM_setValue !== 'undefined') {
+      GM_setValue('bmDebugLoggingEnabled', enabledString);
+    }
+    
+    // Also save to localStorage as backup
+    localStorage.setItem('bmDebugLoggingEnabled', enabledString);
+  } catch (error) {
+    // Silently fail to avoid console spam
+  }
+}
+
+/** Conditional debug logging that respects the debug setting
  * @param {...any} args - Arguments to be passed into the `log()` function of the Console
- * @since 0.58.9
+ * @since 1.0.0
  */
-export function consoleLog(...args) {((consoleLog) => consoleLog(...args))(console.log);}
-
-/** Bypasses terser's stripping of console function calls.
- * This is so the non-obfuscated code will contain debugging console calls, but the distributed version won't.
- * However, the distributed version needs to call the console somehow, so this wrapper function is how.
- * This is the same as `console.error()`.
- * @param {...any} args - Arguments to be passed into the `error()` function of the Console
- * @since 0.58.13
- */
-export function consoleError(...args) {((consoleError) => consoleError(...args))(console.error);}
-
-/** Bypasses terser's stripping of console function calls.
- * This is so the non-obfuscated code will contain debugging console calls, but the distributed version won't.
- * However, the distributed version needs to call the console somehow, so this wrapper function is how.
- * This is the same as `console.warn()`.
- * @param {...any} args - Arguments to be passed into the `warn()` function of the Console
- * @since 0.58.13
- */
-export function consoleWarn(...args) {((consoleWarn) => consoleWarn(...args))(console.warn);}
+export function debugLog(...args) {
+  try {
+    if (getDebugLoggingEnabled()) {
+      console.log(...args);
+    }
+  } catch (error) {
+    // Silently fail if debug logging has issues to prevent breaking the app
+  }
+}
 
 /** Encodes a number into a custom encoded string.
  * @param {number} number - The number to encode
