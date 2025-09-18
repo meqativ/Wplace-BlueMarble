@@ -1216,6 +1216,7 @@ setTimeout(() => {
 }, 100);
 
 overlayMain.handleDrag('#bm-overlay', '#bm-bar-drag'); // Creates dragging capability on the drag bar for dragging the overlay
+overlayMain.handleDrag('#bm-overlay', '#bm-overlay'); // Same for the entire body
 
 apiManager.spontaneousResponseListener(overlayMain); // Reads spontaneous fetch responces
 

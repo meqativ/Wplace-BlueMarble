@@ -561,14 +561,15 @@ export default class Overlay {
     let currentY = 0;
     let targetX = 0;
     let targetY = 0;
+    const edgeThreshold = 25;
 
     // Retrieves the elements (allows either '#id' or 'id' to be passed in)
     moveMe = document.querySelector(moveMe?.[0] == '#' ? moveMe : '#' + moveMe);
-    iMoveThings = document.querySelector(iMoveThings?.[0] == '#' ? iMoveThings : '#' + iMoveThings);
+    const dragHandle = document.querySelector(iMoveThings?.[0] == '#' ? iMoveThings : '#' + iMoveThings);
 
     // What to do when one of the two elements are not found
-    if (!moveMe || !iMoveThings) {
-      this.handleDisplayError(`Can not drag! ${!moveMe ? 'moveMe' : ''} ${!moveMe && !iMoveThings ? 'and ' : ''}${!iMoveThings ? 'iMoveThings ' : ''}was not found!`);
+    if (!moveMe || !dragHandle) {
+      this.handleDisplayError(`Can not drag! ${!moveMe ? 'moveMe' : ''} ${!moveMe && !dragHandle ? 'and ' : ''}${!dragHandle ? 'iMoveThings ' : ''}was not found!`);
       return; // Kills itself
     }
 
@@ -620,7 +621,7 @@ export default class Overlay {
       targetY = currentY;
       
       document.body.style.userSelect = 'none';
-      iMoveThings.classList.add('dragging');
+      dragHandle.classList.add('dragging');
       
       // Start animation loop
       if (animationFrame) {
@@ -636,17 +637,67 @@ export default class Overlay {
         animationFrame = null;
       }
       document.body.style.userSelect = '';
-      iMoveThings.classList.remove('dragging');
+      dragHandle.classList.remove('dragging');
     };
 
+  /**
+   * Checks if an element or its parents are interactive or scrollable.
+   * This prevents the drag from starting on buttons, inputs, links, or scrollable content areas.
+   * @param {HTMLElement} element - The element to check, typically event.target.
+   * @returns {boolean} - True if the element is interactive or scrollable.
+   */
+  const isElementInteractive = (element) => {
+    const interactiveTags = ['BUTTON', 'INPUT', 'TEXTAREA', 'SELECT', 'A', 'VIDEO', 'AUDIO'];
+    let current = element;
+
+    // Traverse up the DOM tree from the clicked element up to the drag handle
+    while (current && current !== dragHandle.parentElement) {
+      // 1. Check for standard interactive tags
+      if (interactiveTags.includes(current.tagName))
+        return true;
+
+      // 2. Check if the element is scrollable
+      const style = window.getComputedStyle(current);
+      const isScrollable = style.overflowY === 'auto' || style.overflowY === 'scroll' || style.overflowX === 'auto' || style.overflowX === 'scroll';
+      
+      if (isScrollable)
+        return (
+          current.scrollHeight > current.clientHeight
+            || // ↓ horizontally ↑ vertically
+          current.scrollWidth > current.clientWidth
+        )
+
+        current = current.parentElement;
+    }
+    return false;
+  };
+
+    const setPosition = (newX, newY) => {
+      const viewportWidth = window.innerWidth;
+      const viewportHeight = window.innerHeight;
+      const elementRect = moveMe.getBoundingClientRect();
+
+      // Define the boundaries
+      const minX = -elementRect.width + edgeThreshold;
+      const maxX = viewportWidth - edgeThreshold;
+      const minY = -elementRect.height + edgeThreshold;
+      const maxY = viewportHeight - edgeThreshold;
+
+      // Clamp the values to not let you get the overlay too far off the screen
+      targetX = Math.max(minX, Math.min(newX, maxX));
+      targetY = Math.max(minY, Math.min(newY, maxY));
+    }
+    
     // Mouse down - start dragging
-    iMoveThings.addEventListener('mousedown', function(event) {
+    dragHandle.addEventListener('mousedown', function(event) {
+      if (isElementInteractive(event.target)) return; // No dragging if user is trying to interact with text/inputs/buttons
       event.preventDefault();
       startDrag(event.clientX, event.clientY);
     });
 
     // Touch start - start dragging
-    iMoveThings.addEventListener('touchstart', function(event) {
+    dragHandle.addEventListener('touchstart', function(event) {
+      if (isElementInteractive(event.target)) return; // No dragging if user is trying to interact with text/inputs/buttons
       const touch = event?.touches?.[0];
       if (!touch) {return;}
       startDrag(touch.clientX, touch.clientY);
@@ -656,8 +707,9 @@ export default class Overlay {
     // Mouse move - update target position
     document.addEventListener('mousemove', function(event) {
       if (isDragging && initialRect) {
-        targetX = event.clientX - offsetX;
-        targetY = event.clientY - offsetY;
+        const newX = event.clientX - offsetX;
+        const newY = event.clientY - offsetY;
+        setPosition(newX, newY);
       }
     }, { passive: true });
 
@@ -666,12 +718,12 @@ export default class Overlay {
       if (isDragging && initialRect) {
         const touch = event?.touches?.[0];
         if (!touch) {return;}
-        targetX = touch.clientX - offsetX;
-        targetY = touch.clientY - offsetY;
+        const newX = touch.clientX - offsetX;
+        const newY = touch.clientY - offsetY;
+        setPosition(newX, newY);
         event.preventDefault();
       }
     }, { passive: false });
-
     // End drag events
     document.addEventListener('mouseup', endDrag);
     document.addEventListener('touchend', endDrag);
