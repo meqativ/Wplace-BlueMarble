@@ -1215,8 +1215,7 @@ setTimeout(() => {
   updateMiniTracker();
 }, 100);
 
-overlayMain.handleDrag('#bm-overlay', '#bm-bar-drag'); // Creates dragging capability on the drag bar for dragging the overlay
-overlayMain.handleDrag('#bm-overlay', '#bm-overlay'); // Same for the entire body
+overlayMain.handleDrag('#bm-overlay', '#bm-overlay'); // Creates dragging capability on the entire body for dragging the overlay (there is no need to run this on the #bm-bar-drag itself since it's ignoring when checking for interactive elements)
 
 apiManager.spontaneousResponseListener(overlayMain); // Reads spontaneous fetch responces
 
